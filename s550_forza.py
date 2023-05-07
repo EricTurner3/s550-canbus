@@ -200,7 +200,7 @@ def send_door_status(forza_data):
         parking_brake_light = 0xC0 # on
     else:
         parking_brake_light = 0x00 # off
-    data = [0x40, 0x8B, 0x02, 0x0a, 0x18, 0x05, parking_brake_light, 0x02]
+    data = [0x40, 0x48, 0x02, 0x0a, 0x18, 0x05, parking_brake_light, 0x02]
     return send_msg(DOOR_STATUS, start, data)
 
 def send_rpm(forza_data):
