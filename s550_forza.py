@@ -61,10 +61,15 @@ def send_msg(id, ts, data):
 
 def send_seatbelt_icon(forza_data):
     '''
-        Byte 1: 0x00 (no icon); 0xAF (icon) (the icon disappears on several different numbers. surely does something else)
+        Byte 1: 
+        0x00 (no icon); 
+        0xAF both seltbeats undone
+        0x5F pass / driver seatbelts on
+        0x6F driver only seatbelt on
+        0x9F pass only seatbelt on
     '''
 
-    data = [0x10, 0xAF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00]
+    data = [0x10, 0x5F, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00]
     return send_msg(SEATBELT, start, data)
 
 def send_misc_1(forza_data):
