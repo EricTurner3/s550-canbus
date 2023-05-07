@@ -108,7 +108,17 @@ def send_misc_2(forza_data):
             0x02 - Solid
             0x0F - Flashing
     '''
-    data =  [00, 00, 00, 00, 00, 0x00, 00, 00]
+    # flash the traction control icon when wheel slip ratio of any tire is above 10
+    # in normal road driving from a track car, seems to stay less than 1
+    threshold = 10
+    if(forza_data['TireSlipRatioFrontLeft'] >= threshold or \
+       forza_data['TireSlipRatioFrontRight'] >= threshold or \
+       forza_data['TireSlipRatioRearLeft'] >= threshold or \
+       forza_data['TireSlipRatioRearRight'] >= threshold):
+        traction_control = 0x0F
+    else:
+        traction_control = 0x00
+    data =  [00, 00, 00, 00, 00, traction_control, 00, 00]
     return send_msg(MISC_2, start, data)
 
 def send_misc_3(forza_data):

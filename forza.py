@@ -80,7 +80,11 @@ def fetch_forza_data():
     data, addr = sock.recvfrom(1500) # buffer size is 1500 bytes, this line reads data from the socket
     ##received data is now in the retuturned_data dict, key names are in data_format.txt
     returned_data = get_data(data)
-    #print(str(returned_data['HandBrake']))
+    print("TireSlipRatioFrontLeft: " + str(returned_data['TireSlipRatioFrontLeft']))
+    print("TireSlipRatioFrontRight: " + str(returned_data['TireSlipRatioFrontRight']))
+    print("TireSlipRatioRearLeft: " + str(returned_data['TireSlipRatioRearLeft']))
+    print("TireSlipRatioRearRight: " + str(returned_data['TireSlipRatioRearRight']))
+    print("========================================")
     return returned_data
 
 if __name__ == "__main__":
