@@ -1,0 +1,1 @@
+Captured from python-can can.logger using slcan, baudrate 500000 on the GT350
