@@ -82,16 +82,21 @@ def send_misc_1(forza_data):
             0x_E -> High Beams On
         Byte 1 - Dimming?
             First Bit: 0, 4, 8, C
-            Second Bit: C, D
+            Second Bit: C, D, 8
         Byte 2
-            0x0_ -> ?
-            0x1_ -> ?
+            0x0_ -> Parking Brake Off
+            0x1_ -> Parking Brake On
         Byte 6  
             0x00 -> ? 
             0x80 -> ?
     '''
+    print(int(forza_data['HandBrake']))
+    if(int(forza_data['HandBrake'])>0):
+        parking_brake_light = 0x10 # on
+    else:
+        parking_brake_light = 0x00 # off
     
-    data =  [0x4C, 0x48, 0x10, 0x01, 0x00, 0x00, 0x01, 0x00]
+    data =  [0x4C, 0x48, parking_brake_light, 0x01, 0x00, 0x00, 0x00, 0x00]
     return send_msg(MISC_1, start, data)
 
 def send_misc_2(forza_data):
@@ -173,13 +178,19 @@ def send_door_status(forza_data):
                 0x00 is backlight off
                 0x0a is backlight on (mycolor)
                 0x10 is backlight on (white)
-        Byte 7 is Parking Brake On (0x80) or Off (0x00)
+        Byte 7 is Parking Brake On (0x80/0xC0) or Off (0x00)
         Byte 8 deals with the doors
             First digit 0, 1, 2, 3 is Closed, Passenger Ajar, Driver Ajar, Both Ajar respectively.
             Second Digit is 2 for closed or A for Hood Ajar
             02 - All Closed, 32 - Driver/Pass Door Open, 2A - Driver + Hood Doors Open
     '''
-    data = [0x40, 0x8B, 0x02, 0x0a, 0x18, 0x05, 0xC0, 0xE2]
+    # forza provides a value 0 - 255 for handbrake. If it's a button it will just be 0 - off and 255 - on
+    # if you have a gaming sim hand brake, it could be a range
+    if(int(forza_data['HandBrake'])>0):
+        parking_brake_light = 0xC0 # on
+    else:
+        parking_brake_light = 0x00 # off
+    data = [0x40, 0x8B, 0x02, 0x0a, 0x18, 0x05, parking_brake_light, 0x02]
     return send_msg(DOOR_STATUS, start, data)
 
 def send_rpm(forza_data):
