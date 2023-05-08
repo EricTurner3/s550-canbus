@@ -14,9 +14,9 @@ start = time.time()
 # VARIABLES
 # change the channel and bitrate as needed
 bus = can.interface.Bus(bustype='slcan', channel='COM3', bitrate=500000)
-speed = 0.1 # speed in ms to send messages
-can_ids = (0x4C,) # tuple of CAN Ids to brute force. They will all be set to the same
-sample_data = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] # sample set of data to start with
+speed = 0.16 # speed in ms to send messages
+can_ids = (0x166,) # tuple of CAN Ids to brute force. They will all be set to the same
+sample_data = [0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00] # sample set of data to start with
 
 # SAMPLE DATA - 2015 Ford Mustang GT - Manual - MyColor
 # 200 => [0x00, 0x00, 0x7F, 0xF0, 0x81, 0x57, 0x00, 0x00]
@@ -52,7 +52,7 @@ def send_sequential_byte(index, data=sample_data):
             # 0x3B3 must be passed on the IPC will not turn on
             if (id != 0x3B3):
                 # verbose=False to supress the output to console and only see the ID we are brute forcing
-                send_msg(0x3B3, start, [0x40, 0x8B, 0x02, 0x0a, 0x18, 0x05, 0xC0, 0xE2], verbose=False)
+                send_msg(0x3B3, start, [0x40, 0x4B, 0x02, 0x0a, 0x18, 0x05, 0x00, 0x02], verbose=False)
             data = data
             for i in index:
                 data[i] = x
@@ -65,4 +65,4 @@ while(True):
     # Index 0 -> 7, can pass a single digit or all digits at once
     # for single digit, ensure you keep the comma after such as (1, )
     # 2+ digits are similar to a list (0, 1, 2, 3)
-    send_sequential_byte((1,))
+    send_sequential_byte((4,5))

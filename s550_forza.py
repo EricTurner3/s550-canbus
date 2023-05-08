@@ -3,7 +3,9 @@ import time
 from multiprocessing import Process
 from random import randint
 import forza # https://github.com/nikidziuba/Forza_horizon_data_out_python
+import sys
 
+can_adapter_channel = 'COM3'
 
 pool_size = 8
 # start time for timestamps
@@ -42,11 +44,12 @@ MISC_9 = 0x415
 MISC_10 = 0x130
 LC = 0x178
 WARNINGS_1 = 0x179
+ENGINE_TEMP = 0x156
 
 
 
 # Stock slcan firmware on Windows
-bus = can.ThreadSafeBus(bustype='slcan', channel='COM3', bitrate=500000)
+bus = can.ThreadSafeBus(bustype='slcan', channel=can_adapter_channel, bitrate=500000)
 
 def send_msg(id, ts, data):
     try:
@@ -61,12 +64,16 @@ def send_msg(id, ts, data):
 
 def send_seatbelt_icon(forza_data):
     '''
-        Byte 1: 
-        0x00 (no icon); 
-        0xAF both seltbeats undone
-        0x5F pass / driver seatbelts on
-        0x6F driver only seatbelt on
-        0x9F pass only seatbelt on
+        Byte 0 - 
+            0x0_ - Airbag Indicator Off
+            0x4_ - Airbag Indicator On
+            0x8_ - Airbag Indicator Flashing
+        Byte 1 - Seatbelt: 
+            0x00 (no icon); 
+            0xAF both seltbeats undone
+            0x5F pass / driver seatbelts on
+            0x6F driver only seatbelt on
+            0x9F pass only seatbelt on
     '''
 
     data = [0x10, 0x5F, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00]
@@ -245,18 +252,22 @@ def send_odometer(forza_data):
     data = [0x37, 0x00, 0x64, 0x26, 0xC0, 0x7A, 0x37, 0x1C]
     return send_msg(ODOMETER, start, data)
 
-def send_random_pairs(id):
-    fuel = randint(10000, 34000)
-    fuel_hex = bytearray(fuel.to_bytes(2, 'big'))
-    data = [0x40, fuel_hex[1], fuel_hex[0], fuel_hex[1], fuel_hex[0], fuel_hex[1], fuel_hex[0], fuel_hex[1]]
-    return send_msg(id, start, data)
+def send_engine_temp(forza_data):
+    '''
+    Bytes 0 & 1 are the range for the engine gauge
+    0x9_ 0x9_ is the first half of the gauge
+    0xc_ 0xc_ is the second half of the gauge
+    0xb_ 0xb_ triggers an overheat warning
+    '''
+    data = [0x9E, 0x99, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00]
+    return send_msg(ENGINE_TEMP, start, data)
 
 
 
 THREADS = [
     (SPEED_ONE, [send_rpm, send_door_status, send_speed]),
     (SPEED_TWO, [send_warnings_1]),
-    (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control]),
+    (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp]),
     (SPEED_SIX, [send_seatbelt_icon, send_misc_2]),
 ]
 
