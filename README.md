@@ -6,11 +6,11 @@ This repo serves as a compendium of scripts and hours of trial/error research to
 Main Scripts
 * s550_forza.py - This script utilizes the [Forza Horizon Data Out](https://github.com/nikidziuba/Forza_horizon_data_out_python) library and allows data from Forza (speed & rpm) to control the cluster
     * [Video Demonstration](https://youtu.be/KNyn1v3_cwc)
-* arrows.py - This script allows you to use the up,down,left,right,enter keys to control the menu on the cluster
+* interactive_brute_force.py - This script allows you to use the up,down,left,right,enter keys to control the menu on the cluster
+    * arrows.py and brute_force.py were merged into a single interactive script
     * [Video Demonstration](https://youtu.be/OzUs28GIq0A)
 
 Supporting Scripts
-* brute_force.py -  This script helps me figure out what certain bytes are for an ID. Essentially it sends a incrementing hex digit to whatever positions in the data array that are requested. Monitor the changes on the cluster (new lights, warnings, gauges moving) to help narrow down functionality
 * ports.py - Script that was pulled from StackOverflow to show which port the USB-to-CAN interface is running on. Required to communicate with the IPC
 * forza.py / data_format.py - Copy of files from [this repo](https://github.com/nikidziuba/Forza_horizon_data_out_python)
 * decode_can_log.py - Takes a CANdump from the can folder and converts the b64 data string to a more easily readable byte array

@@ -1,17 +1,19 @@
 '''
-    CanBus - Arrow Keys
+    CanBus - Interactive Brute Force
     Eric Turner
     6 May 2023
 
     
     
 
-    This script allows you use your arrow keys / enter to interface with the cluster
+    This script allows you use your arrow keys / enter to interface with the cluster.
+    Also allows you to test brute force options
 '''
 import can
 import time
 from pynput import keyboard
 from multiprocessing.pool import ThreadPool as Pool
+from random import randint
 
 
 key = None
@@ -60,7 +62,7 @@ def arrows_test(direction):
     elif(direction == 'enter'):
         data[0] = ENTER
     
-    send_msg(0x81, start, data)  
+    send_msg(0x81, start, data, verbose=False)  
     print('')
 
 def on_press(key):
@@ -87,18 +89,76 @@ def send_on():
 
 def send_null():
     while(True):
-        send_msg(0x81, start, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        send_msg(0x81, start, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], verbose=False)
         print('')
+
+
+
+
+
         time.sleep(speed*2)
+
+
+def send_random_pairs(id, index):
+    rand = randint(0, 65535) # 0x00 - 0xFF
+    rand_hex = bytearray(rand.to_bytes(2, 'big'))
+    data = [0x40, 0x8B, 0x02, 0x12, 0x18, 0x05, 0xC0, 0xE2]
+    data[index] = rand_hex[0]
+    send_msg(id, start, data)
+    print(' - {}'.format(rand_hex[0]))
+
+'''
+    Generates a random byte from 0x00 to 0xFF in order
+    Pass a tuple index to modify the sample data to the random byte for a brute force method of determining what the code does
+'''
+def send_sequential_byte(index, can_ids, speed, data=[00,00,00,00,00,00,00,00]):
+    for x in range(0x00, 0xFF):
+        for id in can_ids:
+            data = data
+            for i in index:
+                data[i] = x
+            send_msg(id, start, data)
+            print(' - {}'.format(str(x)))
+        time.sleep(speed)
+
+# m#erged bruteforce.py into here
+'''
+    Similar to the above function, except this one will increment over multiple byte ranges.
+    So it will treat multiple bytes as one large number and increment it all together. 
+'''
+def send_incremental_bytes(starting_index, starting_byte, num_bytes, can_ids, speed, data=[00,00,00,00,00,00,00,00]):
+    min = starting_byte
+    max = int('0x' + ('FF' * num_bytes), 16)
+    for x in range(min, max):
+        new_bytes = x.to_bytes(num_bytes, 'big')
+        for id in can_ids:
+            for i in range(len(new_bytes)):
+                data[i + (starting_index)] = new_bytes[i] # replace bytes
+            send_msg(id, start, data)
+            print(' - {}'.format(str(x)))
+        time.sleep(speed)
+# this method allows us to also run the brute force commands but still use arrows
+# this way I can start experimenting with digital gauges such as oil pressure or air/fuel ratio
+def brute_force():
+    while(True):
+        send_incremental_bytes(
+                        starting_index=4, #0 tart
+                        starting_byte = 0x2400,
+                        num_bytes= 2, # 1 start
+                        can_ids=(133,), 
+                        speed=0.16, 
+                        data=[0x7C,0xEA, 0x80, 0x00, 0x24, 0xE0, 0x7C, 0xEB]
+                    )
 
 def keys():
     listener = keyboard.Listener(on_press=on_press)
     listener.start()  # start to listen on a separate thread
     listener.join()  # remove if main thread is polling self.keys
     
-pool = Pool(3)
+pool = Pool(4)
 pool.apply_async(send_on) # send the 0x3B3 on command
 pool.apply_async(send_null) # send a blank version of 0x81
-pool.apply_async(keys) # send whatever key is pressed to send to the cluster
+pool.apply_async(keys) # send whatever key is pressed to send to the cluster.
+pool.apply_async(brute_force) # test out our brute force data, comment this out if not needed
 pool.close()
 pool.join()

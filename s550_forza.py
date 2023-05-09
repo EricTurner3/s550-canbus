@@ -42,6 +42,7 @@ MISC_7 = 0x200
 MISC_8 = 0x167
 MISC_9 = 0x415
 MISC_10 = 0x130
+MISC_11 = 0x77
 LC = 0x178
 WARNINGS_1 = 0x179
 ENGINE_TEMP = 0x156
@@ -169,6 +170,15 @@ def send_misc_10(forza_data):
     data = [0x82, 0x00, 0x14, 0x40, 0x7B, 0x00, 0x64, 0xFF]
     return send_msg(MISC_10, start, data)
 
+def send_misc_11(forza_data):
+    '''
+        Byte 6 - Hill Start Assist Not Available Warning
+            0x_c - displays warning
+            0x_6 - shuts warning up
+    '''
+    data = [0x00, 0x00, 0x07, 0xFF, 0x7F, 0xF7, 0xE6, 0x02]
+    return send_msg(MISC_10, start, data)
+
 def send_warnings_1(forza_data):
     '''
         Several Warning messages such as fuel service inlet, change oil soon, oil change required
@@ -189,7 +199,7 @@ def send_launch_control(forza_data):
 def send_door_status(forza_data):
     '''
         Byte 0 & 1 have to do with if the IPC is on
-                40 48 is running, doors closed
+                40 48 is running, doors closed, lights off
                 41 48 is running, trunk ajar
         Byte 3  has to do with backlight
                 0x00 is backlight off
@@ -249,7 +259,9 @@ def send_speed(forza_data):
 
 
 def send_odometer(forza_data):
-    data = [0x37, 0x00, 0x64, 0x26, 0xC0, 0x7A, 0x37, 0x1C]
+    odometer = '25714'
+    odometer_km = bytearray((odometer).to_bytes(3, 'big'))
+    data = [0x37, odometer_km[0], odometer_km[1], odometer_km[2], 0xC0, 0x7A, 0x37, 0x1C]
     return send_msg(ODOMETER, start, data)
 
 def send_engine_temp(forza_data):
