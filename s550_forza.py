@@ -1,9 +1,9 @@
 import can
 import time
-from multiprocessing import Process
+from multiprocessing.pool import ThreadPool as Pool
 from random import randint
 import forza # https://github.com/nikidziuba/Forza_horizon_data_out_python
-import sys
+from pynput import keyboard
 
 can_adapter_channel = 'COM3'
 
@@ -16,7 +16,7 @@ start = time.time()
 
 # this will easily speed up or slow down the traffic while still keeping the speeds at the same interval
 # < 1 speeds up; > 1 slows down
-modifier = 0.75 
+modifier =  .1
 SPEED_ONE = 0.16 * modifier
 SPEED_TWO = 0.32  * modifier
 SPEED_THREE = 0.48  * modifier
@@ -32,6 +32,7 @@ SPEED = 0x202
 DOOR_STATUS = 0x3B3
 SEATBELT = 0x4C
 ODOMETER = 0x430
+BUTTONS = 0x81
 MISC_1 = 0x3C3
 MISC_2 = 0x416
 MISC_3 = 0x217
@@ -98,7 +99,7 @@ def send_misc_1(forza_data):
             0x00 -> ? 
             0x80 -> ?
     '''
-    print(int(forza_data['HandBrake']))
+    #print(int(forza_data['HandBrake']))
     if(int(forza_data['HandBrake'])>0):
         parking_brake_light = 0x10 # on
     else:
@@ -274,32 +275,71 @@ def send_engine_temp(forza_data):
     data = [0x9E, 0x99, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00]
     return send_msg(ENGINE_TEMP, start, data)
 
+def MENU_NAV(direction):
+    UP = 0x08
+    DOWN = 0x01
+    LEFT = 0x02
+    RIGHT = 0x04
+    ENTER = 0x10
+    data = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
+    if(direction == 'up'):
+        data[0] = UP
+    elif(direction == 'down'):
+        data[0] = DOWN
+    elif(direction == 'left'):
+        data[0] = LEFT
+    elif(direction == 'right'):
+        data[0] = RIGHT
+    elif(direction == 'enter'):
+        data[0] = ENTER
+    else:
+        data[0] = 0x00
+    
+    return send_msg(BUTTONS, start, data) 
+
+def on_press(key):
+    try:
+        k = key.char  # single-char keys
+    except:
+        k = key.name  # other keys
+    if k in ['up', 'down', 'left', 'right', 'enter']:  # keys of interest
+        # self.keys.append(k)  # store it in global-like variable
+        #print('Key pressed: ' + k)
+        MENU_NAV(k)
+        print(" - " + 'KEY PRESSED: {} '.format(k) + ' - MENU_NAV')
+        #return k  # stop listener; remove this if want more keys
+
+def keys():
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()  # start to listen on a separate thread
+    #listener.join()
 
 THREADS = [
     (SPEED_ONE, [send_rpm, send_door_status, send_speed]),
     (SPEED_TWO, [send_warnings_1]),
     (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp]),
     (SPEED_SIX, [send_seatbelt_icon, send_misc_2]),
+    (SPEED_SEVEN, [MENU_NAV])
 ]
 
 
 # setup the thread loop
-def _thread(t, forza_data):
+def _thread(t):
+    while True:
         for m in t[1]:
-            m(forza_data)
+            m(forza.fetch_forza_data())
             print(" - " + '{0:.2f}'.format(t[0]) + ' - ' + m.__name__)
         #time.sleep(t[0])
 
-
-def create_threads(result):
-    for speed in THREADS:
-        if (speed[1] !=None):
-            Process(target=_thread, args=(speed, result)).run()
-
 def main():
-    while(True):
-        create_threads(forza.fetch_forza_data())
+    pool = Pool()
+    pool.apply_async(keys) # send whatever key is pressed to send to the cluster
+    # create a thread for each speed
+    for speed in THREADS:
+        pool.map_async(_thread, (speed,))
+    pool.close()
+    pool.join()
 
 
 if __name__ == "__main__":
