@@ -251,7 +251,7 @@ def send_speed(forza_data):
         speed = forza_data['Speed'] * 2
     else:
         speed =  0 # in MPH
-    gauge_pos = int(speed) * 158
+    gauge_pos = int(speed) * 175
     speed_hex = bytearray((gauge_pos).to_bytes(2, 'big'))
     #print("    speed: {}  HEX: {}; 1: {} 2:{}".format(speed, speed_hex, speed_hex[0], speed_hex[1]))
 
