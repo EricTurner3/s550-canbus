@@ -1,5 +1,6 @@
 import socket
 import struct
+from os import system, name, path
 
 # https://github.com/nikidziuba/Forza_horizon_data_out_python
 
@@ -10,7 +11,7 @@ UDP_PORT = 30500 #You can freely edit this
 
 #reading data and assigning names to data types in data_types dict
 data_types = {}
-with open('data_format.txt', 'r') as f:
+with open(path.join(path.dirname(__file__),'data_format.txt'), 'r') as f:
     lines = f.read().split('\n')
     for line in lines:
         data_types[line.split()[1]] = line.split()[0]
@@ -76,13 +77,26 @@ sock = socket.socket(socket.AF_INET, # Internet
 sock.bind((UDP_IP, UDP_PORT))
 
 
+
 def fetch_forza_data():
     data, addr = sock.recvfrom(1500) # buffer size is 1500 bytes, this line reads data from the socket
     ##received data is now in the retuturned_data dict, key names are in data_format.txt
     returned_data = get_data(data)
     return returned_data
 
-if __name__ == "__main__":
-        while True:
-            fetch_forza_data()
+
+def clear():
+    # for windows
+    if name == 'nt':
+        _ = system('cls')
+
+    # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = system('clear')
+
+if __name__ == "__main__": 
+    while True:
+        d = fetch_forza_data()
+        print(d['DistanceTraveled'])
+
 
