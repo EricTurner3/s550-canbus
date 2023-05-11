@@ -4,7 +4,7 @@ S550 Mustang CAN Bus Research & Scripts
 This repo serves as a compendium of scripts and hours of trial/error research to try and map the S550 canbus, specifically towards the IPC.
 
 Main Scripts
-* s550_cluster.py <game> - Currently supports games in the games subdir. Allows that game to interface with the cluster. See s550_data.py for the model in translating other game data
+* s550_cluster.py <game> - Currently supports Forza Horizon 5, American Truck Simulator & Euro Truck Simulator 2 in an alpha state. Allows that game to interface with the cluster. See s550_data.py for the model in translating other game data
     * [Video Demonstration](https://youtu.be/KNyn1v3_cwc)
 * interactive_brute_force.py - This script allows you to use the up,down,left,right,enter keys to control the menu on the cluster
     * arrows.py and brute_force.py were merged into a single interactive script
@@ -12,7 +12,6 @@ Main Scripts
 
 Supporting Scripts
 * ports.py - Script that was pulled from StackOverflow to show which port the USB-to-CAN interface is running on. Required to communicate with the IPC
-* forza.py / data_format.py - Copy of files from [this repo](https://github.com/nikidziuba/Forza_horizon_data_out_python)
 * decode_can_log.py - Takes a CANdump from the can folder and converts the b64 data string to a more easily readable byte array
 * replay.py - Attempt to replay data from the CANdump at a slower pace to determine functionality (doesn't quite work)
 

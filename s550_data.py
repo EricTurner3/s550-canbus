@@ -10,12 +10,14 @@ class s550_ipc:
 
     def __init__(self, game):
         self.game = game
+
+        self.engine_on = 1                  # 1 on; 0 off. Disables backlight when off
         # icons have 3 states
         # 0 - off
         # 1 - on
         # 2 - on, flashing (some)
         self.icon_launch_control = 0
-        self.icon_abs = 0                   # no flashing
+        self.icon_abs = 0                   
         self.icon_traction_control = 0
         self.icon_airbag = 0 
         self.icon_seatbelt = 0              # no flashing

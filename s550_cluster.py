@@ -44,6 +44,13 @@ MISC_8 = 0x167
 MISC_9 = 0x415
 MISC_10 = 0x130
 MISC_11 = 0x77
+# these 5 are odd ones. The first byte is always the digits that come after the 0x5--
+# the rest of the bytes are 00 FF FF FF FF FF FF.
+x5xx_SERIES_1 = 0x581
+x5xx_SERIES_2 = 0x596
+x5xx_SERIES_3 = 0x59E
+x5xx_SERIES_4 = 0x5B3
+x5xx_SERIES_5 = 0x5B5
 LC = 0x178
 WARNINGS_1 = 0x179
 ENGINE_TEMP = 0x156
@@ -117,11 +124,19 @@ def send_misc_1(clusterdata):
 def send_misc_2(clusterdata):
     '''
         ABS, Traction Control Off, Traction Control Loss Icons, Airbag
-        Also Advance Trac Service / Brake System Service Warnings (First two bytes)
+        
+        Byte 1 - 
+            0x2_ - Check Brake System warning
+            0x4_  - AdvanceTrac System Warning
         Byte 5 has to do with a solid traction control or a flashing icon
             0x00 - Off
             0x02 - Solid
             0x0F - Flashing
+        Byte 6 -
+            0x0_ - ABS light off
+            0x4_ - ABS Solid
+            0x8_ - ABS Flash Slow
+            0xD_ - ABS Flash Fast
     '''
     if(clusterdata.icon_traction_control == 2):
         traction_control = 0x0F # flashing
@@ -129,7 +144,16 @@ def send_misc_2(clusterdata):
         traction_control = 0x02 # solid on
     else:
         traction_control = 0x00 # off
-    data =  [00, 00, 00, 00, 00, traction_control, 00, 00]
+
+    if(clusterdata.icon_abs == 2):
+        abs_icon = 0xD0 # flashing
+    elif(clusterdata.icon_abs == 1):
+        abs_icon = 0x40 # solid on
+    else:
+        abs_icon = 0x00 # off
+
+    
+    data =  [00, 00, 00, 00, 00, traction_control, abs_icon, 00]
     return send_msg(MISC_2, start, data)
 
 def send_misc_3(clusterdata):
@@ -159,6 +183,7 @@ def send_misc_8(clusterdata):
     '''
     data = [0x72, 0x7F, 0x4B, 0x00, 0x00, 0x19, 0xED, 0x00]
     return send_msg(MISC_8, start, data)
+
 def send_misc_9(clusterdata):
     '''
     
@@ -180,7 +205,18 @@ def send_misc_11(clusterdata):
             0x_6 - shuts warning up
     '''
     data = [0x00, 0x00, 0x07, 0xFF, 0x7F, 0xF7, 0xE6, 0x02]
-    return send_msg(MISC_10, start, data)
+    return send_msg(MISC_11, start, data)
+def send_0x5__series(clusterdata):
+    # not sure what these do but since they seem to be hard coded, gonna send them
+    send_msg(x5xx_SERIES_1, start, [0x81, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    print('')
+    send_msg(x5xx_SERIES_2, start, [0x96, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    print('')
+    send_msg(x5xx_SERIES_3, start, [0x9E, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    print('')
+    send_msg(x5xx_SERIES_4, start, [0xB3, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    print('')
+    return send_msg(x5xx_SERIES_5, start, [0xB5, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
 
 def send_warnings_1(clusterdata):
     '''
@@ -224,7 +260,12 @@ def send_door_status(clusterdata):
         parking_brake_light = 0x00 # off
     else:
         parking_brake_light = 0xC0 # on
-    data = [0x40, 0x48, 0x02, 0x0a, 0x18, 0x05, parking_brake_light, 0x02]
+
+    if(clusterdata.engine_on == 1):
+        lights = 0x0A
+    else:
+        lights = 0x00
+    data = [0x40, 0x48, 0x02, lights, 0x18, 0x05, parking_brake_light, 0x02]
     return send_msg(DOOR_STATUS, start, data)
 
 def send_rpm(clusterdata):
@@ -319,16 +360,20 @@ THREADS = [
     (SPEED_TWO, [send_warnings_1]),
     (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp]),
     (SPEED_SIX, [send_seatbelt_icon, send_misc_2]),
-    (SPEED_SEVEN, [MENU_NAV])
+    (SPEED_SEVEN, [MENU_NAV, send_0x5__series])
 ]
 
 def load_game(game):
-    supported_games = ['fh5']
+    supported_games = ['fh5', 'ats']
     if(game in supported_games):
         #print('Loading {}'.format(game))
         if game == 'fh5':
             import games.fh5
             return games.fh5.data()
+        elif game == 'ats':
+            import games.ats
+            time.sleep(0.1) # trying to poll the API endpoint too much causes it to fail
+            return games.ats.data()
     else:
         pass
 

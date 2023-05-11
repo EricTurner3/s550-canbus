@@ -142,23 +142,39 @@ def send_incremental_bytes(starting_index, starting_byte, num_bytes, can_ids, sp
 def brute_force():
     while(True):
         send_incremental_bytes(
-                        starting_index=4, #0 tart
-                        starting_byte = 0x2400,
+                        starting_index=0 , #0 tart
+                        starting_byte = 0x3000,
                         num_bytes= 2, # 1 start
-                        can_ids=(133,), 
+                        can_ids=(0x454,), 
                         speed=0.16, 
-                        data=[0x7C,0xEA, 0x80, 0x00, 0x24, 0xE0, 0x7C, 0xEB]
+                        data=[0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30]
                     )
+
+def send_0x5__series():
+    x5xx_SERIES_1 = 0x581
+    x5xx_SERIES_2 = 0x596
+    x5xx_SERIES_3 = 0x59E
+    x5xx_SERIES_4 = 0x5B3
+    x5xx_SERIES_5 = 0x5B5
+    # not sure what these do but since they seem to be hard coded, gonna send them
+    send_msg(x5xx_SERIES_1, start, [0x81, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    send_msg(x5xx_SERIES_2, start, [0x96, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    send_msg(x5xx_SERIES_3, start, [0x9E, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    send_msg(x5xx_SERIES_4, start, [0xB3, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+    send_msg(x5xx_SERIES_5, start, [0xB5, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
 
 def keys():
     listener = keyboard.Listener(on_press=on_press)
     listener.start()  # start to listen on a separate thread
     listener.join()  # remove if main thread is polling self.keys
     
-pool = Pool(4)
+
+
+pool = Pool(5)
 pool.apply_async(send_on) # send the 0x3B3 on command
 pool.apply_async(send_null) # send a blank version of 0x81
 pool.apply_async(keys) # send whatever key is pressed to send to the cluster.
 pool.apply_async(brute_force) # test out our brute force data, comment this out if not needed
+pool.apply_async(send_0x5__series)
 pool.close()
 pool.join()
