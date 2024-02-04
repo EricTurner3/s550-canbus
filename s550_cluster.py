@@ -34,6 +34,7 @@ SEATBELT = 0x4C
 ODOMETER = 0x430
 BUTTONS = 0x81
 TIRE_PRESSURE = 0x3B5 # thanks to v-ivanyshyn's work
+STEERING = 0x76
 MISC_1 = 0x3C3
 MISC_2 = 0x416
 MISC_3 = 0x217
@@ -135,6 +136,8 @@ def send_misc_2(clusterdata):
             0x00 - Off
             0x02 - Solid
             0x0F - Flashing
+            0x80 - TC Off Indicator
+            0x18 - ATC Off Indicator
         Byte 6 -
             0x0_ - ABS light off
             0x4_ - ABS Solid
@@ -146,7 +149,7 @@ def send_misc_2(clusterdata):
     elif(clusterdata.icon_traction_control == 1):
         traction_control = 0x02 # solid on
     else:
-        traction_control = 0x00 # off
+        traction_control = 0x80 # off
 
     if(clusterdata.icon_abs == 2):
         abs_icon = 0xD0 # flashing
@@ -220,7 +223,7 @@ def send_misc_11(clusterdata):
 # 4 Feb 2024
 def send_misc_12(clusterdata):
     '''
-        Byte 2 & 3 - Fuel Consumption
+        Byte 2 & 3 - Fuel Consumption ?? 
         Byte 6 - Steering Mode
             0x40 - Normal
             0x44 - Sport
@@ -352,6 +355,15 @@ def send_tire_pressure(clusterdata):
     data = [0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy]
     return send_msg(TIRE_PRESSURE, start, data)
 
+# 4 Feb 2024
+def send_steering(clusterdata):
+    '''
+        Byte 0 & 1 control steering angle, -0.1 - 1.0 +  1600
+    '''
+
+    data = [0x3E, 0x83, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00]
+    return send_msg(STEERING, start, data)
+
 def MENU_NAV(direction):
     UP = 0x08
     DOWN = 0x01
@@ -396,7 +408,7 @@ THREADS = [
     (SPEED_ONE, [send_rpm, send_door_status, send_speed]),
     (SPEED_TWO, [send_warnings_1]),
     (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp, send_tire_pressure]),
-    (SPEED_SIX, [send_seatbelt_icon, send_misc_2, send_misc_12]),
+    (SPEED_SIX, [send_seatbelt_icon, send_misc_2, send_misc_12, send_steering]),
     (SPEED_SEVEN, [MENU_NAV, send_0x5__series])
 ]
 

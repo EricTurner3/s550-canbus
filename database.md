@@ -170,9 +170,11 @@ Byte 1 -
     0x2_ - Check Brake System warning
     0x4_  - AdvanceTrac System Warning
 Byte 5 has to do with a solid traction control or a flashing icon
-    0x00 - Off
-    0x02 - Solid
-    0x0F - Flashing
+    0x00 - Indicator Off
+    0x02 - Indicator Solid
+    0x0F - Indicator Flashing
+    0x80 - TC Off Indicator
+    0x18 - ATC Off Indicator
 Byte 6 -
     0x0_ - ABS light off
     0x4_ - ABS Solid
