@@ -1,5 +1,7 @@
-# CAN Database
-Notes on reversing the CANbus that I have either discovered myself or found elsewhere (with appropriate credit)
+# Ford CAN Database
+Vehicles Tested: 2015 Mustang GT Premium / 2016 Ford Mustang GT350
+
+
 **Notes**:
 * All byte references start at 0, so the range is 0-7
 
