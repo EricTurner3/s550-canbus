@@ -141,13 +141,14 @@ def send_incremental_bytes(starting_index, starting_byte, num_bytes, can_ids, sp
 # this way I can start experimenting with digital gauges such as oil pressure or air/fuel ratio
 def brute_force():
     while(True):
+        #send_sequential_byte((2), (0x167,), 00.16, [0x72, 0x7F, 0xF9, 0x00, 0x00, 0x19, 0xE7, 0x00])
         send_incremental_bytes(
-                        starting_index=0 , #0 tart
-                        starting_byte = 0x3000,
-                        num_bytes= 2, # 1 start
-                        can_ids=(0x454,), 
+                        starting_index=1 , #0 tart
+                        starting_byte = 0x006400,
+                        num_bytes= 3, # 1 start
+                        can_ids=(0x430,), 
                         speed=0.16, 
-                        data=[0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30]
+                        data=[0x37, 0x00, 0x64, 0x26, 0xC0, 0x7A, 0x37, 0x1C]
                     )
 
 def send_0x5__series():

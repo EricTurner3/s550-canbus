@@ -33,6 +33,7 @@ DOOR_STATUS = 0x3B3
 SEATBELT = 0x4C
 ODOMETER = 0x430
 BUTTONS = 0x81
+TIRE_PRESSURE = 0x3B5 # thanks to v-ivanyshyn's work
 MISC_1 = 0x3C3
 MISC_2 = 0x416
 MISC_3 = 0x217
@@ -44,6 +45,7 @@ MISC_8 = 0x167
 MISC_9 = 0x415
 MISC_10 = 0x130
 MISC_11 = 0x77
+MISC_12 = 0x82 # thanks to v-ivanyshyn's work
 # these 5 are odd ones. The first byte is always the digits that come after the 0x5--
 # the rest of the bytes are 00 FF FF FF FF FF FF.
 x5xx_SERIES_1 = 0x581
@@ -105,6 +107,7 @@ def send_misc_1(clusterdata):
         Byte 2
             0x0_ -> Parking Brake Off
             0x1_ -> Parking Brake On
+        Byte 3  - Parking Brake On Warning / Brake Fluid Level Low warning
         Byte 6  
             0x00 -> ? 
             0x80 -> ?
@@ -178,10 +181,17 @@ def send_misc_7(clusterdata):
 
 def send_misc_8(clusterdata):
     '''
-    Byte 2
-        First Byte: 3, 4, F
+    Byte 1 & 2
+        Frist Byte is 0x7F, can increase to 0x80
+        First Bit: 3, 4, F
+    
+    Byte 5 & 6: ??? Gauge related? Seems to have increased and decreased when driving
+        First Byte is 0x19 - 0x1A
+        First Bit: 1
+        Second Bit : 9, A
+        Third Bit: 0 - F
     '''
-    data = [0x72, 0x7F, 0x4B, 0x00, 0x00, 0x19, 0xED, 0x00]
+    data = [0x72, 0x7F, 0x4B, 0x00, 0x00, 0x1A, 0xED, 0x00]
     return send_msg(MISC_8, start, data)
 
 def send_misc_9(clusterdata):
@@ -206,6 +216,18 @@ def send_misc_11(clusterdata):
     '''
     data = [0x00, 0x00, 0x07, 0xFF, 0x7F, 0xF7, 0xE6, 0x02]
     return send_msg(MISC_11, start, data)
+
+# 4 Feb 2024
+def send_misc_12(clusterdata):
+    '''
+        Byte 2 & 3 - Fuel Consumption
+        Byte 6 - Steering Mode
+            0x40 - Normal
+            0x44 - Sport
+            0x48 - Comfort
+    '''
+    data = [0x5C, 0x00, 0x14, 0x98, 0xAF, 0x00, 0x44, 0xFF]
+    return send_msg(MISC_12, start, data)
 def send_0x5__series(clusterdata):
     # not sure what these do but since they seem to be hard coded, gonna send them
     send_msg(x5xx_SERIES_1, start, [0x81, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
@@ -315,6 +337,21 @@ def send_engine_temp(clusterdata):
     data = [0x9E, 0x99, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00]
     return send_msg(ENGINE_TEMP, start, data)
 
+# 4 Feb 2024
+def send_tire_pressure(clusterdata):
+    '''
+        In kPa 
+        Byte 1 - Front Left Tire Pressure
+        Byte 3 - Front Right Tire Pressure
+        Byte 5 - Rear Right Tire Pressure
+        Byte 7 - Rear Left Tire Pressure
+    '''
+
+    tire_pressure_dummy = 0xCE # 30 PSI  / 206 kPa
+
+    data = [0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy]
+    return send_msg(TIRE_PRESSURE, start, data)
+
 def MENU_NAV(direction):
     UP = 0x08
     DOWN = 0x01
@@ -358,8 +395,8 @@ def keys():
 THREADS = [
     (SPEED_ONE, [send_rpm, send_door_status, send_speed]),
     (SPEED_TWO, [send_warnings_1]),
-    (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp]),
-    (SPEED_SIX, [send_seatbelt_icon, send_misc_2]),
+    (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp, send_tire_pressure]),
+    (SPEED_SIX, [send_seatbelt_icon, send_misc_2, send_misc_12]),
     (SPEED_SEVEN, [MENU_NAV, send_0x5__series])
 ]
 
@@ -388,7 +425,10 @@ def _thread(t, game):
 
 def activate(game=None):
     if(game==None):
-        game = sys.argv[1]
+        try:
+            game = sys.argv[1]
+        except:
+            game = 'fh5' # default to fh5 if no param is passed
     pool = Pool()
     pool.apply_async(keys) # send whatever key is pressed to send to the cluster
     # create a thread for each speed
