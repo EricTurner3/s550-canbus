@@ -47,6 +47,7 @@ MISC_9 = 0x415
 MISC_10 = 0x130
 MISC_11 = 0x77
 MISC_12 = 0x82 # thanks to v-ivanyshyn's work
+MISC_13 = 0x230
 # these 5 are odd ones. The first byte is always the digits that come after the 0x5--
 # the rest of the bytes are 00 FF FF FF FF FF FF.
 x5xx_SERIES_1 = 0x581
@@ -231,6 +232,14 @@ def send_misc_12(clusterdata):
     '''
     data = [0x5C, 0x00, 0x14, 0x98, 0xAF, 0x00, 0x44, 0xFF]
     return send_msg(MISC_12, start, data)
+
+def send_misc_13(clusterdata):
+    '''
+        Byte 0 & 1 ??
+    '''
+    data = [0xF0, 0x1C, 0x00, 0x00, 0x4B, 0x00, 0x00, 0x00]
+    return send_msg(MISC_12, start, data)
+
 def send_0x5__series(clusterdata):
     # not sure what these do but since they seem to be hard coded, gonna send them
     send_msg(x5xx_SERIES_1, start, [0x81, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
@@ -408,7 +417,7 @@ THREADS = [
     (SPEED_ONE, [send_rpm, send_door_status, send_speed]),
     (SPEED_TWO, [send_warnings_1]),
     (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp, send_tire_pressure]),
-    (SPEED_SIX, [send_seatbelt_icon, send_misc_2, send_misc_12, send_steering]),
+    (SPEED_SIX, [send_seatbelt_icon, send_misc_2, send_misc_12, send_steering, send_misc_13]),
     (SPEED_SEVEN, [MENU_NAV, send_0x5__series])
 ]
 
@@ -441,10 +450,13 @@ def activate(game=None):
             game = sys.argv[1]
         except:
             game = 'fh5' # default to fh5 if no param is passed
+    print('* Loading game: {}'.format(game))
     pool = Pool()
+    print('* Starting thread for keyboard navigation')
     pool.apply_async(keys) # send whatever key is pressed to send to the cluster
     # create a thread for each speed
     for speed in THREADS:
+        print('* Starting thread for speed: {}, functions: {}'.format(speed[0], [m.__name__ for m in speed[1]]))
         pool.apply_async(_thread, args=(speed,game), error_callback=print)
     pool.close()
     pool.join()

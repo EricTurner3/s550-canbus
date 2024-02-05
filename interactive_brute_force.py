@@ -143,12 +143,12 @@ def brute_force():
     while(True):
         #send_sequential_byte((2), (0x167,), 00.16, [0x72, 0x7F, 0xF9, 0x00, 0x00, 0x19, 0xE7, 0x00])
         send_incremental_bytes(
-                        starting_index=1 , #0 tart
-                        starting_byte = 0x006400,
-                        num_bytes= 3, # 1 start
-                        can_ids=(0x430,), 
+                        starting_index=0 , #0 tart
+                        starting_byte = 0xDA00,
+                        num_bytes= 2, # 1 start
+                        can_ids=(0x230,), 
                         speed=0.16, 
-                        data=[0x37, 0x00, 0x64, 0x26, 0xC0, 0x7A, 0x37, 0x1C]
+                        data=[0xF0, 0x1C, 0x00, 0x00, 0x4B, 0x00, 0x00, 0x00]
                     )
 
 def send_0x5__series():
