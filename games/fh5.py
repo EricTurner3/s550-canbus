@@ -31,4 +31,6 @@ def data():
     formatted_data.value_speed = fh5_data_out['Speed'] * 2
     formatted_data.value_rpm = fh5_data_out['CurrentEngineRpm']
     formatted_data.value_rpm_max = fh5_data_out['EngineMaxRpm']
+    formatted_data.value_boost = fh5_data_out['Boost']
+    formatted_data.value_odometer = fh5_data_out['DistanceTraveled']
     return formatted_data

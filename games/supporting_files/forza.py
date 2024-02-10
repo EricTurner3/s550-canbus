@@ -97,6 +97,6 @@ def clear():
 if __name__ == "__main__": 
     while True:
         d = fetch_forza_data()
-        print(d['DistanceTraveled'])
+        print(d['Boost'])
 
 

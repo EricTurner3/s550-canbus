@@ -3,6 +3,8 @@ import time
 from multiprocessing.pool import ThreadPool as Pool
 from pynput import keyboard
 import sys
+import games.fh5
+import games.ats
 
 can_adapter_channel = 'COM3'
 retry_period = 3 # seconds
@@ -34,6 +36,8 @@ SEATBELT = 0x4C
 ODOMETER = 0x430
 BUTTONS = 0x81
 TIRE_PRESSURE = 0x3B5 # thanks to v-ivanyshyn's work
+CLIMATE_CONTROL = 0x326
+CLIMATE_FAN = 0x35E
 STEERING = 0x76
 MISC_1 = 0x3C3
 MISC_2 = 0x416
@@ -48,6 +52,9 @@ MISC_10 = 0x130
 MISC_11 = 0x77
 MISC_12 = 0x82 # thanks to v-ivanyshyn's work
 MISC_13 = 0x230
+APIM_1 = 0x044 # https://github.com/EtoTen/stm32_can_sim/blob/main/src/main.cpp
+APIM_2 = 0x048
+APIM_3 = 0x109
 # these 5 are odd ones. The first byte is always the digits that come after the 0x5--
 # the rest of the bytes are 00 FF FF FF FF FF FF.
 x5xx_SERIES_1 = 0x581
@@ -150,7 +157,7 @@ def send_misc_2(clusterdata):
     elif(clusterdata.icon_traction_control == 1):
         traction_control = 0x02 # solid on
     else:
-        traction_control = 0x80 # off
+        traction_control = 0x00 # off
 
     if(clusterdata.icon_abs == 2):
         abs_icon = 0xD0 # flashing
@@ -185,16 +192,20 @@ def send_misc_7(clusterdata):
 
 def send_misc_8(clusterdata):
     '''
-    Byte 1 & 2
+    CAN ID: 0x167
+    Byte 0 & 1
         Frist Byte is 0x7F, can increase to 0x80
         First Bit: 3, 4, F
     
-    Byte 5 & 6: ??? Gauge related? Seems to have increased and decreased when driving
+    Byte 5 & 6: 5 Feb 24, Possibly the MAF sensor which can be used for boost/vacuum
+    ??? Gauge related? Seems to have increased and decreased when driving
         First Byte is 0x19 - 0x1A
         First Bit: 1
         Second Bit : 9, A
         Third Bit: 0 - F
     '''
+
+    
     data = [0x72, 0x7F, 0x4B, 0x00, 0x00, 0x1A, 0xED, 0x00]
     return send_msg(MISC_8, start, data)
 
@@ -238,7 +249,28 @@ def send_misc_13(clusterdata):
         Byte 0 & 1 ??
     '''
     data = [0xF0, 0x1C, 0x00, 0x00, 0x4B, 0x00, 0x00, 0x00]
-    return send_msg(MISC_12, start, data)
+    return send_msg(MISC_13, start, data)
+
+# 10 Feb 2024 - trying to get the APIM to boot, might require this
+def send_climate(clusterdata):
+    data = [0x81, 0x95, 0x02, 0x4A, 0x01, 0xAA, 0x00, 0x00]
+    return send_msg(CLIMATE_CONTROL, start, data)
+
+def send_climate_fan(clusterdata):
+    data = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00]
+    return send_msg(CLIMATE_FAN, start, data)
+
+def send_apim_1(clusterdata):
+    data = [0x88, 0xC0, 0x0C, 0x10, 0x04, 0x00, 0x02, 0x00]
+    return send_msg(APIM_1, start, data)
+
+def send_apim_2(clusterdata):
+    data = [0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0xE0, 0x00]
+    return send_msg(APIM_2, start, data)
+
+def send_apim_3(clusterdata):
+    data = [0x00, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00, 0x28]
+    return send_msg(APIM_3, start, data)
 
 def send_0x5__series(clusterdata):
     # not sure what these do but since they seem to be hard coded, gonna send them
@@ -414,10 +446,9 @@ def keys():
     #listener.join()
 
 THREADS = [
-    (SPEED_ONE, [send_rpm, send_door_status, send_speed]),
-    (SPEED_TWO, [send_warnings_1]),
-    (SPEED_THREE, [send_misc_1, send_misc_10, send_launch_control, send_engine_temp, send_tire_pressure]),
-    (SPEED_SIX, [send_seatbelt_icon, send_misc_2, send_misc_12, send_steering, send_misc_13]),
+    (SPEED_ONE, [send_rpm, send_door_status, send_speed, send_apim_1, send_apim_2, send_apim_3]),
+    (SPEED_TWO, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_misc_8, send_climate, send_climate_fan]),
+    (SPEED_THREE, [send_misc_1, send_launch_control, send_engine_temp, send_tire_pressure]),
     (SPEED_SEVEN, [MENU_NAV, send_0x5__series])
 ]
 
@@ -426,10 +457,8 @@ def load_game(game):
     if(game in supported_games):
         #print('Loading {}'.format(game))
         if game == 'fh5':
-            import games.fh5
             return games.fh5.data()
         elif game == 'ats':
-            import games.ats
             time.sleep(0.1) # trying to poll the API endpoint too much causes it to fail
             return games.ats.data()
     else:
@@ -450,8 +479,10 @@ def activate(game=None):
             game = sys.argv[1]
         except:
             game = 'fh5' # default to fh5 if no param is passed
+
+    
     print('* Loading game: {}'.format(game))
-    pool = Pool()
+    pool = Pool(6)
     print('* Starting thread for keyboard navigation')
     pool.apply_async(keys) # send whatever key is pressed to send to the cluster
     # create a thread for each speed

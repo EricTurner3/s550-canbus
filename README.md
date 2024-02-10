@@ -1,4 +1,4 @@
-S550 Mustang CAN Bus Research & Scripts
+Ford Mustang (S550) CAN Bus Research & Scripts
 ===
 
 This repo serves as a compendium of scripts and hours of trial/error research to try and map the S550 canbus, specifically towards the IPC.
@@ -23,3 +23,19 @@ Requirements:
 * S550 Cluster (you can find them for under $100 on eBay.)
     * I am unsure of the digital clusters functionality, some data should be shared so it should work in an alpha state.
 * Python, PIP, & Packages in the requirements.txt file
+
+Booting Your Device:
+* APIM / SYNC2 / SYNC3
+    * Pin 1 - 12V
+    * Pin 37 - Ground
+    * Pin 19 - HSCAN High (goes to USB-to-CAN adapter)
+    * Pin 20 - HSCAN Low (goes to USB-to-CAN adapter)
+* Instrument Cluster
+    * Pin 8 - 12V
+    * Pin 3 - Ground
+    * Pin 12 - HSCAN High (goes to USB-to-CAN adapter)
+    * Pin 13 - HSCAN Low (goes to USB-to-CAN adapter)
+
+References
+* [v-ivanyshyn's Ford CAN IDs summary](https://github.com/v-ivanyshyn/parse_can_logs/blob/master/Ford%20CAN%20IDs%20Summary.md)
+    * this helped me find the tire pressure
