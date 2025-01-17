@@ -24,8 +24,9 @@ start = time.time()
 # change the channel and bitrate as needed
 bus = can.interface.Bus(bustype='slcan', channel='COM3', bitrate=500000)
 speed = 0.1 # speed in ms to send messages
-can_ids = (0x81,) # tuple of CAN Ids to brute force. They will all be set to the same
-sample_data = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] # sample set of data to start with
+can_ids = (0x37,) # tuple of CAN Ids to brute force. They will all be set to the same
+seq_bytes = (4,) # if using sequential, the bytes to increment through
+sample_data = [0x37, 0x00, 0x00, 0x00, 0xC0, 0x7A, 0x37, 0x1C] # sample set of data to start with
 
 # SAMPLE DATA - 2015 Ford Mustang GT - Manual - MyColor
 # 200 => [0x00, 0x00, 0x7F, 0xF0, 0x81, 0x57, 0x00, 0x00]
@@ -92,10 +93,6 @@ def send_null():
         send_msg(0x81, start, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], verbose=False)
         print('')
 
-
-
-
-
         time.sleep(speed*2)
 
 
@@ -141,15 +138,17 @@ def send_incremental_bytes(starting_index, starting_byte, num_bytes, can_ids, sp
 # this way I can start experimenting with digital gauges such as oil pressure or air/fuel ratio
 def brute_force():
     while(True):
-        #send_sequential_byte((2), (0x167,), 00.16, [0x72, 0x7F, 0xF9, 0x00, 0x00, 0x19, 0xE7, 0x00])
+        #send_sequential_byte(seq_bytes, can_ids, 00.16, sample_data)
+        
         send_incremental_bytes(
-                        starting_index=0 , #0 tart
-                        starting_byte = 0xDA00,
-                        num_bytes= 2, # 1 start
-                        can_ids=(0x230,), 
+                        starting_index=1 , #0 tart
+                        starting_byte = 0x006572,
+                        num_bytes= 3, # 1 start
+                        can_ids=can_ids, 
                         speed=0.16, 
-                        data=[0xF0, 0x1C, 0x00, 0x00, 0x4B, 0x00, 0x00, 0x00]
+                        data=sample_data
                     )
+        
 
 def send_0x5__series():
     x5xx_SERIES_1 = 0x581
@@ -176,6 +175,6 @@ pool.apply_async(send_on) # send the 0x3B3 on command
 pool.apply_async(send_null) # send a blank version of 0x81
 pool.apply_async(keys) # send whatever key is pressed to send to the cluster.
 pool.apply_async(brute_force) # test out our brute force data, comment this out if not needed
-pool.apply_async(send_0x5__series)
+#pool.apply_async(send_0x5__series)
 pool.close()
 pool.join()

@@ -26,4 +26,6 @@ def data():
     formatted_data.value_speed = data_out['speed'] / 1.75
     formatted_data.value_rpm = data_out['engineRpm']
     formatted_data.value_rpm_max = data_out['engineRpmMax']
+    formatted_data.oil_temp = data_out['oilTemperature']
+    formatted_data.engine_temp = data_out['waterTemperature']
     return formatted_data

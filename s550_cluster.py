@@ -354,7 +354,7 @@ def send_rpm(clusterdata):
 
 def send_speed(clusterdata):
     '''
-    Byte 4 must have a first digit of 6 or the gauge does not work
+    Byte 4 must have a first digit of C or the gauge does not work
     Bytes 6 & 7 are the speed gauge 
     '''
     speed = clusterdata.value_speed
@@ -371,14 +371,23 @@ def send_odometer(clusterdata):
     data = [0x37, odometer[0], odometer[1], odometer[2], 0xC0, 0x7A, 0x37, 0x1C]
     return send_msg(ODOMETER, start, data)
 
+# 16 Jan 2025
 def send_engine_temp(clusterdata):
     '''
-    Bytes 0 & 1 are the range for the engine gauge
-    0x9_ 0x9_ is the first half of the gauge
-    0xc_ 0xc_ is the second half of the gauge
-    0xb_ 0xb_ triggers an overheat warning
+    Byte 0 is for the Engine/Coolant Temp Gauge (seen on analog cluster under RPM)
+        Temp is in Celsius, int(byte0) - 60 = Temp, thus A0 would be 106c or 320f
+        Gauge doesn't start to move until around 0x80
+        Gauge seems to have a safe zone and 'freezes' from around 0xA6 (106c) to 0xC0 (132c) where it then rapidly ramps up and can trigger overheat warning
+    Byte 1 is for the Oil Temp Gauge (seen under center screen, Gauge Mode > Oil Temp)
+        Temp is in Celsius, int(byte0) - 60 = Temp
+        Gauge starts to move at 0x60  (36c) and caps out around 0xDA (158c)
+    Byte 4 toggles the engine overheat message and maxes engine temp guage  (doesn't seem to be necessary as a high byte 0 will also trigger the warning)
+        0x03 - normal
+        0x08 - overheat
     '''
-    data = [0x9E, 0x99, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00]
+    oil_temp = int(clusterdata.oil_temp) + 60
+    engine_temp = int(clusterdata.engine_temp) + 60
+    data = [engine_temp, oil_temp, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00]
     return send_msg(ENGINE_TEMP, start, data)
 
 # 4 Feb 2024
@@ -447,8 +456,8 @@ def keys():
 
 THREADS = [
     (SPEED_ONE, [send_rpm, send_door_status, send_speed, send_apim_1, send_apim_2, send_apim_3]),
-    (SPEED_TWO, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_misc_8, send_climate, send_climate_fan]),
-    (SPEED_THREE, [send_misc_1, send_launch_control, send_engine_temp, send_tire_pressure]),
+    (SPEED_TWO, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_misc_8, send_climate, send_climate_fan, send_engine_temp]),
+    (SPEED_THREE, [send_misc_1, send_launch_control, send_tire_pressure]),
     (SPEED_SEVEN, [MENU_NAV, send_0x5__series])
 ]
 

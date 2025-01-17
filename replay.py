@@ -22,6 +22,9 @@ def send_msg(id, ts, data, verbose=True):
         msg = can.Message(timestamp = ts, arbitration_id=id,
                     data=data,
                     is_extended_id=False)
+        
+
+        
         bus.send(msg)
         if (verbose):
             print(msg)

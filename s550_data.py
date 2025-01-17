@@ -30,7 +30,8 @@ class s550_ipc:
         self.value_speed = 0.0              # miles per hour
         self.value_rpm = 0.0
         self.value_rpm_max = 8000           # modify if game car has higher/lower RPM than cluster
-        self.value_odometer = 0             # miles
+        self.value_odometer = 0             # kilometers
         self.value_boost = 0.0              # currently unmapped
         self.value_fuel = 0.0               # currently unmapped
-        self.engine_temp = 0.0              # fahrenheit, currently unmapped
+        self.oil_temp = 0.0                 # celsius
+        self.engine_temp = 0.0              # celsius

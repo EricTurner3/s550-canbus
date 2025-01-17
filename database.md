@@ -57,14 +57,17 @@ Byte 0 also changes if the turn signal lever is depressed, though this does not 
     20 - right signal
 ```
 
-# 0x156 - Engine Temp Gauge
+# 0x156 - Coolant & Oil Temp Gauge
 Sample Message: `9E 99 00 00 03 00 00 00`
 ```
-Bytes 0 & 1 are the range for the engine gauge
-    0x9_ 0x9_ is the first half of the gauge
-    0xc_ 0xc_ is the second half of the gauge
-    0xb_ 0xb_ triggers an overheat warning
-Byte 4 toggles the engine overheat temp gauge.
+Byte 0 is for the Engine/Coolant Temp Gauge (seen on analog cluster under RPM)
+    Temp is in Celsius, int(byte0) - 60 = Temp, thus A0 would be 106c or 320f
+    Gauge doesn't start to move until around 0x80
+    Gauge seems to have a safe zone and 'freezes' from around 0xA6 (106c) to 0xC0 (132c) where it then rapidly ramps up and can trigger overheat warning
+Byte 1 is for the Oil Temp Gauge (seen under center screen, Gauge Mode > Oil Temp)
+    Temp is in Celsius, int(byte0) - 60 = Temp
+    Gauge starts to move at 0x60  (36c) and caps out around 0xDA (158c)
+Byte 4 toggles the engine overheat message and maxes engine temp guage  (doesn't seem to be necessary as a high byte 0 will also trigger the warning)
     0x03 - normal
     0x08 - overheat
 ```

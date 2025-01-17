@@ -17,10 +17,7 @@ with open(sys.argv[1], newline='') as f:
             row[2:10] = ""
             pass # skip the header row on decoding
         else: 
-            timestamp = int(float(row[0]))
-            can_id = row[1]
-            row[0] = can_id
-            row[1] = timestamp
+            row[0] = int(float(row[0])) #convert str timestamp to float
             bytes = row[6]
             #convert the b64 to hex
             row[2::] = base64.b64decode(bytes).hex(' ').upper().split(" ")
