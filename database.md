@@ -160,7 +160,7 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 | 5 - 7 | | `00` |
 
 - The g meter is the red dot on the Track Apps accelerometer screen. Encoding from `mustang.c` (commented "tested for JR3T"), confirmed on this cluster with the `gx` / `gy` presets.
-- The dot shows the force the driver feels: a hard right turn puts it on the left. Game acceleration goes in with its sign flipped (tested in Forza, both axes).
+- Lateral shows the force the driver feels: a hard right turn puts the dot on the left, so game lateral acceleration goes in with its sign flipped. Longitudinal follows the acceleration: speeding up moves the dot to accel (both tested in Forza).
 - Every 2015 - 2017 log has `C0 00 80` in bytes 2 - 4 (`drive.csv` also `80` / `40` in byte 2, `00` in byte 4), off that scale. The old fixed frame `3E 83 C0 00 00 ..` pinned the dot in the top left corner.
 
 # 0x77 - Vehicle Speed / Yaw

@@ -6,6 +6,7 @@ This repo serves as a compendium of scripts and hours of trial/error research to
 Main Scripts
 * s550_cluster.py <game> - Currently supports Forza Horizon 5, American Truck Simulator & Euro Truck Simulator 2 in an alpha state. Allows that game to interface with the cluster. See s550_data.py for the model in translating other game data
     * [Video Demonstration](https://youtu.be/KNyn1v3_cwc)
+    * [Video Demonstration v2](https://www.youtube.com/shorts/0d_nqnypM2c) - 7 November 2026, shows new AFR, Boost, Inlet Air Temp, Track Apps Accelerometer gauges
 * interactive_brute_force.py - This script allows you to use the up,down,left,right,enter keys to control the menu on the cluster
     * arrows.py and brute_force.py were merged into a single interactive script
     * [Video Demonstration](https://youtu.be/OzUs28GIq0A)

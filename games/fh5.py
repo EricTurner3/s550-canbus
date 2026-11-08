@@ -33,8 +33,9 @@ def data():
     formatted_data.value_rpm_max = fh5_data_out['EngineMaxRpm']
     formatted_data.value_boost = fh5_data_out['Boost']
     formatted_data.value_odometer = fh5_data_out['DistanceTraveled']
-    # car's local space, m/s^2: X right, Z forward. The g meter shows the force the driver feels, the opposite way
-    # (tested: turning right has to move the dot left)
+    # car's local space, m/s^2: X right, Z forward. Tested on the Track Apps g meter:
+    # lateral is the force the driver feels (turning right moves the dot left), so X is flipped
+    # longitudinal follows the acceleration (speeding up moves the dot to accel), Z as is
     formatted_data.accel_lateral = -fh5_data_out['AccelerationX']
-    formatted_data.accel_longitudinal = -fh5_data_out['AccelerationZ']
+    formatted_data.accel_longitudinal = fh5_data_out['AccelerationZ']
     return formatted_data

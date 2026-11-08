@@ -50,11 +50,11 @@ Corrected:
 - New fields: `icon_check_engine`, `value_afr`, `cylinder_head_temp`, `intake_temp`, `accel_lateral`, `accel_longitudinal`, `accel_vertical`, `tire_pressure_fl` / `_fr` / `_rr` / `_rl`.
 - `value_boost` is now mapped: psi, negative is vacuum (gauge range 30 inHg to 20 psi).
 - **Warm defaults** so gauges read normal in games that don't report them: oil 100 °C, coolant 110 °C (needle mid gauge), cylinder head 99 °C / 210 °F, inlet air 22 °C / 72 °F, tires 35 psi.
-- `accel_*` are the g forces the driver feels (opposite the car's acceleration), which is what the g meter shows.
+- `accel_lateral` is the force the driver feels (a right turn moves the g meter dot left), `accel_longitudinal` is the car's acceleration (positive speeding up).
 
 ### Games
 
-- **Forza Horizon 5:** acceleration is mapped to the Track Apps g meter (both axes inverted, tested in game).
+- **Forza Horizon 5:** acceleration is mapped to the Track Apps g meter (lateral inverted, longitudinal as is, tested in game).
 - **ATS / ETS2:** acceleration mapped to the g meter (untested). Turn signals use the blinking lamp state (`blinkerLeftOn` / `blinkerRightOn`) instead of the stalk, so the arrows flash.
 
 ### interactive_brute_force.py (rewritten)

@@ -41,7 +41,7 @@ class s550_ipc:
         self.cylinder_head_temp = 99.0      # celsius (210f), gauge is 140f - 340f (60c - 171c)
         self.intake_temp = 22.0             # celsius (72f), gauge is 0f - 240f (-18c - 116c)
         self.accel_lateral = 0.0            # m/s^2 felt by the driver, positive moves the g meter dot right (left turn)
-        self.accel_longitudinal = 0.0       # m/s^2 felt by the driver, positive moves the dot to accel. +-1.5g fills it
+        self.accel_longitudinal = 0.0       # m/s^2, positive speeding up (dot to accel), negative braking. +-1.5g fills it
         self.accel_vertical = 9.7           # m/s^2, gravity at rest
         # psi. Forza's data out has no tire pressures, set these to match the car
         self.tire_pressure_fl = 35.0

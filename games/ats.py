@@ -29,9 +29,9 @@ def data():
     formatted_data.value_rpm_max = data_out['engineRpmMax']
     formatted_data.oil_temp = data_out['oilTemperature']
     formatted_data.engine_temp = data_out['waterTemperature']
-    # truck's local space, m/s^2, SCS axes x right, z backward. The g meter shows the force the driver feels, opposite
-    # the acceleration (Forza needed both axes flipped). Not tested in ATS, flip a sign if the dot moves the wrong way
+    # truck's local space, m/s^2, SCS axes x right, z backward. Same as Forza: lateral flipped (the force the driver
+    # feels), longitudinal is the forward acceleration. Not tested in ATS, flip a sign if the dot moves the wrong way
     acceleration = data_out.get('acceleration', {})
     formatted_data.accel_lateral = -acceleration.get('x', 0.0)
-    formatted_data.accel_longitudinal = acceleration.get('z', 0.0) # z is backward, so already the felt direction
+    formatted_data.accel_longitudinal = -acceleration.get('z', 0.0) # z is backward
     return formatted_data
