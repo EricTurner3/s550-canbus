@@ -807,3 +807,167 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - `s550_cluster.py` sends `0x581 0x596 0x59E 0x5B3 0x5B5`. The cluster's own is `0x591`.
 - Faking all of `0x500 - 0x5FF` (`--nm`) changed nothing.
 - 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names them AutoSar network management frames: `0x59E` GWM, `0x5B5` PSCM, `0x596` ABS. Byte 0 is the node ID, byte 1 the control byte. We already send `0x59E` and `0x5B5` and the cluster still sets U0146 (GWM) and U0420 (PSCM), so it wants more than these alive frames.
+
+---
+
+# 2018+ Digital Cluster (S550 refresh, 12.4" digital IPC)
+
+**Status:** Confirmed on a bench **2018 digital cluster** (part `MR3V-14C026-DC`, JR3T family) unless noted.
+Contributed by [datechnerd / 2018-2023_S550_Digital_Cluster](https://github.com/datechnerd/2018-2023_S550_Digital_Cluster).
+Everything above in this file is the **2015-2017 analog** cluster (FR33/GR3T); the digital refresh shares the same
+HS3 bus and many IDs but differs on several. This section lists only what is **new or different** on the digital unit;
+where an ID behaves the same (e.g. `0x156`, `0x3B5`, `0x42D`, `0x466` compass) the entry above applies.
+
+Same conventions: HS3 (DLC 12/13), 500 kbps, big-endian, bytes 0-7, temps `raw - 60 = C` unless noted.
+
+| ID | Name | vs analog |
+|---|---|---|
+| `0x3B2` | Boot/activate (alone) | digital boots on `0x3B2` alone; `0x3B3` not required |
+| `0x42F` | Tachometer | **digital tach** - analog `0x204` RPM is dead here |
+| `0x171` | Gear / PRND S | automatic selector (analog uses `0x230` for manual gear) |
+| `0x470` | Trans oil temp (TOT) | new |
+| `0x17E` | Manifold charge temp (MCT) | new |
+| `0x432` | Rear diff / axle oil temp (DT) | new |
+| `0x43E` | adds Eng oil pressure (b7) | analog has AFR/CHT/boost only |
+| `0x3B3` | Outside temp = byte 4 | confirmed byte for digital |
+| `0x191` | Display units + distance-to-empty | new |
+| `0x3B4` | TPMS telltale lamp | new |
+| `0x38D` | TrackApps menu gate (presence) | new |
+| `0x081` | menu keys b1/b2 | adds menu/music/back/cobra |
+| `0x430` | ignition status (cluster TX) | analog uses `0x430` as odometer; digital odometer is `0x179` |
+
+## 0x3B2 - Boot / Activation (digital)
+
+**Sample:** `40 00 00 0B 10 00 00 02` @ ~16 ms - **Status:** Confirmed
+
+On the digital (JR3T) cluster `0x3B2` **alone** boots and keeps the cluster awake - `0x3B3` is **not** required
+(the opposite of the analog FR33, which needs `0x3B3`). This confirms the `mustang.c` note that GR3T/JR3T use
+`0x3B2` alone. Byte 0 upper nibble must be `4` (key on); any other value = key off and the display dies in ~2-10 s.
+Byte 0 low nibble bit 0 = Trunk Ajar. Layout is Ford `BodyInfo_3` (door/lamp/turn bits per the analog `0x3B2`/`0x3B3`).
+
+## 0x42F - Tachometer (digital)
+
+**Sample:** `C0 00 7D 00 00 00 1F 40` (8000 rpm) - **Status:** Confirmed
+
+Ford `EngAout_N_Dsply`, a 13-bit field in bytes 6-7, **rpm = raw x 2**.
+
+| Bytes | Signal | Encoding |
+|---|---|---|
+| 6 - 7 | Tachometer | `raw = (b6 & 0x1F) << 8 OR b7`, rpm = raw x 2. So `b6 = (rpm/2 >> 8) & 0x1F`, `b7 = (rpm/2) & 0xFF` |
+
+- Sweeps the needle cleanly 0 -> 8000 -> 0. The analog `0x204` RPM (bytes 3-4) does **nothing** on the digital cluster.
+- Note `b6` bit 4 alone = raw bit 12 = 4096 -> x2 = 8192 rpm (redline), which is why setting byte 6 alone snaps to redline
+  (an old "launch control" red herring).
+
+## 0x171 - Gear / PRND S (digital automatic)
+
+**Sample:** `14 60 00 00 00 00 00 00` (Drive) - **Status:** Confirmed
+
+| Byte | Signal | Values |
+|---|---|---|
+| 0 | enable | `0x14` for P/N |
+| 1 | Gear | `0x00` P, `0x20` R, `0x40` N, `0x60` D, `0x80` S |
+
+Park = `14 00`, Reverse = `14 20`. (The analog manual gear readout is `0x230`.)
+
+## 0x470 / 0x17E / 0x432 / 0x43E - Gauge-mode readouts (digital)
+
+The digital cluster Gauge Mode / engine-data page adds readouts the analog does not. All latch their last value
+(a hit in a fast sweep can show one step late). Confirmed on the bench by driving each byte and reading the screen:
+
+| Readout | Frame / field | Scale |
+|---|---|---|
+| Engine oil temp (EOT) | `0x156` b1 `EngOil_Te_Actl` | C = raw - 60 (same as analog) |
+| **Trans oil temp (TOT)** | `0x470` b3 (set b2 = `0xFF` to enable) | C = raw - 60 |
+| **Eng oil pressure (EOP)** | `0x43E` b7 | 1 kPa / count |
+| Air fuel ratio (AFR) | `0x43E` b3 | raw / 10 (same as analog) |
+| **Vac / boost** | `0x43E` b5 | psi = `0.4628 x raw - 30.08`; vacuum shown in inHg (digital drove this via byte 5 alone; analog uses the 13-bit b5:b6 above) |
+| Inlet air temp (IAT) | `0x42D` b1[1:0]:b2 | raw x 0.25 - 128 C (same as analog) |
+| **Manifold charge temp (MCT)** | `0x17E` b1 | C = raw x 0.5 - 20 |
+| **Rear diff / axle oil temp (DT)** | `0x432` 9-bit b0[7:0] + b1.7; **enable = b1 bit6 (`0x40`)** | C = raw - 40 |
+| Voltage | none - cluster measures its own 12 V supply | reads the bench PSU |
+
+- Low oil-pressure warning telltale = `0x421` b2 (FF = warning, 0 = normal), consistent with the analog `0x421`.
+- G-meter page (`0x76`) on the digital cluster would not take a dot from `0x76`, `0x92`, `0x77` or `0x416`; it appears
+  computed internally from ABS + RCM data with live counters - still open on the digital unit.
+
+## 0x3B3 byte 4 - Outside temperature (digital)
+
+**Status:** Confirmed
+
+On the digital cluster the outside-air temp reads from **`0x3B3` byte 4, C = raw x 0.5 - 40** (range -40..+80 C;
+`FE`/`FF` ignored). `0x3B3 = 00 00 00 00 78 00 00 00` boots reading 68 F (20 C). Reads "--" while lost-comm DTCs are
+active, blank with none + no source.
+
+## 0x191 - Display units + distance-to-empty (digital)
+
+**Status:** Confirmed
+
+Byte 0 is a packed units field (**stored** - survives a key cycle, reset only by an IPC power cycle). Temperature and
+distance units are separate: temp `0x10` = F, `04/08/40/80` = C. b0 `01`/`04` also pops "0 mi to E", so `0x191`
+is the fuel-range / distance-to-empty frame. Distance-unit bits not fully mapped; send with care.
+
+## 0x3B4 - TPMS telltale lamp (digital)
+
+**Sample:** `00 00 00 00 00 00 00 00` (lamp off) - **Status:** Confirmed - layout from opendbc `ford_cgea1_2_ptcan_2011.dbc`
+
+| Bits | Signal | Values |
+|---|---|---|
+| b0[7:4] | System status | `0` OK (lamp off), `2` sensor fault, `3` low (+ shows all four pressures), `5`/`6` train LF/RF |
+| b0[3:2] | Telltale | `1` solid, `2` flashing |
+
+All-zeros = lamp off. Pressures themselves are `0x3B5` as on the analog cluster.
+
+## 0x38D - TrackApps menu gate (digital)
+
+**Status:** Confirmed
+
+**Presence-gated:** broadcasting `0x38D` at all - any payload, even all-zero, at ~50 ms - makes the **TrackApps** menu
+entry appear; dropping it removes the entry.
+
+## 0x081 - Steering-wheel / menu buttons (digital, byte 0 is a bitmask)
+
+Byte 0 is an 8-bit mask, **one physical button per bit** (the analog table above lists the same 5-way). On the
+digital cluster:
+
+| Byte | Bit | Effect |
+|---|---|---|
+| 0 | `0x01` | Down / info-page next |
+| 0 | `0x08` | Up / info-page prev |
+| 0 | `0x10` | OK/Select (enters submenu, toggles checkboxes; hold on info page = reset trip) |
+| 0 | `0x02` `0x04` `0x40` `0x80` | **ignored by the digital menu** - these are the media/voice buttons (volume, skip/rewind, back, voice), handled by the audio/APIM modules, not the IPC. **Not** left/right arrows |
+| 0 | `0x20` | "Steering Feel Selection Not Available" popup |
+| 1 | `0x01` | MENU (open/close Settings) |
+| 1 | `0x02` | Music/audio page |
+| 1 | `0x40` | Back / Exit |
+| 1 | `0x80` | "Damper Mode Selection Not Available" popup |
+| 2 | `0x80` | Cobra menu |
+
+The digital menu is 1-D: Up / Down / OK / Menu / Back only (no left/right), which is why byte 0 `0x02`/`0x04` do nothing
+to it. On the S550 wheel the physical packs are media on the left spoke, menu+voice on the right (18+; believed flipped
+on 15-17) - so the "ignored" bits are real buttons the IPC simply does not act on.
+
+## Fault / lamp suppression (digital, standalone / no GWM)
+
+The digital cluster latches more than the analog. Confirmed on the bench:
+
+| Lamp / warning | Clear by |
+|---|---|
+| MIL + oil pressure | `0x421` zeros (b0[3:2] MIL, b2.2 oil) |
+| Park-brake fault (moving in gear) | `0x213` = `FF FF 00 00 00 11 FF 41` |
+| Blind-spot lamp | `0x3A6` and `0x3A7` = `00 40 02 00 00 00 00 00` |
+| TPMS lamp | `0x3B4` zeros |
+| ABS / TCS / red BRAKE | `0x416` lamp fields 0 (a healthy ABS also clears them) |
+| Wrench + "See Manual" | `0x168` b2 bit7 = 0 |
+| Lost-comm U-codes | module-presence frames held at zeros: `0x076`->U0121 (ABS), `0x168`->U0103 (GSM), `0x223`->U0193 (DACM), `0x2E3`->U0253 (APIM); pair `0x2A1`+`0x3E6`->U0212 (SCCM) |
+
+- **Charge + wrench are latched by the cluster own U-code DTCs** and cannot be cleared by any status frame a 2015-17
+  car sends. Workaround: UDS `14 FF FF FF` on `0x720` (IPC, default session, no security) every ~2 s clears them (and
+  reveals outside temp); codes re-set in ~5 s, so a periodic clear keeps them suppressed. Real fix = emulate each lost
+  module (the real GWM HS3 output clears U0100/U0420/U0232/U0233/U0256/U0557 by itself).
+
+## 0x430 - Ignition status (digital, cluster TX)
+
+On the digital cluster `0x430` is a **cluster output**, byte 0 = `05` Run / `04` Off-Acc (echoes `0x3B2` ignition) -
+not the odometer. The digital odometer is `0x179` byte 5 `OdoCount` (as the analog `0x179` distance-counter note describes).
+Other digital cluster-TX detectors: `0x225` b3 = displayed speed (whole mph), `0x318` b5 bit7 = a popup is on screen.
