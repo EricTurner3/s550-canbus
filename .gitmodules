@@ -1,0 +1,3 @@
+[submodule ".\\other_refs\\v-ivanyshyn_parse_can_logs\\"]
+	path = .\\other_refs\\v-ivanyshyn_parse_can_logs\\
+	url = https://github.com/v-ivanyshyn/parse_can_logs
