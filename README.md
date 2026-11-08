@@ -38,4 +38,6 @@ Booting Your Device:
 
 References
 * [v-ivanyshyn's Ford CAN IDs summary](https://github.com/v-ivanyshyn/parse_can_logs/blob/master/Ford%20CAN%20IDs%20Summary.md)
-    * this helped me find the tire pressure
+    * this helped me correlate several other logs using another GT's data
+* [ufnalski's Ford Mustang IPC Hacking](https://github.com/ufnalski/ford_mustang_cluster_h503rb)
+    * helped find the message to enable track apps!

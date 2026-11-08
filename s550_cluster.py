@@ -1,37 +1,41 @@
 import can
 import time
-from multiprocessing.pool import ThreadPool as Pool
+import heapq
+import threading
+from collections import Counter
 from pynput import keyboard
 import sys
+import s550_data
 import games.fh5
 import games.ats
 
 can_adapter_channel = 'COM3'
 retry_period = 3 # seconds
 
-pool_size = 8
+# print every frame sent. Console printing is slow on Windows and will throttle the bus, leave off unless debugging
+verbose = False
+
 # start time for timestamps
 start = time.time()
 # different messages have different polling intervals
 # this can be determined by taking one of the converted logs and doing a pivot on id, count(id). Sort by count(id). Notice the groupings of messages
 # the higher the speed, the more common it is / the more times that ID is visible in CAN traffic
+# 6 Nov 2026 - periods below are measured from the GT350 logs in /can (count of each ID / log duration)
 
 # this will easily speed up or slow down the traffic while still keeping the speeds at the same interval
 # < 1 speeds up; > 1 slows down
-modifier =  .1
-SPEED_ONE = 0.16 * modifier
-SPEED_TWO = 0.32  * modifier
-SPEED_THREE = 0.48  * modifier
-SPEED_FOUR = 0.64  * modifier
-SPEED_FIVE = 0.80  * modifier
-SPEED_SIX = 1.6  * modifier
-SPEED_SEVEN = 3.2  * modifier 
-SPEED_EIGHT = 6.4  * modifier
+modifier = 1
+SPEED_ONE = 0.01 * modifier     # 100 Hz - 0x204, 0x167, 0x217, 0x85, 0x91, 0x92 (accelerometer)
+SPEED_TWO = 0.02 * modifier     # 50 Hz  - 0x202, 0x200, 0x415, 0x77, 0x76 (steering / g meter), 0x82, 0x230
+SPEED_THREE = 0.1 * modifier    # 10 Hz  - 0x4C, 0x83, 0x178, 0x416, 0x430
+SPEED_FOUR = 0.4 * modifier     # 2.5 Hz - 0x3B3, 0x3B2
+SPEED_FIVE = 1.0 * modifier     # 1 Hz   - 0x81, 0x3C3, 0x431, 0x5xx series
 
 #CAN IDs
 RPM = 0x204
 SPEED = 0x202
 DOOR_STATUS = 0x3B3
+TRACK_APPS = 0x3B2 # same layout as 0x3B3, from another project's 2016 Mustang. Not in our logs
 SEATBELT = 0x4C
 ODOMETER = 0x430
 BUTTONS = 0x81
@@ -44,7 +48,7 @@ MISC_2 = 0x416
 MISC_3 = 0x217
 MISC_4 = 0x85
 MISC_5 = 0x91
-MISC_6 = 0x92
+ACCELEROMETER = 0x92
 MISC_7 = 0x200
 MISC_8 = 0x167
 MISC_9 = 0x415
@@ -65,12 +69,18 @@ x5xx_SERIES_5 = 0x5B5
 LC = 0x178
 WARNINGS_1 = 0x179
 ENGINE_TEMP = 0x156
-
+ENGINE_STATUS = 0x421 # from v-ivanyshyn's GT log, the GT350 never sent these three
+INTAKE_TEMP = 0x42D
+ENGINE_GAUGES = 0x43E
 
 
 # Stock slcan firmware on Windows
-bus = can.ThreadSafeBus(bustype='slcan', channel=can_adapter_channel, bitrate=500000)
+bus = can.ThreadSafeBus(interface='slcan', channel=can_adapter_channel, bitrate=500000)
 
+
+# frames sent / failed since the last status line
+sent_count = Counter()
+fail_count = Counter()
 
 def send_msg(id, ts, data):
     try:
@@ -78,9 +88,16 @@ def send_msg(id, ts, data):
                     data=data,
                     is_extended_id=False)
         bus.send(msg)
-        print(msg, end="")
+        sent_count[id] += 1
+        if (verbose):
+            print(msg)
     except can.CanError:
+        fail_count[id] += 1
         print("   {} - Message NOT sent".format(str(hex(id))))
+
+def clamp(value, low, high):
+    # game values can go past what the bytes hold (or what the gauge shows), keep them in range
+    return max(low, min(high, int(round(value))))
 
 
 def send_seatbelt_icon(clusterdata):
@@ -182,9 +199,29 @@ def send_misc_5(clusterdata):
     data = [0x7E, 0xE3, 0x7F, 0x39, 0x3D, 0x93, 0xF0, 0x00]
     return send_msg(MISC_5, start, data)
 
-def send_misc_6(clusterdata):
-    data = [0x6F, 0xBA, 0x6F, 0x92, 0x73, 0x62, 0x94, 0x93]
-    return send_msg(MISC_6, start, data)
+accelerometer_counter = 0
+
+def send_accelerometer(clusterdata):
+    '''
+        0x92, accelerometer. Checked against every GT350 log and v-ivanyshyn's GT log. Doesn't move the Track Apps
+        g meter dot on the bench, that's 0x76 (send_steering)
+        Three 13 bit values, raw = (m/s^2 + 40) * 100, top 3 bits 0b011 (0x6_) when valid
+            Bytes 0 & 1 - lateral
+            Bytes 2 & 3 - longitudinal, positive speeding up
+            Bytes 4 & 5 - vertical, ~9.7 at rest
+        Byte 7 - counter, +5 every frame
+        Byte 6 - checksum, all 8 bytes add up to 0x16
+        100 Hz in the GT350
+    '''
+    global accelerometer_counter
+    accelerometer_counter = (accelerometer_counter + 5) & 0xFF
+    data = []
+    for value in (clusterdata.accel_lateral, clusterdata.accel_longitudinal, clusterdata.accel_vertical):
+        raw = clamp((value + 40) * 100, 0, 0x1FFF)
+        data += [0x60 | raw >> 8, raw & 0xFF]
+    data += [0x00, accelerometer_counter]
+    data[6] = (0x16 - sum(data)) & 0xFF
+    return send_msg(ACCELEROMETER, start, data)
 
 def send_misc_7(clusterdata):
     data = [0x00, 0x00, 0x80, 0x47, 0x80, 0x47, 0x00, 0x00]
@@ -275,20 +312,28 @@ def send_apim_3(clusterdata):
 def send_0x5__series(clusterdata):
     # not sure what these do but since they seem to be hard coded, gonna send them
     send_msg(x5xx_SERIES_1, start, [0x81, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
-    print('')
     send_msg(x5xx_SERIES_2, start, [0x96, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
-    print('')
     send_msg(x5xx_SERIES_3, start, [0x9E, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
-    print('')
     send_msg(x5xx_SERIES_4, start, [0xB3, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
-    print('')
     return send_msg(x5xx_SERIES_5, start, [0xB5, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
+
+ODOMETER_COUNTS_PER_MILE = 8767 # 0x179 byte 5, measured from v-ivanyshyn's GT log
+odometer_counts = 0.0
+odometer_time = None
 
 def send_warnings_1(clusterdata):
     '''
         Several Warning messages such as fuel service inlet, change oil soon, oil change required
+        7 Nov 2026 - Byte 5 is a rolling distance counter (8 bit, ~8767 per mile). The odometer counts up from it
+        and the cluster saves it, so game miles are added for good. Advanced here from the speed shown on the cluster
+        Bytes 6 & 7 are a second counter (wraps at 3000) that runs at idle and with load, likely fuel used. Left static
     '''
-    data = [0x00, 0x00, 0x00, 0x00, 0x96, 0x00, 0x02, 0xC8]
+    global odometer_counts, odometer_time
+    now = time.perf_counter()
+    if odometer_time is not None:
+        odometer_counts += clusterdata.value_speed * (now - odometer_time) / 3600 * ODOMETER_COUNTS_PER_MILE
+    odometer_time = now
+    data = [0x00, 0x00, 0x00, 0x00, 0x96, int(odometer_counts) % 256, 0x02, 0xC8]
     return send_msg(WARNINGS_1, start, data)
 
 def send_launch_control(clusterdata):
@@ -331,8 +376,23 @@ def send_door_status(clusterdata):
         lights = 0x0A
     else:
         lights = 0x00
-    data = [0x40, 0x48, 0x02, lights, 0x18, 0x05, parking_brake_light, 0x02]
+    # byte 4 0x10 like the car logs, the turn signals are sent on 0x3B2 (send_track_apps)
+    data = [0x40, 0x48, 0x02, lights, 0x10, 0x05, parking_brake_light, 0x02]
     return send_msg(DOOR_STATUS, start, data)
+
+def send_track_apps(clusterdata):
+    '''
+        Same layout as 0x3B3. Sent alongside 0x3B3, it makes Track Apps show on a 2015 FR33 cluster. From another
+        project's firmware (mustang.c, built on a 2016 Mustang), byte 4 bit 0x10 is Track Apps there
+        Byte 0 0x4_ as in 0x3B3, 0x41 shows Trunk Ajar. The cluster stays on from 0x3B3 whatever byte 0 is
+        Byte 4 bit 0x08 - right turn signal (confirmed). Byte 6 bit 0x40 - left turn signal (from mustang.c)
+        icon_left_signal / icon_right_signal 2 flashes, on and off for one send each (0.4s)
+    '''
+    lit = int((time.time() - start) / SPEED_FOUR) % 2 == 0
+    right = 0x08 if clusterdata.icon_right_signal == 1 or (clusterdata.icon_right_signal == 2 and lit) else 0x00
+    left = 0x40 if clusterdata.icon_left_signal == 1 or (clusterdata.icon_left_signal == 2 and lit) else 0x00
+    data = [0x40, 0x00, 0x00, 0x12, 0x10 | right, 0x00, left, 0x02]
+    return send_msg(TRACK_APPS, start, data)
 
 def send_rpm(clusterdata):
     '''
@@ -375,7 +435,7 @@ def send_odometer(clusterdata):
 def send_engine_temp(clusterdata):
     '''
     Byte 0 is for the Engine/Coolant Temp Gauge (seen on analog cluster under RPM)
-        Temp is in Celsius, int(byte0) - 60 = Temp, thus A0 would be 106c or 320f
+        Temp is in Celsius, int(byte0) - 60 = Temp, thus A0 would be 100c or 212f
         Gauge doesn't start to move until around 0x80
         Gauge seems to have a safe zone and 'freezes' from around 0xA6 (106c) to 0xC0 (132c) where it then rapidly ramps up and can trigger overheat warning
     Byte 1 is for the Oil Temp Gauge (seen under center screen, Gauge Mode > Oil Temp)
@@ -385,33 +445,92 @@ def send_engine_temp(clusterdata):
         0x03 - normal
         0x08 - overheat
     '''
-    oil_temp = int(clusterdata.oil_temp) + 60
-    engine_temp = int(clusterdata.engine_temp) + 60
+    oil_temp = clamp(clusterdata.oil_temp + 60, 0x00, 0xFF)
+    engine_temp = clamp(clusterdata.engine_temp + 60, 0x00, 0xFF)
     data = [engine_temp, oil_temp, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00]
     return send_msg(ENGINE_TEMP, start, data)
+
+# 7 Nov 2026
+def send_engine_status(clusterdata):
+    '''
+    Oil Pressure Status, Check Engine Light, Engine Shutdown Messages
+    The GT has an oil pressure switch, Gauge Mode > Oil Pressure shows Normal while this is sent and Low (with a warning) without it
+    Byte 0 - Check Engine Light
+        0x04 - Solid
+        0x08 - Flashing
+    Byte 1 - Engine shutdown messages
+        0x01 - "Engine shutoff in 30s"
+        0x02 - "Engine has shut off for fuel economy"
+    Bytes 2 & 6 change in the GT log, no visible effect
+    '''
+    if(clusterdata.icon_check_engine == 2):
+        check_engine = 0x08 # flashing
+    elif(clusterdata.icon_check_engine == 1):
+        check_engine = 0x04 # solid on
+    else:
+        check_engine = 0x00 # off
+    data = [check_engine, 0x00, 0x50, 0x00, 0x00, 0x00, 0x4D, 0x00]
+    return send_msg(ENGINE_STATUS, start, data)
+
+# 7 Nov 2026
+def send_intake_temp(clusterdata):
+    '''
+    Bytes 1 & 2 - Inlet Air Temp (Gauge Mode)
+        10 bit (byte 1 & 0x03), raw * 0.25 - 128 = Celsius
+        Radial gauge is 0f - 240f, the text readout shows negatives
+    '''
+    intake_temp = clamp((clusterdata.intake_temp + 128) * 4, 0x000, 0x3FF)
+    data = [0x00, intake_temp >> 8, intake_temp & 0xFF, 0x00, 0x00, 0x00, 0xF0, 0x00]
+    return send_msg(INTAKE_TEMP, start, data)
+
+# 7 Nov 2026
+def send_engine_gauges(clusterdata):
+    '''
+    Without this ID the AFR, Boost / Vacuum, Cylinder Head Temp and Inlet Air Temp gauges are blank
+    Byte 1 - 0x93, 14.7 stoichiometric AFR
+    Byte 3 - Air Fuel Ratio, raw / 10
+    Byte 4 - Cylinder Head Temp, raw - 60 = Celsius. Gauge is 140f - 340f
+    Bytes 5 & 6 - Boost / Vacuum, 13 bit (raw >> 3), value * 0.1 - 206.9 = kPa. Negative is vacuum
+        Gauge is 30 inHg vacuum to 20 psi boost
+    '''
+    afr = clamp(clusterdata.value_afr * 10, 0x00, 0xFF)
+    cylinder_head_temp = clamp(clusterdata.cylinder_head_temp + 60, 0x00, 0xFF)
+    boost_kpa = clusterdata.value_boost * 6.895
+    boost = clamp((boost_kpa + 206.9) * 10, 0x0000, 0x1FFF) << 3
+    data = [0x00, 0x93, 0x10, afr, cylinder_head_temp, boost >> 8, boost & 0xFF, 0x00]
+    return send_msg(ENGINE_GAUGES, start, data)
 
 # 4 Feb 2024
 def send_tire_pressure(clusterdata):
     '''
-        In kPa 
-        Byte 1 - Front Left Tire Pressure
-        Byte 3 - Front Right Tire Pressure
-        Byte 5 - Rear Right Tire Pressure
-        Byte 7 - Rear Left Tire Pressure
+        16 bit kPa per tire (0x00CE = 206 kPa = 30 psi on the cluster)
+        Bytes 0 & 1 - Front Left Tire Pressure
+        Bytes 2 & 3 - Front Right Tire Pressure
+        Bytes 4 & 5 - Rear Right Tire Pressure
+        Bytes 6 & 7 - Rear Left Tire Pressure
     '''
-
-    tire_pressure_dummy = 0xCE # 30 PSI  / 206 kPa
-
-    data = [0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy, 0x00, tire_pressure_dummy]
+    data = []
+    for psi in (clusterdata.tire_pressure_fl, clusterdata.tire_pressure_fr,
+                clusterdata.tire_pressure_rr, clusterdata.tire_pressure_rl):
+        kpa = clamp(psi * 6.895, 0, 0xFFFF)
+        data += [kpa >> 8, kpa & 0xFF]
     return send_msg(TIRE_PRESSURE, start, data)
 
 # 4 Feb 2024
 def send_steering(clusterdata):
     '''
-        Byte 0 & 1 control steering angle, -0.1 - 1.0 +  1600
+        Byte 0 & 1 control steering angle, -0.1 - 1.0 +  1600. 0x3E80 is the most common value in the logs
+        Bytes 2 - 4, Track Apps g meter. From another project's firmware (mustang.c, send_accelerometer), in g, +-1.5:
+            Byte 2       - 16 + x * 8
+            Bytes 3 & 4  - 1024 + y * 512
+        Confirmed: x = lateral (+ right, 0x1C full right), y = longitudinal (+ accel, 0x0700 full accel / 0x0100 full brake)
+        Every 2015 - 2017 log has C0 00 80 here, which is far off that scale
+        (the old fixed frame 3E 83 C0 00 00 pinned the dot in the top left corner)
     '''
-
-    data = [0x3E, 0x83, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00]
+    x = max(-1.5, min(1.5, clusterdata.accel_lateral / 9.81))
+    y = max(-1.5, min(1.5, clusterdata.accel_longitudinal / 9.81))
+    g_y = 1024 + int(y * 512)
+    data = [0x3E, 0x80, 16 + int(x * 8), g_y >> 8, g_y & 0xFF, 0x00, 0x00, 0x00]
     return send_msg(STEERING, start, data)
 
 def MENU_NAV(direction):
@@ -454,11 +573,15 @@ def keys():
     listener.start()  # start to listen on a separate thread
     #listener.join()
 
-THREADS = [
-    (SPEED_ONE, [send_rpm, send_door_status, send_speed, send_apim_1, send_apim_2, send_apim_3]),
-    (SPEED_TWO, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_misc_8, send_climate, send_climate_fan, send_engine_temp]),
-    (SPEED_THREE, [send_misc_1, send_launch_control, send_tire_pressure]),
-    (SPEED_SEVEN, [MENU_NAV, send_0x5__series])
+# every function in a group is sent once per period. IDs not seen in the GT350 logs (APIM, climate, 0x156, 0x179, 0x3B5) are at a best guess
+SCHEDULE = [
+    (SPEED_ONE, [send_rpm, send_misc_8, send_accelerometer]),
+    (SPEED_TWO, [send_speed, send_steering]),
+    (SPEED_THREE, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_launch_control, send_engine_temp,
+                   send_climate, send_climate_fan, send_apim_1, send_apim_2, send_apim_3,
+                   send_engine_gauges, send_engine_status]),
+    (SPEED_FOUR, [send_door_status, send_track_apps, send_intake_temp]),
+    (SPEED_FIVE, [send_misc_1, send_tire_pressure, MENU_NAV, send_0x5__series])
 ]
 
 def load_game(game):
@@ -473,33 +596,80 @@ def load_game(game):
     else:
         pass
 
-# setup the thread loop
-def _thread(t, game):
+# latest values from the game. Starts as the defaults so the cluster boots before the game sends anything
+clusterdata = None
+clusterdata_time = 0.0
+
+# 6 Nov 2026 - poll the game on its own thread so a slow / blocking read (fh5 UDP, ats HTTP) never delays the bus
+def _game_loop(game):
+    global clusterdata, clusterdata_time
     while True:
-        for m in t[1]:
-            m(load_game(game))
-            print(" - " + '{0:.2f}'.format(t[0]) + ' - ' + m.__name__)
-        #time.sleep(t[0])
+        try:
+            data = load_game(game)
+            if data is None:
+                time.sleep(retry_period) # unsupported game, keep sending the defaults
+                continue
+            clusterdata = data # swapping the reference is atomic, the scheduler always sees a complete object
+            clusterdata_time = time.time()
+        except Exception as e:
+            print('* Game data error ({}), retrying in {}s'.format(e, retry_period))
+            time.sleep(retry_period)
+
+# 6 Nov 2026 - one thread sends everything on its own deadline, like an ECU would.
+# Threads per speed don't help here: the GIL and the bus send lock mean they only wait on each other
+def _scheduler():
+    now = time.perf_counter()
+    queue = []
+    for period, funcs in SCHEDULE:
+        for n, m in enumerate(funcs):
+            # spread a group's messages across its period instead of sending them in one burst
+            heapq.heappush(queue, (now + period * n / len(funcs), id(m), period, m))
+
+    while True:
+        deadline, key, period, m = queue[0]
+        wait = deadline - time.perf_counter()
+        if wait > 0:
+            time.sleep(wait)
+        m(clusterdata)
+        # if we fell more than a period behind (adapter stalled), skip ahead instead of bursting to catch up
+        next_deadline = deadline + period
+        now = time.perf_counter()
+        if next_deadline < now - period:
+            next_deadline = now + period
+        heapq.heapreplace(queue, (next_deadline, key, period, m))
+
+def _status():
+    while True:
+        time.sleep(1)
+        sent = sum(sent_count.values())
+        failed = sum(fail_count.values())
+        sent_count.clear()
+        fail_count.clear()
+        age = time.time() - clusterdata_time if clusterdata_time else float('inf')
+        print('* {} frames/s, {} failed, game data age {:.2f}s'.format(sent, failed, age))
 
 
 def activate(game=None):
+    global clusterdata
     if(game==None):
         try:
             game = sys.argv[1]
         except:
             game = 'fh5' # default to fh5 if no param is passed
 
-    
     print('* Loading game: {}'.format(game))
-    pool = Pool(6)
+    clusterdata = s550_data.s550_ipc(game)
+
     print('* Starting thread for keyboard navigation')
-    pool.apply_async(keys) # send whatever key is pressed to send to the cluster
-    # create a thread for each speed
-    for speed in THREADS:
-        print('* Starting thread for speed: {}, functions: {}'.format(speed[0], [m.__name__ for m in speed[1]]))
-        pool.apply_async(_thread, args=(speed,game), error_callback=print)
-    pool.close()
-    pool.join()
+    keys() # send whatever key is pressed to send to the cluster, runs on pynput's own thread
+
+    print('* Starting thread for game data')
+    threading.Thread(target=_game_loop, args=(game,), daemon=True).start()
+
+    for speed in SCHEDULE:
+        print('* Scheduling speed: {}, functions: {}'.format(speed[0], [m.__name__ for m in speed[1]]))
+    threading.Thread(target=_status, daemon=True).start()
+    _scheduler()
 
 
 

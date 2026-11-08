@@ -4,10 +4,11 @@ idna==3.4
 packaging==23.1
 pynput==1.7.6
 pyserial==3.5
-python-can==4.2.0
-pywin32==306
+python-can==4.6.1
+pywin32==312
 requests==2.30.0
+setuptools==84.2.1
 six==1.16.0
-typing_extensions==4.5.0
+typing_extensions==4.16.0
 urllib3==2.0.2
 wrapt==1.15.0
