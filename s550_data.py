@@ -48,3 +48,27 @@ class s550_ipc:
         self.tire_pressure_fr = 35.0
         self.tire_pressure_rr = 35.0
         self.tire_pressure_rl = 35.0
+
+        # 8 Nov 2026 - warning messages, True shows it. See database.md for the frames
+        # tire low (0x3B4): any of these shows the Tire Pressure Low window with that tire highlighted, several can be on
+        self.warning_tire_low_fl = False
+        self.warning_tire_low_fr = False
+        self.warning_tire_low_rr = False
+        self.warning_tire_low_rl = False
+        self.warning_tire_sensor_fault = False      # Tire Pressure Sensor Fault, lamp flashing. Tire low wins
+        # transmission (0x431): one message at a time, the first True in this order wins
+        self.warning_trans_overheat = False         # Transmission Overheat, Stop
+        self.warning_trans_too_hot = False          # Transmission Too Hot, Press Brake
+        self.warning_trans_malfunction = False      # Transmission Malfunction
+        self.warning_trans_service = False          # Transmission Service Required
+        self.warning_trans_adapt_mode = False       # Transmission Adapt Mode
+        self.warning_trans_indicator_lockup = False # Transmission Indicator Mode Lockup
+        self.warning_trans_warming_up = False       # Transmission Warming Up
+        # occupant sensor (0x42C)
+        self.warning_occupant_sensor_pass = False   # Occupant Sensor Blocked, passenger icon
+        # key / start (0x38D): one message at a time, the first True in this order wins
+        self.warning_key_starting_fault = False     # Starting System Fault
+        self.warning_key_not_detected = False       # No Key Detected
+        self.warning_key_press_brake = False        # Press Brake to Start
+        self.warning_key_press_clutch = False       # Press Clutch to Start
+        self.warning_key_run_power_active = False   # Run Power Active

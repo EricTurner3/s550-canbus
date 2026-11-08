@@ -1,4 +1,5 @@
 import can
+import atexit
 import time
 import heapq
 import threading
@@ -72,10 +73,33 @@ ENGINE_TEMP = 0x156
 ENGINE_STATUS = 0x421 # from v-ivanyshyn's GT log, the GT350 never sent these three
 INTAKE_TEMP = 0x42D
 ENGINE_GAUGES = 0x43E
+# 8 Nov 2026 - found with ipc_dtc_test.py / interactive_brute_force.py, see database.md
+TPMS_STATUS = 0x3B4
+TRANS_WARNINGS = 0x431
+OCCUPANT = 0x42C # sending it at all also stops the cluster's U0100 (lost comm with the PCM)
+KEY_MESSAGES = 0x38D
+BLIND_SPOT_L = 0x3A6 # Ford DBC Side_Detect_L / _R, stop U0232 / U0233 and the blind spot / cross traffic warnings
+BLIND_SPOT_R = 0x3A7
 
 
 # Stock slcan firmware on Windows
-bus = can.ThreadSafeBus(interface='slcan', channel=can_adapter_channel, bitrate=500000)
+def open_bus(attempts=10, wait=1.0):
+    '''
+        8 Nov 2026 - Windows can hold the COM port for a few seconds after the last script exits ("Access is denied"),
+        so keep trying instead of crashing out
+    '''
+    for attempt in range(1, attempts + 1):
+        try:
+            return can.ThreadSafeBus(interface='slcan', channel=can_adapter_channel, bitrate=500000)
+        except can.CanInitializationError as e:
+            if attempt == attempts:
+                raise
+            print('* {} busy ({}), retrying {}/{}'.format(can_adapter_channel, e, attempt, attempts - 1))
+            time.sleep(wait)
+
+bus = open_bus()
+# close the port on exit so the next run can open it right away
+atexit.register(bus.shutdown)
 
 
 # frames sent / failed since the last status line
@@ -272,13 +296,15 @@ def send_misc_11(clusterdata):
 # 4 Feb 2024
 def send_misc_12(clusterdata):
     '''
-        Byte 2 & 3 - Fuel Consumption ?? 
-        Byte 6 - Steering Mode
+        EPAS_INFO from the power steering module, see database.md (8 Nov 2026, Ford DBC layout)
+        Byte 0 - Steering column torque, 0x80 = 0 Nm (GT350 driving 0x83)
+        Byte 2 & 3 - Motor current (was thought to be fuel consumption), byte 4 module voltage (0xAF ~14.7 V)
+        Byte 6 - bits 7 - 5 module state (2 assisting), bits 3 - 2 Steering Mode
             0x40 - Normal
             0x44 - Sport
             0x48 - Comfort
     '''
-    data = [0x5C, 0x00, 0x14, 0x98, 0xAF, 0x00, 0x44, 0xFF]
+    data = [0x83, 0x00, 0x14, 0x34, 0xAF, 0x00, 0x44, 0xFF]
     return send_msg(MISC_12, start, data)
 
 def send_misc_13(clusterdata):
@@ -533,6 +559,112 @@ def send_steering(clusterdata):
     data = [0x3E, 0x80, 16 + int(x * 8), g_y >> 8, g_y & 0xFF, 0x00, 0x00, 0x00]
     return send_msg(STEERING, start, data)
 
+# 8 Nov 2026
+def send_tpms_status(clusterdata):
+    '''
+    Byte 0 - bits 7 - 4 system status, bits 3 - 2 lamp
+        0x40 - no message, lamp off (freeze frame). Without 0x3B4 the lamp and a fault show
+        0x34 - Tire Pressure Low window, lamp solid. Needed for the tire statuses to show
+        0x28 - Tire Pressure Sensor Fault, lamp flashing (system 2 and lamp 2 were found separately)
+    Bytes 1 & 2 - one status nibble per tire, LF b1 high, RF b1 low, RR b2 high, LR b2 low
+        1 - ok, 2 (or 4) - highlights that tire. Several tires at once untested
+    Byte 3 - inner rears (duallys), FF not fitted. Bytes 4 & 5 - 20 20 in the logs
+    '''
+    low = [clusterdata.warning_tire_low_fl, clusterdata.warning_tire_low_fr,
+           clusterdata.warning_tire_low_rr, clusterdata.warning_tire_low_rl]
+    fl, fr, rr, rl = (0x2 if tire else 0x1 for tire in low)
+    if any(low):
+        status = 0x34
+    elif clusterdata.warning_tire_sensor_fault:
+        status = 0x28
+    else:
+        status = 0x40
+    data = [status, fl << 4 | fr, rr << 4 | rl, 0xFF, 0x20, 0x20, 0x00, 0x00]
+    return send_msg(TPMS_STATUS, start, data)
+
+# 8 Nov 2026 - each message's full frame as tested (one bit flipped from a logged frame), byte 3 looks like a
+# message number. The first True in this order is sent
+TRANS_FRAMES = [
+    ('warning_trans_overheat',         [0x05, 0x1D, 0x40, 0xEB, 0x97, 0x83, 0x46, 0x00]),
+    ('warning_trans_too_hot',          [0x05, 0x1D, 0x40, 0xEB, 0x37, 0x83, 0x46, 0x00]),
+    ('warning_trans_malfunction',      [0x05, 0x1B, 0x40, 0x0C, 0x0F, 0x83, 0x42, 0x00]),
+    ('warning_trans_service',          [0x05, 0x1B, 0x40, 0x14, 0x0F, 0x83, 0x42, 0x00]),
+    ('warning_trans_adapt_mode',       [0x05, 0x1D, 0x40, 0xE3, 0xB7, 0x83, 0x46, 0x00]),
+    ('warning_trans_indicator_lockup', [0x05, 0x1D, 0x40, 0xEF, 0xB7, 0x83, 0x46, 0x00]),
+    ('warning_trans_warming_up',       [0x05, 0x1D, 0x40, 0xEB, 0xB7, 0x83, 0x46, 0x00]),
+]
+TRANS_NONE = [0x05, 0x1B, 0x40, 0x04, 0x0F, 0x83, 0x42, 0x00] # warm, longerdrive.csv
+
+def send_trans_warnings(clusterdata):
+    data = next((frame for name, frame in TRANS_FRAMES if getattr(clusterdata, name)), TRANS_NONE)
+    return send_msg(TRANS_WARNINGS, start, data)
+
+# 8 Nov 2026
+def send_occupant(clusterdata):
+    '''
+    Byte 0 - bit 3 (0x08) Occupant Sensor Blocked with the passenger icon. 0x80 - 0x87 show nothing
+        Every GT350 / freeze frame / GT log value has it set (8C), don't replay those
+        Bits 7 - 5 cruise status per a 2018 GWM bench, untested here
+    Bytes 1 - 5 - no visible effect, 9C 60 from the GT350 logs
+    '''
+    occupant = 0x88 if clusterdata.warning_occupant_sensor_pass else 0x80
+    data = [occupant, 0x00, 0x00, 0x00, 0x9C, 0x60, 0x00, 0x00]
+    return send_msg(OCCUPANT, start, data)
+
+# 8 Nov 2026 - byte 4 high nibble (Ford DBC immoMsgTxt_D_Rq). The first True in this order is sent
+KEY_MESSAGE_VALUES = [
+    ('warning_key_starting_fault', 0x70),
+    ('warning_key_not_detected', 0x30),
+    ('warning_key_press_brake', 0x10),
+    ('warning_key_press_clutch', 0xC0),
+    ('warning_key_run_power_active', 0x60),
+]
+
+def send_key_messages(clusterdata):
+    '''
+    Byte 0 - 0x20, 2 admin keys in both logs
+    Byte 4 - key / start message, 0x00 none. Also 0x80 Key Program Successful, 0x90 Key Program Failure,
+        0xA0 Max Number of Keys, 0xB0 Not Enough Keys Learned
+    Sending 0x38D at all shows Track Apps in the menu
+    '''
+    message = next((value for name, value in KEY_MESSAGE_VALUES if getattr(clusterdata, name)), 0x00)
+    data = [0x20, 0x00, 0x00, 0x00, message, 0x00, 0x00, 0x00]
+    return send_msg(KEY_MESSAGES, start, data)
+
+# 8 Nov 2026
+def send_blind_spot(clusterdata):
+    '''
+    Side detect left / right (Ford DBC), byte 1 bits 7 - 5 blind spot on (2), byte 2 bits 2 - 0 cross traffic on (2),
+    sensors clear. Turns Blind Spot and Cross Traffic Alert on in Driver Assist (can't be turned off while sent)
+    '''
+    data = [0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]
+    send_msg(BLIND_SPOT_L, start, data)
+    return send_msg(BLIND_SPOT_R, start, data)
+
+# dummy data (interactive_brute_force.py --dummydata, ipc_dtc_test.py dummy): chassis messages from database.md with
+# steady values, all speed signals built from value_speed so they agree (mismatched wheel speeds trip Hill Start Assist)
+def send_wheel_speeds(clusterdata):
+    '''
+        0x217, four 13 bit wheel speeds (FL, FR, RL, RR), raw ~= MPH * 144, low 2 bits always 0
+    '''
+    raw = clamp(clusterdata.value_speed * 144, 0, 0x1FFF) & ~0x3
+    return send_msg(0x217, start, [raw >> 8, raw & 0xFF] * 4)
+
+def send_vehicle_speed_77(clusterdata):
+    '''
+        0x77, bytes 0 & 1 speed (14 bit, MPH * 175), bytes 2 & 3 lateral centered at 0x0800
+        byte 6 0xE6 keeps Hill Start Assist Not Available off
+    '''
+    raw = clamp(clusterdata.value_speed * 175, 0, 0x3FFF)
+    return send_msg(0x77, start, [raw >> 8, raw & 0xFF, 0x08, 0x00, 0x7F, 0xF7, 0xE6, 0x02])
+
+def send_vehicle_speed_415(clusterdata):
+    '''
+        0x415, bytes 0 & 1 speed (14 bit, MPH * 175), bytes 4 - 7 yaw / lateral centered (GT log at rest 07 FD 07 FD)
+    '''
+    raw = clamp(clusterdata.value_speed * 175, 0, 0x3FFF)
+    return send_msg(0x415, start, [raw >> 8, raw & 0xFF, 0xD0, 0xFA, 0x07, 0xFD, 0x07, 0xFD])
+
 def MENU_NAV(direction):
     UP = 0x08
     DOWN = 0x01
@@ -579,9 +711,17 @@ SCHEDULE = [
     (SPEED_TWO, [send_speed, send_steering]),
     (SPEED_THREE, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_launch_control, send_engine_temp,
                    send_climate, send_climate_fan, send_apim_1, send_apim_2, send_apim_3,
-                   send_engine_gauges, send_engine_status]),
+                   send_engine_gauges, send_engine_status, send_occupant, send_blind_spot]),
     (SPEED_FOUR, [send_door_status, send_track_apps, send_intake_temp]),
-    (SPEED_FIVE, [send_misc_1, send_tire_pressure, MENU_NAV, send_0x5__series])
+    (SPEED_FIVE, [send_misc_1, send_tire_pressure, MENU_NAV, send_0x5__series,
+                  send_tpms_status, send_trans_warnings, send_key_messages])
+]
+
+# added to SCHEDULE by --dummydata / dummy. The rest are this file's unscheduled senders
+DUMMY_SCHEDULE = [
+    (SPEED_ONE, [send_wheel_speeds, send_misc_4, send_misc_5]), # 0x217, 0x85 steering angle, 0x91 yaw
+    (SPEED_TWO, [send_vehicle_speed_77, send_vehicle_speed_415, send_misc_7, send_misc_12,
+                 send_misc_13]), # 0x200 torque, 0x82 steering mode, 0x230 gear
 ]
 
 def load_game(game):

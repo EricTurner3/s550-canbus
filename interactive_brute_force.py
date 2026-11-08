@@ -24,6 +24,11 @@
         python interactive_brute_force.py boost
         python interactive_brute_force.py iat
         python interactive_brute_force.py coolant
+        python interactive_brute_force.py keymsg
+        python interactive_brute_force.py occupant
+        python interactive_brute_force.py occupantbits
+        python interactive_brute_force.py tpmssys / tpmslamp / tpmslf / tpmsrf / tpmsrr / tpmslr
+        python interactive_brute_force.py trans / transwarm
         python interactive_brute_force.py oil
         python interactive_brute_force.py accel
         python interactive_brute_force.py gx
@@ -40,6 +45,8 @@
         python interactive_brute_force.py cht --gt-only 0x421,0x434,0x435
         python interactive_brute_force.py cht --gt --gt-skip 0x421
         python interactive_brute_force.py cht --gt-only 0x4b0,0x416,0x92,0x7d,0x415,0x216,0x85,0x77
+    --mute stops s550_cluster.py (and --dummydata) sending the listed IDs, to find which frame raises a warning
+        python interactive_brute_force.py afr --dummydata --mute 0x82,0x85
     --gt-all sends every GT log ID live (s550_cluster.py's versions too), s550_cluster.py only fills what the log lacks
         python interactive_brute_force.py cht --gt-all
     --nm sends Ford "module alive" frames (like 0x596: 96 00 FF FF FF FF FF FF) for a range of IDs, to fake modules
@@ -100,6 +107,16 @@ def boost(v):
     kpa = (v >> 3) * 0.1 - 206.9
     gauge = '{:.1f} inHg'.format(-kpa / 3.386) if kpa < 0 else '{:.1f} psi'.format(kpa / 6.895)
     return '{} ({}) -> {:.1f} kPa / {}'.format(hex(v), v, kpa, gauge)
+
+# 0x3B4 Tire_Pressure_Status (Ford DBC, CGEA 1.2 2011). Base is the freeze frame (system 4, lamp off, every tire 1).
+# Byte 0: system status bits 7 - 4, lamp bits 3 - 2. Bytes 1 - 3: one status nibble per tire,
+# LF b1 high, RF b1 low, RR b2 high, LR b2 low, inner rears (duallys) b3. Pressures stay on 0x3B5
+# Tire statuses showed nothing with system 4, so the tire presets start from system 3 (Tire Pressure Low window)
+# with the lamp solid, 34 like v-ivanyshyn's GT log
+def tpms_test(byte, lo, hi, step, what, b0=0x40):
+    return dict(can_ids=(0x3B4,), test_bytes=(byte,), mode='sequential', value_range=(lo, hi), step_size=step,
+                step_period=4.0, send_period=0.5, sample_data=[b0, 0x11, 0x11, 0xFF, 0x20, 0x20, 0x00, 0x00],
+                describe=lambda v: '{} -> {}'.format(hex(v), what(v)))
 
 # VARIABLES
 # the CAN adapter / COM port is set in s550_cluster.py
@@ -181,12 +198,59 @@ TESTS = {
     'coolant': dict(can_ids=(0x156,), test_bytes=(0,), mode='sequential', value_range=(0x3C, 0xF0), step_size=2,
                 step_period=1.0, send_period=cluster.SPEED_THREE, sample_data=[0x9E, 0x99, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00],
                 describe=temp),
+    # 0x38D byte 4 high nibble, immoMsgTxt_D_Rq (Ford DBC Body_Info_6_FD1), key / immobilizer messages:
+    # 4 = No Key Detected, 6 = Run Power Active. Byte 0 0x20 = 2 admin keys (freeze frame / v-ivanyshyn's GT log)
+    # Sending 0x38D at all also shows Track Apps in the menu
+    'keymsg': dict(can_ids=(0x38D,), test_bytes=(4,), mode='sequential', value_range=(0x00, 0xF0), step_size=0x10,
+                step_period=4.0, send_period=0.5, sample_data=[0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+                describe=lambda v: '{} -> message {}'.format(hex(v), v >> 4)),
+    # 0x42C byte 0. The GT350 always sends 8C 00 00 00 9C 60 00 00 (84 briefly in start.csv), which shows Occupant
+    # Sensor Blocked on this cluster. 2018 GWM bench: bits 7 - 5 are cruise status, so the occupant bits should be the
+    # low nibble. Sending 0x42C at all also stops U0100 (lost comm with the PCM). 51 ms in the GT350 logs
+    'occupant': dict(can_ids=(0x42C,), test_bytes=(0,), mode='sequential', value_range=(0x80, 0x8F), step_size=1,
+                step_period=4.0, send_period=0.05, sample_data=[0x80, 0x00, 0x00, 0x00, 0x9C, 0x60, 0x00, 0x00],
+                describe=lambda v: '{} -> low nibble {:04b}'.format(hex(v), v & 0x0F)),
+    # same frame, low nibble of byte 0 cleared, one bit of bytes 0 - 5 flipped at a time (bytes 1, 4, 5 carry data
+    # in the GT350 / v-ivanyshyn logs: 9C 60 here, 60 .. B2 20 in v-ivanyshyn's)
+    'occupantbits': dict(can_ids=(0x42C,), test_bytes=tuple(range(6)), mode='bits', value_range=(0, 47), step_size=1,
+                step_period=4.0, send_period=0.05, sample_data=[0x80, 0x00, 0x00, 0x00, 0x9C, 0x60, 0x00, 0x00],
+                describe=bit),
+    # 0x82 EPAS_INFO from the power steering module (Ford DBC), GT350 driving frame 83 00 14 34 AF 00 44 FF.
+    # Byte 1 bits 1 - 0 EPAS_Failure (0 in every log). Byte 6 bits 7 - 5 module state: 0 key on engine off,
+    # 4 cranking, 1 ramping, 2 assisting (start.csv); bits 3 - 2 steering mode (0x44 sport). 20 ms in the logs
+    'epasfail': dict(can_ids=(0x82,), test_bytes=(1,), mode='sequential', value_range=(0x00, 0x03), step_size=1,
+                step_period=6.0, send_period=0.02, sample_data=[0x83, 0x00, 0x14, 0x34, 0xAF, 0x00, 0x44, 0xFF],
+                describe=lambda v: 'EPAS_Failure {}'.format(v)),
+    'epasstat': dict(can_ids=(0x82,), test_bytes=(6,), mode='sequential', value_range=(0x04, 0xE4), step_size=0x20,
+                step_period=6.0, send_period=0.02, sample_data=[0x83, 0x00, 0x14, 0x34, 0xAF, 0x00, 0x44, 0xFF],
+                describe=lambda v: 'module state {}'.format(v >> 5)),
+    # 0x3B4 TPMS, see tpms_test. v-ivanyshyn's GT log has 34 11 21 (system 3 low, lamp solid, RR 2)
+    'tpmssys': tpms_test(0, 0x00, 0xF0, 0x10, lambda v: 'system status {}'.format(v >> 4)),
+    'tpmslamp': tpms_test(0, 0x40, 0x4C, 0x04, lambda v: 'lamp {}'.format((v >> 2) & 3)),
+    'tpmslf': tpms_test(1, 0x01, 0xF1, 0x10, lambda v: 'LF status {}'.format(v >> 4), b0=0x34),
+    'tpmsrf': tpms_test(1, 0x10, 0x1F, 0x01, lambda v: 'RF status {}'.format(v & 0x0F), b0=0x34),
+    'tpmsrr': tpms_test(2, 0x01, 0xF1, 0x10, lambda v: 'RR status {}'.format(v >> 4), b0=0x34),
+    'tpmslr': tpms_test(2, 0x10, 0x1F, 0x01, lambda v: 'LR status {}'.format(v & 0x0F), b0=0x34),
+    # 0x431 transmission messages, not in any DBC. ~1 Hz in the GT350 logs. Warm (longerdrive.csv) 05 1B 40 04 0F 83 42 00,
+    # idle 05 1D 42 03 97 83 42 00, freeze frame 05 1D 40 EB B7 83 46 00 shows Transmission Warming Up.
+    # byte 3 or byte 6 = FF shows Transmission Limited Function (2018 bench). One bit flipped at a time:
+    #   trans     - from the warm frame, look for bits that raise a message
+    #   transwarm - from the freeze frame, look for the bit that clears Warming Up
+    'trans': dict(can_ids=(0x431,), test_bytes=tuple(range(8)), mode='bits', value_range=(0, 63), step_size=1,
+                step_period=4.0, send_period=cluster.SPEED_FIVE, sample_data=[0x05, 0x1B, 0x40, 0x04, 0x0F, 0x83, 0x42, 0x00],
+                describe=bit),
+    'transwarm': dict(can_ids=(0x431,), test_bytes=tuple(range(8)), mode='bits', value_range=(0, 63), step_size=1,
+                step_period=4.0, send_period=cluster.SPEED_FIVE, sample_data=[0x05, 0x1D, 0x40, 0xEB, 0xB7, 0x83, 0x46, 0x00],
+                describe=bit),
 }
 parser = argparse.ArgumentParser(description='Sweep a CAN signal on the cluster')
 parser.add_argument('test', nargs='?', default='afr', choices=TESTS)
 parser.add_argument('--gt', action='store_true', help="also send the GT log IDs s550_cluster.py doesn't")
 parser.add_argument('--gt-only', type=replay.parse_ids, default=set(), help='comma separated GT log IDs to send (implies --gt)')
 parser.add_argument('--gt-skip', type=replay.parse_ids, default=set(), help='comma separated GT log IDs to leave out')
+parser.add_argument('--mute', type=replay.parse_ids, default=set(),
+                    help="comma separated IDs s550_cluster.py (and --dummydata) won't send, to find which one causes a warning")
+parser.add_argument('--speed', type=float, default=40, help='mph shown on the cluster and sent in the speed frames (default 40)')
 parser.add_argument('--gt-all', action='store_true', help="send every GT log ID, replacing s550_cluster.py's versions too. "
                     "s550_cluster.py only fills the IDs the log doesn't have")
 parser.add_argument('--dummydata', action='store_true',
@@ -219,7 +283,7 @@ send_period = cfg['send_period']
 sample_data = cfg['sample_data']
 describe = cfg['describe']
 
-cluster_speed = 40 # mph shown on the cluster
+cluster_speed = args.speed # mph shown on the cluster
 
 # SAMPLE DATA - 2015 Ford Mustang GT - Manual - MyColor
 # 200 => [0x00, 0x00, 0x7F, 0xF0, 0x81, 0x57, 0x00, 0x00]
@@ -253,7 +317,7 @@ def set_value(v):
 _send_msg = cluster.send_msg
 gt_ids = set() # GT log IDs taken over with --gt-only, s550_cluster.py's versions are dropped
 def _filtered_send_msg(id, ts, data):
-    if id in can_ids or id in gt_ids:
+    if id in can_ids or id in gt_ids or id in args.mute:
         return
     return _send_msg(id, ts, data)
 cluster.send_msg = _filtered_send_msg
@@ -479,35 +543,6 @@ def request_done():
     cluster_tx_changes.append((time.time() - cluster.start, result, data.hex(' ')))
     print(' - 0x3e0 request {} {}, last reply {}'.format(key.hex(' '), result.upper(), data.hex(' ')))
 
-def send_wheel_speeds(clusterdata):
-    '''
-        0x217, four 13 bit wheel speeds (FL, FR, RL, RR), raw ~= MPH * 144, low 2 bits always 0
-    '''
-    raw = cluster.clamp(clusterdata.value_speed * 144, 0, 0x1FFF) & ~0x3
-    cluster.send_msg(0x217, cluster.start, [raw >> 8, raw & 0xFF] * 4)
-
-def send_vehicle_speed_77(clusterdata):
-    '''
-        0x77, bytes 0 & 1 speed (14 bit, MPH * 175), bytes 2 & 3 lateral centered at 0x0800
-        byte 6 0xE6 keeps Hill Start Assist Not Available off
-    '''
-    raw = cluster.clamp(clusterdata.value_speed * 175, 0, 0x3FFF)
-    cluster.send_msg(0x77, cluster.start, [raw >> 8, raw & 0xFF, 0x08, 0x00, 0x7F, 0xF7, 0xE6, 0x02])
-
-def send_vehicle_speed_415(clusterdata):
-    '''
-        0x415, bytes 0 & 1 speed (14 bit, MPH * 175), bytes 4 - 7 yaw / lateral centered (GT log at rest 07 FD 07 FD)
-    '''
-    raw = cluster.clamp(clusterdata.value_speed * 175, 0, 0x3FFF)
-    cluster.send_msg(0x415, cluster.start, [raw >> 8, raw & 0xFF, 0xD0, 0xFA, 0x07, 0xFD, 0x07, 0xFD])
-
-# --dummydata. Speed signals follow clusterdata.value_speed, the rest are s550_cluster.py's unscheduled senders
-DUMMY_SCHEDULE = [
-    (cluster.SPEED_ONE, [send_wheel_speeds, cluster.send_misc_4, cluster.send_misc_5]), # 0x217, 0x85 steering angle, 0x91 yaw
-    (cluster.SPEED_TWO, [send_vehicle_speed_77, send_vehicle_speed_415, cluster.send_misc_7, cluster.send_misc_12,
-                         cluster.send_misc_13]), # 0x200 torque, 0x82 steering mode, 0x230 gear
-]
-
 def nm_sender(id):
     '''
         Ford "module alive" frame like the 0x5xx series in the logs: byte 0 is the low byte of the ID, then 00 FF FF ...
@@ -602,7 +637,7 @@ if __name__ == "__main__":
     for period, id, recorded in log_frames:
         cluster.SCHEDULE.append((period, [gt_frame_sender(id, recorded)]))
     if args.dummydata:
-        cluster.SCHEDULE.extend(DUMMY_SCHEDULE)
+        cluster.SCHEDULE.extend(cluster.DUMMY_SCHEDULE)
         print('* Dummy data: 0x217 0x77 0x415 (speeds follow {} mph), 0x85 0x91 0x200 0x82 0x230'.format(cluster_speed))
     if args.respond is not None:
         print('* Answering 0x3E0 requests on 0x3E3 (04 07 on 0x3E6): 00 {:02x} xx xx 80 {}{}'.format(args.respond, args.respond_tail.hex(' '),
