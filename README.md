@@ -42,3 +42,4 @@ References
     * this helped me correlate several other logs using another GT's data
 * [ufnalski's Ford Mustang IPC Hacking](https://github.com/ufnalski/ford_mustang_cluster_h503rb)
     * helped find the message to enable track apps!
+* [roxasthenobody98's Simulink-Model-Generation-Tool](https://github.com/roxasthenobody98/Simulink-Model-Generation-Tool/) has a repo with a VechicleCAN.dbcx which appears to be 2019 DBC database for reversing.

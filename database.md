@@ -51,8 +51,11 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 | `0x217` | Wheel speeds | From logs | `--dummydata` |
 | `0x230` | Gear position | From logs | `--dummydata` |
 | `0x331` | Climate / outside temp? | From logs | No |
+| `0x38D` | Key / start messages, Track Apps | Confirmed | Yes |
+| `0x3A6` / `0x3A7` | Blind spot / cross traffic (side detect L / R) | Confirmed | Yes |
 | `0x3B2` | Track Apps, turn signals | Confirmed | Yes |
 | **`0x3B3`** | **Cluster on (required, send first)**, doors, lights, parking brake | Confirmed | Yes |
+| `0x3B4` | TPMS lamp, system status, per-tire status | Confirmed | Yes |
 | `0x3B5` | Tire pressure | Confirmed | Yes |
 | `0x3C3` | High beams, parking brake | Confirmed | Yes |
 | `0x3C8` | Drive mode, MyColor | Cluster sends | No |
@@ -62,9 +65,10 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 | `0x416` | ABS / traction control icons | Confirmed | Yes |
 | `0x421` | Oil pressure status, check engine | Confirmed | Yes |
 | `0x422` | Coolant temp | From logs | No |
+| `0x42C` | Occupant sensor blocked, cruise status, PCM present | Confirmed | Yes |
 | `0x42D` | Inlet air temp | Confirmed | Yes |
 | `0x430` | Odometer | Cluster sends | No |
-| `0x431` | Transmission warnings | Confirmed | No |
+| `0x431` | Transmission warnings | Confirmed | Yes |
 | `0x43E` | AFR, cylinder head temp, boost / vacuum | Confirmed | Yes |
 | `0x453` | Seat occupant sensor serial | From logs | No |
 | `0x454` | Airbag module serial | From logs | No |
@@ -78,6 +82,8 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 **Status:** Cluster sends · captured on the bench with `interactive_brute_force.py` (`cluster_tx.csv`, `cluster_tx_changes.csv`)
 
 Only `0x18B 0x350 0x3C8 0x3E0 0x430 0x434` show up in the HS1 logs (passed through the gateway), the rest are HS3 only. `replay.py` skips all of these unless `--include-ipc`.
+
+8 Nov 2026 - `other_refs/VehicleCAN.dbcx` (powertrain bus view) tags 90 frames with `FrameGatewayNetwork`, the network the GWM copies them from. The 29 `HS3_CAN` ones are the cluster / APIM's outputs and match this list: `0x18B 0x225 0x2FD 0x30A 0x317 0x318 0x3C8 0x3E0 0x430 0x434 0x45A` (`0x318` = `IPC_Send_Signals_2`, `0x430` = `Cluster_Info1`, `0x434` = `Cluster_Info_3`), the rest are APIM / nav / trailer. So the cluster sits on HS3 behind the GWM. The DBC only describes traffic onto the powertrain bus, so it doesn't list what the GWM sends the cluster on HS3. That gateway-built traffic is the likely home of the missing steering / U0146 data.
 
 **Once at power up** (all zeros unless noted), possibly wake up / enable requests to other modules:
 `0x087` `0x123` `0x190` (`00 00 00 00 FF 00 00 00`) `0x193` `0x195` `0x1EE` `0x1F2` `0x1F8` `0x1F9` `0x1FA` `0x1FB` `0x1FC` `0x363` (`00 3C 00 ...`)
@@ -174,6 +180,19 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 | 6 | Hill Start Assist Not Available | `0x_C` shows it, `0x_6` hides it (`s550_cluster.py` sends `0xE6`) |
 
 - In the GT and GT350 logs byte 6's low nibble changes constantly (part of a value with byte 7, tracks the pedal), so replaying a log makes the warning come and go.
+- 8 Nov 2026 - the Ford DBC (`ford_lincoln_base_pt.dbc`) names it `BrakeSnData_3`, sent by the ABS, and the 2015 - 2017 logs fit its layout (Motorola bit order). No counter or checksum
+
+| Bits | Signal (DBC name) | Encoding |
+|---|---|---|
+| byte 0 - 1 | Speed (`VehOverGnd_V_Est`) | DBC: 16 bit, 0.01 kph per count (`MPH * 161`), not checked against the `MPH * 175` above |
+| byte 2 bits 7 - 5 | Travel direction (`VehTrvlDir_D_Stat`) | 0 in every log |
+| byte 2 bits 3 - 0, byte 3 | Yaw rate (`VehYawComp_W_Actl`) | 12 bit, `raw * 0.03663 - 75` deg/s, `0x800` = 0 |
+| byte 5 bits 3 - 0, byte 6 bits 7 - 2 | Lateral accel (`VehLatComp_A_Actl`) | 10 bit, `raw * 0.035 - 17.9` m/s² |
+| byte 6 bits 1 - 0, byte 7 | Longitudinal accel (`VehLongComp_A_Actl`) | 10 bit, `raw * 0.035 - 17.9` m/s², positive speeding up |
+
+- So the Hill Start Assist message is really the longitudinal accel: `E6 02` is about 0 m/s², `EC 02` is -17.8 m/s² (implausible), which shows the warning.
+- Bytes 4 - 5 high nibble are `7F F_` in every log and not in the DBC. The GT350 `start.csv` opens with `00 00 0F FE 7F FF FB FE` (every value at its max, likely "not ready yet") before the engine runs.
+- The power steering module is one of its receivers in the DBC. With `--dummydata` at 40 mph it adds Steering Fault Service Now to the Steering Assist Fault the missing module already causes. Muting 0x77 removes it, muting 0x217 or 0x415 doesn't.
 
 # 0x81 - Steering Wheel Buttons
 
@@ -187,14 +206,32 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 | 1 | `0x08` | Up |
 | 1 | `0x10` | OK |
 
-# 0x82 - Steering Mode
+# 0x82 - Power Steering Info (EPAS_INFO)
 
-**Sample:** `82 00 14 40 7E 00 64 FF` · **Status:** Confirmed (byte 6)
+**Sample:** `83 00 14 34 AF 00 44 FF` · **Rate:** 50 Hz · **Status:** Confirmed (byte 6 mode), rest from the Ford DBC + logs
 
-| Bytes | Signal | Values |
+Sent by the power steering module. The Ford DBC (`ford_lincoln_base_pt.dbc`, `EPAS_INFO`, Motorola bit order) fits the 2015 - 2017 logs, no counter or checksum.
+
+| Bits | Signal (DBC name) | Encoding / logs |
 |---|---|---|
-| 2 - 3 | Fuel consumption? | |
-| 6 | Steering mode | `0x40` normal, `0x44` sport, `0x48` comfort |
+| byte 0 | Steering column torque (`SteeringColumnTorque`) | `raw * 0.0625 - 8` Nm, `0x80` = 0. -4.5 to +4.0 Nm in the GT350 logs, moves both ways as the wheel is turned |
+| byte 1 bits 1 - 0 | Power steering failure (`EPAS_Failure`) | `0` in every log |
+| byte 1 bit 2 | Driver steer active (`DrvSteActv_B_Stat`) | `0` in every log |
+| byte 1 bits 7 - 3, byte 2 bits 7 - 6 | Park assist angle control status (`SAPPAngleControlStat1 - 6`) | `0` in every log |
+| byte 2 bits 5 - 0, byte 3 bits 7 - 2 | Motor current (`SteMdule_I_Est`) | 12 bit, `raw * 0.05 - 64` A. -3.8 to +36 A in the GT350 logs. Bytes 1 - 2 `00 14` are the current's high bits |
+| byte 3 bits 1 - 0 | Trailer hitch lamp / trailer aid request | `0` |
+| byte 4 | Module voltage (`SteMdule_U_Meas`) | `raw * 0.05 + 6` V. ~11.8 V key on engine off (`6F` - `77`), ~14.7 V running (`AF`) |
+| byte 5 | `DrvSte_Tq_Actl` | `00` in every log |
+| byte 6 bits 7 - 5 | Module state (`SteMdule_D_Stat`) | `start.csv`: `0` key on engine off (every `run_*` log), `4` cranking, `0`, `1` ramping up, `2` assisting. `shutoff.csv`: `2` then `1` |
+| byte 6 bits 3 - 2 | Steering mode | `0x40` normal, `0x44` sport, `0x48` comfort (confirmed, not in the DBC) |
+| byte 7 | Trailer aid max speed (`Veh_V_RqMxTrlrAid`) | `FF` |
+
+- The old "fuel consumption?" guess for bytes 2 - 3 was the motor current.
+- Value names from `other_refs/VehicleCAN.dbcx`:
+    - `EPAS_Failure`: `0` OK / no message, `1` Power Steering Assist Fault, `2` Service Power Steering, `3` Service Power Steering Now
+    - `SteMdule_D_Stat`: `0` initializing, `1` limited assist, `2` full assist, `3` shutdown, `4` system failure, `5` / `6` EPAS failure 2 / 3
+- The DBC lists only the GWM and IPMA as receivers of these, not the cluster. Sweeping `EPAS_Failure` 0 - 3 and the state 0 - 7 with `--dummydata` changed nothing on screen, but Steering Assist Fault and Service Now were already showing (U0420-82 and the 0x77 speed). The 2018 project saw "Steering Loss - Stop Safely" with `FF` on 0x02D - 0x089, so the cluster may read something in that range. `epasfail` without `--dummydata` (Service Now not showing) also changed nothing at `2` / `3`, so on this 2015 cluster the warnings don't come from 0x82 directly. They follow U0420-82 and, for Service Now, the 0x77 speed.
+- `epasfail` / `epasstat` in `interactive_brute_force.py` sweep the failure and state fields to see if the cluster reads them for the steering warnings.
 
 # 0x83 - Clockspring
 
@@ -334,8 +371,11 @@ Checked against every log (`0x202` speed, `0x91` yaw):
 |---|---|---|
 | 2 - 3 | Actual / delivered torque? | Signed, offset `0x8000` |
 | 4 - 5 | Requested torque? | Signed, offset `0x8000`. Rises with the pedal (corr 0.91 with `0x204` pedal) |
+| 6 | Forward Gear? | 0x00 on 15-17 manual. 0x10 in 15-17 auto until P/R. used in 2018+ |
 
 - The two are equal when coasting / off throttle.
+- 8 Nov 2026 - byte 6 is `0x00` in every GT350 (manual) log. In v-ivanyshyn's log (an automatic, see `0x230` byte 1) it is `0x10` the whole drive and drops to `0x00` at 68.25 s, the moment the shifter leaves D/N for R and P. Likely an "in a forward gear" flag for automatics, untested on the cluster.
+- The 2018+ Ford DBC (`TorqueDataEngFlags`) has a drive mode in byte 6's high nibble, a counter in its low nibble and a checksum in byte 7. The 2015 - 2017 logs have no counter there, byte 7 is always `00`.
 
 # 0x202 - Speed Gauge
 
@@ -377,6 +417,7 @@ Checked against every log (`0x202` speed, `0x91` yaw):
 |---|---|---|
 | 0 (upper nibble) | Current gear (manual) | `0x1_` 1st (RPM/MPH ~168), `0x2_` 2nd (~115), `0x3_` 3rd (~83), `0x4_` 4th (~64), `0x5_` 5th (~50), `0xF_` neutral / clutch in / unknown |
 | 1 | Reverse | `0x1C` not in reverse, `0x02` reverse (`reverse.csv`) |
+| 1 | Shifter (automatic, v-ivanyshyn's log) | `0x08` the whole drive (D), then `06` `04` `02` `04` `00` as it is shifted at the end (likely N, R, P). Untested |
 | 4 | Oil or transmission temp? | `raw - 60 = °C`, ~14 °C at cold start, ~37 °C after the drive |
 
 # 0x331 - Climate / Outside Temp?
@@ -390,6 +431,34 @@ Checked against every log (`0x202` speed, `0x91` yaw):
 | 7 | | `4` / `2` with ambient light or headlights on / off (per v-ivanyshyn) |
 
 - Bytes 0, 1, 6 constant in the log. Not in the GT350 logs, likely only on cars with automatic climate control.
+
+# 0x38D - Key / Start Messages, Track Apps
+
+**Sample:** `20 00 00 00 00 00 00 00` (v-ivanyshyn's GT log, running) · **Status:** Confirmed (byte 4, `interactive_brute_force.py keymsg`)
+
+Ford DBC `Body_Info_6_FD1`, sent by the gateway. Sending `0x38D` at all (any payload) also shows Track Apps in the menu.
+
+| Byte | Signal | Values |
+|---|---|---|
+| 0 | Admin key count (DBC `KeyAdmnTot_No_Cnt`, high nibble) | `0x20` = 2 keys in both logs |
+| 4 | Key / start message (DBC `immoMsgTxt_D_Rq`, high nibble) | See below |
+
+| Byte 4 | Message |
+|---|---|
+| `0x00` | None (v-ivanyshyn's GT log) |
+| `0x10` | Press Brake to Start |
+| `0x30` | No Key Detected |
+| `0x40` | No Key Detected |
+| `0x60` | Run Power Active |
+| `0x70` | Starting System Fault |
+| `0x80` | Key Program Successful |
+| `0x90` | Key Program Failure |
+| `0xA0` | Max Number of Keys |
+| `0xB0` | Not Enough Keys Learned |
+| `0xC0` | Press Clutch to Start |
+
+- v-ivanyshyn saw byte 4 spike on engine start, which fits a start message showing briefly.
+- Other message fields per the DBC, untested: byte 4 bits 3 - 0 perimeter alarm (`PrmtrAlrmEvnt_D_Stat`), byte 3 bits 1 - 0 steering lock (`SteWhlLckMsgTxt_D_Rq`), byte 5 bits 3 - 1 door latch (`DrLatchMsgTxt_D_Rq`), byte 5 bits 7 - 6 security (`SecurityMsgTxt_D_Rq`).
 
 # 0x3B2 - Track Apps, Turn Signals
 
@@ -444,6 +513,23 @@ Turn signals in the logs (`run_left_turn` / `run_right_turn` / `run_hazards`), O
 Hazards on   44 8A C6 0C 18 00 C0 82
 Hazards off  44 88 C6 0C 10 00 80 02
 ```
+
+# 0x3B4 - TPMS Lamp and Status
+
+**Sample:** `40 11 11 FF 20 20 00 00` (freeze frame, no lamp, no message) · **Status:** Confirmed (`interactive_brute_force.py tpmslamp`, `tpmssys`, `tpmslf` / `rf` / `rr` / `lr`)
+
+Ford DBC `Tire_Pressure_Status` (CGEA 1.2 2011). Not in the GT350 logs, v-ivanyshyn's GT log has `34 11 21 FF 20 20 00 00` (system 3 low, lamp solid, RR status 2). Without `0x3B4` the cluster shows the TPMS lamp and a fault, sending the freeze frame value clears both until the frame stops.
+
+| Byte | Signal | Values |
+|---|---|---|
+| 0, bits 7 - 4 | System status (`Tire_Press_System_Stat2`) | `0x1_` Tire Pressure Monitor Fault, `0x2_` Tire Pressure Sensor Fault, `0x3_` Tire Pressure Low window (no tire highlighted), `0x4_` nothing (freeze frame) |
+| 0, bits 3 - 2 | Lamp (`Tire_Press_Telltale`) | `0x40` off, `0x44` solid, `0x48` flashing, `0x4C` flashing |
+| 1 | LF (high nibble) / RF (low nibble) status | `2` or `4` highlights that tire, same as byte 2 (`0x21` / `0x41` LF, `0x12` / `0x14` RF). `1` in both logs |
+| 2 | RR (high nibble) / LR (low nibble) status | `2` or `4` highlights that tire in the Tire Pressure Low popup and the tire pressure gauge page (`0x21` / `0x41` RR, `0x12` / `0x14` LR). Every other value: nothing. Needs system status 3 (`0x34`): with system status 4 no value did anything. `1` in the freeze frame, RR `2` with a low RR in v-ivanyshyn's log |
+| 3 | Inner rears (duallys) | `FF` = not fitted |
+| 4, 5 | | `20 20` in both logs, not in the DBC |
+
+- The lamp and system status are separate fields: the system messages show with the lamp bits at 0.
 
 # 0x3B5 - Tire Pressure
 
@@ -558,6 +644,20 @@ Sent by the body control module (BCM), it's the vehicle config the other modules
 |---|---|---|
 | 3 | Coolant temp | `raw - 60 = °C` like `0x156`. `0x4B` (15 °C) at cold start, rising every few seconds to ~`0x9C` (96 °C). Frozen while the engine is off |
 
+# 0x42C - Occupant Sensor Blocked, Cruise Status
+
+**Sample:** `80 00 00 00 9C 60 00 00` (quiet) · **Rate:** 51 ms · **Status:** Confirmed (byte 0, `interactive_brute_force.py occupant` / `occupantbits`)
+
+Logged values: GT350 `8C 00 00 00 9C 60 00 00` in every log (`84 ..` and `8C 04 ..` briefly in `start.csv`), freeze frame `8C 00 00 00 68 A0 00 00`, v-ivanyshyn's GT `8C 60 00 00 B2 20 00 00`. Replaying any of them shows Occupant Sensor Blocked on this cluster.
+
+| Byte | Signal | Values |
+|---|---|---|
+| 0 | Cruise status (bits 7 - 5) | From a 2018 GWM bench (2018-2023_S550_Digital_Cluster): the GWM repacks the PCM's `CcStat_D_Actl` here, bit 4 set while the PCM's cruise frame is present, `0x80` with no cruise data. Not tested here |
+| 0 | Occupant Sensor Blocked (bit 3, `0x08`) | `0x80` - `0x87` nothing. `0x88`, `0x8C`, `0x8F` show Occupant Sensor Blocked with the passenger icon, gone as soon as the frame stops |
+| 1, 4, 5 | | Data in the logs, but flipping every bit of bytes 0 - 5 one at a time (from `80 00 00 00 9C 60 00 00`) changed nothing visible beyond bit 3 above |
+
+- Sending `0x42C` at all stops the cluster's U0100 (lost communication with the PCM), found with `ipc_dtc_test.py scan`. With the PCM counted as present the cluster then logs U0401-82 (invalid data from the PCM, alive counter), likely `0x202`'s missing counter (`ipc_dtc_test.py probe ... 202roll`).
+
 # 0x42D - Inlet Air Temp
 
 **Sample:** `00 02 91 00 00 00 F0 00` · **Rate:** ~2 Hz · **Status:** Confirmed
@@ -588,12 +688,47 @@ Sent by the body control module (BCM), it's the vehicle config the other modules
 - The cluster is the odometer's source. This cluster sends `84 01 B9 7E 00 00 04 00` (`0x01B97E` = 112,990 km / 70,209 mi). Sending it from another device puts two senders on one ID.
 - It doesn't take arbitrary values, a mileage not close to what's stored shows `-------`.
 - Bench changes: byte 0 `0x84` / `0x04`, byte 6 `0x24` / `0x64` / `0xA4` / `0xE4` (byte 6 changed right after an Enter press in the menu).
+- 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names it `Cluster_Info1_FD1`: the cluster's menu settings sent out to the other modules. openpilot's Ford port reads `DrvSlipCtlMde_D_Rq` from it to tell if traction control is off. Untested on this cluster, layout from the DBC (Motorola bit order):
+
+| Bits | Signal (DBC name) | Values |
+|---|---|---|
+| byte 0 bit 7 | `AccDeny_B_RqIpc` | 1 = adaptive cruise denied. This cluster flips `0x84` / `0x04` |
+| byte 0 bit 6 | `MetricActv_B_Actl` | 1 = metric units |
+| byte 0 bit 2 | `LscmbbStat_B_Actl` | low speed collision braking on / off |
+| byte 0 bit 1 | `NtrlTowMdeEnbl_B_RqDrv` | neutral tow requested |
+| bytes 1 - 3 | `OdometerMasterValue` | km |
+| byte 4 bits 1 - 0 | `DrvSlipCtlMde_D_Rq` | traction / stability mode: 0 default, 1 - 3 "off" modes (likely the Track Apps / Sport ESC choices) |
+| byte 4 bit 2 | `DrvSlipCtlMde_B_Rq2` | pressed |
+| byte 5 bit 3 | `EngOilLife_B_RqReset` | oil life reset from the menu |
+| byte 6 bit 7 | `BulbChkActv_B_Stat` | bulb check active (at power up) |
+| byte 6 bits 6 - 5 | `HsaMde_D_Rq` | Hill Start Assist setting: 0 off, 1 automatic, 2 manual. Likely the byte 6 change after Enter |
+| byte 6 bit 4 | `ParkDetect_Stat` | in park |
+| byte 6 bits 3 - 2 | `ReducedGuard_D_Rq` | 1 off, 2 on |
+
+- Watching `cluster_tx_changes.csv` while changing the traction mode and Hill Start Assist in the menu would confirm bytes 4 and 6.
 
 # 0x431 - Transmission Warnings
 
-**Sample:** `05 1D 40 EB B7 83 46 00` · **Status:** Confirmed
+**Sample:** `05 1B 40 04 0F 83 42 00` (no message) · **Rate:** ~1 Hz · **Status:** Confirmed (`interactive_brute_force.py trans` / `transwarm`)
 
-Controls these warning messages: Transmission Adaptive Mode, Transmission Indicator Mode, Transmission Warming Up, Transmission Adjusted.
+Not in any DBC. Logged values: warm (`longerdrive.csv`) `05 1B 40 04 0F 83 42 00`, idle `05 1D 42 03 97 83 42 00`, freeze frame `05 1D 40 EB B7 83 46 00` (shows Transmission Warming Up). Leaving `0x431` out shows no transmission message.
+
+Messages found by flipping one bit at a time (only one bit changed from the base each time):
+
+| Base | Bit flipped | Frame | Message |
+|---|---|---|---|
+| warm | byte 3 bit 3 (`0x08`) | `05 1B 40 0C 0F 83 42 00` | Transmission Malfunction |
+| warm | byte 3 bit 4 (`0x10`) | `05 1B 40 14 0F 83 42 00` | Transmission Service Required |
+| freeze | none | `05 1D 40 EB B7 83 46 00` | Transmission Warming Up |
+| freeze | byte 3 bit 0 (`0x01`) | `05 1D 40 EA B7 83 46 00` | Transmission Warming Up (unchanged) |
+| freeze | byte 3 bit 2 (`0x04`) | `05 1D 40 EF B7 83 46 00` | Transmission Indicator Mode Lockup |
+| freeze | byte 3 bit 3 (`0x08`) | `05 1D 40 E3 B7 83 46 00` | Transmission Adapt Mode |
+| freeze | byte 4 bit 5 (`0x20`) | `05 1D 40 EB 97 83 46 00` | Transmission Overheat, Stop |
+| freeze | byte 4 bit 7 (`0x80`) | `05 1D 40 EB 37 83 46 00` | Transmission Too Hot, Press Brake |
+
+- Byte 3 looks like a message number rather than separate flags (`04` nothing, `0C` malfunction, `14` service, `EB` / `EA` warming up, `EF` lockup, `E3` adapt mode), not yet swept value by value.
+- Byte 4's messages appeared from the freeze frame base only. The GT350's idle frame has byte 4 `0x97` (= freeze with bit 5 cleared), which is unlikely to mean overheat at idle, so byte 4 may depend on byte 3 or the other bytes. Untested: replay the idle frame.
+- Every other bit of both frames: nothing visible. Byte 3 or byte 6 = `FF` shows Transmission Limited Function (2018-2023_S550_Digital_Cluster bench).
 
 # 0x43E - Air Fuel Ratio, Cylinder Head Temp, Boost / Vacuum
 
@@ -671,3 +806,4 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 
 - `s550_cluster.py` sends `0x581 0x596 0x59E 0x5B3 0x5B5`. The cluster's own is `0x591`.
 - Faking all of `0x500 - 0x5FF` (`--nm`) changed nothing.
+- 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names them AutoSar network management frames: `0x59E` GWM, `0x5B5` PSCM, `0x596` ABS. Byte 0 is the node ID, byte 1 the control byte. We already send `0x59E` and `0x5B5` and the cluster still sets U0146 (GWM) and U0420 (PSCM), so it wants more than these alive frames.

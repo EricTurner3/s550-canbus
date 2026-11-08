@@ -1,5 +1,78 @@
 # Changelog
 
+## [2.2.0] - 2026-11-08
+
+Fault hunting. Five more IDs found that clear startup faults or drive warning messages, a DTC reader for the
+cluster, and Ford DBC decodes for the steering, speed and cluster settings frames. The blind spot, cross traffic,
+occupant, key, TPMS and transmission messages can now be driven from `s550_data.py`.
+
+### New message IDs
+
+Confirmed on the bench cluster unless marked *from DBC* / *from logs*. Full details are in [database.md](database.md).
+
+| ID | What it does |
+|---|---|
+| `0x3A6` / `0x3A7` | **Blind spot radars** (`00 40 02 00 00 00 00 00` on both). Clears U0232 / U0233 and the blind spot and cross traffic warnings. Blind spot and cross traffic now show as enabled in Driver Assist |
+| `0x42C` | **Clears U0100** (lost comm with the PCM) just by being sent. Byte 0 bit 3 shows Occupant Sensor Blocked (`0x88` / `0x8C`). DBC name `Battery_Mgmt_2` |
+| `0x38D` | **Key / start messages**, byte 4: `10` Press Brake to Start, `30` No Key Detected, `60` Run Power Active, `70` Starting System Fault, `80` Key Program Successful, `90` Key Program Failure, `A0` Max Number of Keys, `B0` Not Enough Keys Learned, `C0` Press Clutch to Start |
+| `0x3B4` | **TPMS status.** Byte 0: lamp off / solid / flashing (`40` / `44` / `48`), system messages 1 - 3 (monitor fault, sensor fault, tire pressure low). Bytes 1 - 2: one nibble per tire, `2` highlights it in the Tire Pressure Low window (needs system `3`) |
+| `0x431` | **Transmission messages**, one bit each: warming up, adapt mode, indicator mode lockup, malfunction, service required, overheat stop, too hot press brake |
+| `0x82` | *From DBC* `EPAS_INFO`: column torque, motor current, module voltage, `EPAS_Failure` and module state (start up `0` → `4` cranking → `1` → `2` assisting in `start.csv`). Bytes 2 - 3 are the motor current, not fuel consumption. The cluster doesn't take its steering messages from this frame |
+| `0x77` | *From DBC* `BrakeSnData_3` from the ABS: speed, yaw, lateral and longitudinal acceleration. The "Hill Start Assist Not Available" byte is the longitudinal acceleration (`E6 02` ≈ 0, `EC 02` = -17.8 m/s²). Saying the car is moving adds Steering Fault Service Now |
+| `0x430` | *From DBC* `Cluster_Info1`, the cluster's own settings out to the car: odometer, traction / ESC mode, Hill Start Assist setting, bulb check |
+| `0x200` / `0x230` | *From logs* byte 6 `0x10` is an "in forward gear" flag on automatics, `0x230` byte 1 is the automatic's shifter position (v-ivanyshyn's car) |
+| `0x085` / `0x202` | *From logs* counters checked against both logs: `0x085` checksum matches every frame, `0x202`'s counter steps by 2 per frame |
+| `0x59E` `0x5B5` `0x596` | *From DBC* AutoSar network management frames for the GWM, PSCM and ABS |
+
+### s550_cluster.py
+
+- **New senders:** `send_tpms_status` (`0x3B4`), `send_trans_warnings` (`0x431`), `send_occupant` (`0x42C`), `send_key_messages` (`0x38D`), `send_blind_spot` (`0x3A6` / `0x3A7`). All scheduled.
+- **`DUMMY_SCHEDULE`** moved in from `interactive_brute_force.py`, with `send_wheel_speeds` (`0x217`), `send_vehicle_speed_77` and `send_vehicle_speed_415`.
+- `send_misc_12` (`0x82`) sends the GT350's driving frame `83 00 14 34 AF 00 44 FF` (was `5C ..`, a constant -2.25 Nm on the steering column).
+- **COM port retry:** opening COM3 retries for ~10 s instead of crashing with "Access is denied", and the port is closed on exit so the next run opens it right away. Applies to every script that imports `s550_cluster.py`.
+
+### s550_data.py
+
+- New warning flags, `True` shows the message:
+  - Tires: `warning_tire_low_fl` / `_fr` / `_rr` / `_rl` (any combination), `warning_tire_sensor_fault`
+  - Transmission: `warning_trans_overheat`, `_too_hot`, `_malfunction`, `_service`, `_adapt_mode`, `_indicator_lockup`, `_warming_up`
+  - `warning_occupant_sensor_pass`
+  - Key / start: `warning_key_starting_fault`, `_not_detected`, `_press_brake`, `_press_clutch`, `_run_power_active`
+  - In a group that shows one message at a time, the first `True` wins.
+
+### interactive_brute_force.py
+
+- **New presets:** `keymsg`, `occupant`, `occupantbits`, `tpmssys`, `tpmslamp`, `tpmslf` / `rf` / `rr` / `lr`, `trans`, `transwarm`, `epasfail`, `epasstat`.
+- `--mute IDS`: stop sending these IDs (from `s550_cluster.py` or `--dummydata`), to find which frame causes a warning.
+- `--speed MPH`: speed shown on the cluster and sent in the speed frames (default 40).
+
+### Added
+
+- `ipc_dtc_test.py`: reads and clears the cluster's DTCs over UDS (`0x720` / `0x728`).
+  - `read`, `clear`, `probe` (send candidate frames, compare DTCs before and after)
+  - `scan` (hold batches of IDs and bisect to the one that keeps a code away)
+  - rolling-counter candidates (`085roll`, `07Eroll`, `202roll`, `3CCroll`)
+  - `dummy` adds `DUMMY_SCHEDULE`
+- `other_refs/VehicleCAN.dbcx`: Ford powertrain DBC with value tables (`EPAS_Failure`, gateway routing) and `other_refs/MRR_CAN.dbcx` (front radar bus, not useful for the cluster).
+
+### database.md
+
+- New sections for `0x38D`, `0x3A6` / `0x3A7`, `0x3B4`, `0x42C`, `0x431`. `0x77`, `0x82`, `0x200`, `0x230`, `0x430` and `0x5xx` updated with the DBC layouts.
+- The cluster sits on HS3 behind the GWM: the DBC's HS3 gateway frames match what the cluster transmits on the bench.
+
+### Still open
+
+Remaining with dummy data: Fuel Level Low, See Manual, Steering Assist Fault (plus Steering Fault Service Now while moving) and a red battery icon. DTCs after a clear:
+
+| DTC | Cause | Next step |
+|---|---|---|
+| P0460-13, P1346-13 | Fuel level sender inputs open (wired, not CAN) | Resistors on C220 pins 10/2 and 9/1, ~100 Ω to start |
+| U0420-82 | PSCM data invalid, drives the steering warnings. Correct `0x085` / `0x07E` counters and `0x82` don't clear it | Capture from the GWM / HS3 side |
+| U0401-82 | PCM data invalid. `0x202` with a correct counter doesn't clear it | Same |
+| U0146, U0184 | GWM, radio missing (U0184 has no lamp) | Same |
+
+- The red battery icon isn't `0x42C`, v-ivanyshyn's frames, or any frame we send.
+
 ## [2.0.0] - 2026-11-07
 
 A major version: the bench tools were rewritten with new command lines, `s550_cluster.py` now runs at the car's real
