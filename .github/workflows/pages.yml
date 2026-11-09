@@ -5,7 +5,7 @@ name: Pages
 on:
   push:
     branches: [master]
-    paths: ['database.md', 'build_web.py', 'web/**', 'can/**', 'other_refs/**', 'cluster_tx.csv', '.github/workflows/pages.yml']
+    paths: ['database.md', 'build_web.py', 'docs/**', 'can/**', 'other_refs/**', 'cluster_tx.csv', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

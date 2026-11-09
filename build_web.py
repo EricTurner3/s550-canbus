@@ -2,7 +2,7 @@
     build_web.py
     8 Nov 2026
 
-    Builds web/data.js for the database viewer (web/index.html) from database.md and the logs it lists.
+    Builds docs/data.js for the database viewer (docs/index.html) from database.md and the logs it lists.
     database.md stays the only source of truth, this just parses it:
 
       - Each "# 0xNNN - Name" heading (and "## 0xNNN - Name" under the 2018+ digital heading) is an ID entry.
@@ -12,7 +12,7 @@
         and the first frame of each ID from that vehicle becomes one sample row.
 
     Standard library only. Usage:
-        python build_web.py            then open web/index.html
+        python build_web.py            then open docs/index.html
 '''
 
 import base64
@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DB_MD = os.path.join(ROOT, 'database.md')
-OUT = os.path.join(ROOT, 'web', 'data.js')
+OUT = os.path.join(ROOT, 'docs', 'data.js')
 
 SAMPLES_PER_VEHICLE = 1     # distinct payloads kept per ID per vehicle, first ones seen
 

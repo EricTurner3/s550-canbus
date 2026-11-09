@@ -1,6 +1,10 @@
 # Changelog
 
-## [2.3.0]
+## [2.3.1] - 8 Nov 2026
+
+- update `/web` to `/docs` so the GitHub pages compiles
+
+## [2.3.0] - 8 Nov 2026
 
 A searchable web viewer for the CAN database, built from database.md so there's still only one source of truth.
 Hosted on GitHub Pages, or run `python build_web.py` and open `web/index.html` locally (no server or installs).
