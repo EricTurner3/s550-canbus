@@ -1,0 +1,46 @@
+# Builds web/ from database.md + the logs and publishes it to GitHub Pages.
+# One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
+name: Pages
+
+on:
+  push:
+    branches: [master]
+    paths: ['database.md', 'build_web.py', 'web/**', 'can/**', 'other_refs/**', 'cluster_tx.csv', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # .gitmodules uses Windows paths, so fetch v-ivanyshyn's log directly instead of via submodules
+      - name: Fetch v-ivanyshyn logs
+        run: |
+          rm -rf other_refs/v-ivanyshyn_parse_can_logs
+          git clone --depth 1 https://github.com/v-ivanyshyn/parse_can_logs other_refs/v-ivanyshyn_parse_can_logs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python build_web.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

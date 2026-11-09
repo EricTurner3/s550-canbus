@@ -18,12 +18,16 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
 
 ## Sources
 
-| Source | Bus | Notes |
-|---|---|---|
-| `/can/*.csv` | HS1 (OBD port, through the gateway) | 2016 GT350. Missing 37 IDs the GT has (`0x156 0x166 0x171 0x179 0x331 0x3B5 0x421 0x42D 0x43E` ...), so replaying them on this GT cluster throws warnings |
-| `other_refs/v-ivanyshyn_parse_can_logs` | HS1 + HS3 merged | 2016 GT 5.0, 6R80 automatic |
-| `other_refs/2015GTPremium_FreezeFrame.csv` | HS-CAN / HS-CAN2 | One sample per ID from this cluster's car |
-| `mustang.c` ([ufnalski's project](https://github.com/ufnalski/ford_mustang_cluster_h503rb/blob/main/Core/Src/mustang.c)) | | 2016 Mustang base V6 automatic. Source of `0x3B2` and the `0x76` g meter which enabled TrackApps |
+| Source | Vehicle | Bus | Notes |
+|---|---|---|---|
+| `/can/*.csv` | 2016 Mustang GT350, 6MT | HS1 (OBD port, through the gateway) | Missing 37 IDs the GT has (`0x156 0x166 0x171 0x179 0x331 0x3B5 0x421 0x42D 0x43E` ...), so replaying them on this GT cluster throws warnings |
+| `other_refs/v-ivanyshyn_parse_can_logs` | 2016 Mustang GT, 6R80 | HS1 + HS3 merged | |
+| `other_refs/2015GTPremium_FreezeFrame.csv` | 2015 Mustang GT Premium, 6MT | HS-CAN / HS-CAN2 | One sample per ID from this cluster's car |
+| `cluster_tx.csv` | Bench cluster (2015 analog, FR33) | HS3 | What the cluster transmits on its own, see [Cluster (IPC) Transmits](#cluster-ipc-transmits) |
+| `mustang.c` ([ufnalski's project](https://github.com/ufnalski/ford_mustang_cluster_h503rb/blob/main/Core/Src/mustang.c)) | 2016 Mustang V6, automatic | | Source of `0x3B2` and the `0x76` g meter which enabled TrackApps |
+
+The web viewer (`web/`, built by `build_web.py`) takes the first sample of each ID from every source above that has a
+log, and labels it with the Vehicle column.
 
 The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it waits for has to come back on HS3.
 

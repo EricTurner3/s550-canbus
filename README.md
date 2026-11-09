@@ -15,6 +15,7 @@ Supporting Scripts
 * ports.py - Script that was pulled from StackOverflow to show which port the USB-to-CAN interface is running on. Required to communicate with the IPC
 * decode_can_log.py - Takes a CANdump from the can folder and converts the b64 data string to a more easily readable byte array
 * replay.py - Attempt to replay data from the CANdump at a slower pace to determine functionality (doesn't quite work)
+* build_web.py - Builds the searchable database viewer in `web/` from database.md and the logs. Run `python build_web.py` and open `web/index.html` (no server or installs needed). GitHub Pages rebuilds it on every push to master
 
 Requirements:
 * USB-to-CAN adapter. I am using a [CANable](https://openlightlabs.com/collections/frontpage/products/canable-0-4)

@@ -1,5 +1,44 @@
 # Changelog
 
+## [2.3.0]
+
+A searchable web viewer for the CAN database, built from database.md so there's still only one source of truth.
+Hosted on GitHub Pages, or run `python build_web.py` and open `web/index.html` locally (no server or installs).
+
+### Web viewer (`web/`)
+
+- **Search** by hex ID (`3b3`, `0x3B3`, `0x03B3`) or any word in the notes. `/` focuses the search box, Enter opens the
+  first result. Every ID has its own link (`#0x3B3`).
+- **Sample grid** per ID: bytes B0 - B7 in columns, one row per vehicle log (first frame of that ID from each car), plus
+  the `**Sample:**` frames and labeled code block frames from database.md. Bytes that differ from the most common
+  value in their column are bold.
+- **Color coded notes panel**: each byte has a color. Clicking a byte column highlights the notes for that byte and
+  fades the rest, clicking a note highlights its bytes, clicking a cell shows its hex / decimal / bits.
+- An ID's page shows every section about it: 2015-17 analog, 2018+ digital and cluster transmit. Each note links back
+  to its line in database.md.
+- IDs seen in the logs but not documented yet get a page with just the sample grid (65 of them).
+- Topic pages for Conventions, Sources, Cluster (IPC) Transmits, the 2018+ digital cluster and fault suppression.
+- Light / dark mode, works at phone width.
+
+### build_web.py
+
+- Parses database.md into `web/data.js` (generated, gitignored). Standard library only, under a second over all logs.
+- `# 0xNNN - Name` headings (and `## 0xNNN` under the 2018+ section) become ID entries. Tables with a `Byte`, `Bytes`,
+  `Bits` or `Byte / bit` column tag each row with its bytes, and prose like "byte 3" / "bytes 4 - 5" / "b2" is tagged too.
+- Reads every log format in the repo: python-can CSV (`/can`), v-ivanyshyn's text log, the freeze frame export and
+  `cluster_tx.csv`. `SAMPLES_PER_VEHICLE` sets how many distinct frames per car are kept.
+
+### database.md
+
+- Sources table has a new **Vehicle** column, which labels the sample rows in the viewer. Added a `cluster_tx.csv`
+  row (bench cluster).
+
+### GitHub Pages
+
+- `.github/workflows/pages.yml` rebuilds and deploys the viewer on every push to master that touches database.md, the
+  logs or the viewer. One-time setup: Settings → Pages → Source: GitHub Actions. The workflow clones v-ivanyshyn's
+  log directly, since `.gitmodules` uses Windows paths.
+
 ## [2.2.0] - 2026-11-08
 
 Fault hunting. Five more IDs found that clear startup faults or drive warning messages, a DTC reader for the

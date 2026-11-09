@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S550 CAN Database</title>
+<meta name="description" content="Ford S550 Mustang CAN IDs, byte layouts and log samples, built from database.md">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23c2410c'/><text x='8' y='12' font-size='9' text-anchor='middle' fill='white' font-family='monospace'>0x</text></svg>">
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e3e2de; --soft: #f0efeb;
+  --accent: #c2410c; --link: #1d5fbf;
+  --ok: #2f7d32; --logs: #a06400; --tx: #2b62b8; --digital: #7a3fb0;
+  --b0: hsl(4 68% 47%);  --b1: hsl(26 85% 44%); --b2: hsl(45 90% 36%); --b3: hsl(135 50% 36%);
+  --b4: hsl(178 70% 32%); --b5: hsl(212 70% 46%); --b6: hsl(262 52% 52%); --b7: hsl(322 60% 47%);
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151514; --panel: #1d1d1b; --ink: #e9e8e4; --muted: #9a9993; --line: #31302d; --soft: #262624;
+    --accent: #f08a4b; --link: #7fb0ff;
+    --ok: #74c178; --logs: #e0a640; --tx: #7ea8ef; --digital: #c099ea;
+    --b0: hsl(4 80% 66%);  --b1: hsl(26 90% 62%); --b2: hsl(48 85% 58%); --b3: hsl(135 50% 58%);
+    --b4: hsl(178 60% 52%); --b5: hsl(212 85% 68%); --b6: hsl(262 75% 74%); --b7: hsl(322 70% 70%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151514; --panel: #1d1d1b; --ink: #e9e8e4; --muted: #9a9993; --line: #31302d; --soft: #262624;
+  --accent: #f08a4b; --link: #7fb0ff;
+  --ok: #74c178; --logs: #e0a640; --tx: #7ea8ef; --digital: #c099ea;
+  --b0: hsl(4 80% 66%);  --b1: hsl(26 90% 62%); --b2: hsl(48 85% 58%); --b3: hsl(135 50% 58%);
+  --b4: hsl(178 60% 52%); --b5: hsl(212 85% 68%); --b6: hsl(262 75% 74%); --b7: hsl(322 70% 70%);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono { font-family: var(--mono); font-size: .92em; }
+code { background: var(--soft); padding: 0 .2em; border-radius: 3px; }
+
+header { position: sticky; top: 0; z-index: 5; display: flex; gap: 16px; align-items: center;
+  padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 15px; margin: 0; white-space: nowrap; }
+header h1 a { color: inherit; }
+header h1 span { color: var(--accent); font-family: var(--mono); }
+#q { flex: 1; max-width: 520px; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--ink); }
+#q:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+header .gen { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+.layout { display: grid; grid-template-columns: 290px minmax(0, 1fr) minmax(320px, 440px); min-height: calc(100vh - 53px); }
+nav { border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; height: calc(100vh - 53px);
+  position: sticky; top: 53px; }
+nav h3 { margin: 14px 14px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+nav a { display: grid; grid-template-columns: 58px 1fr; gap: 0 8px; padding: 5px 14px; color: var(--ink);
+  border-left: 3px solid transparent; }
+nav a:hover { background: var(--soft); text-decoration: none; }
+nav a.on { background: var(--soft); border-left-color: var(--accent); }
+nav a .id { font-family: var(--mono); font-weight: 600; }
+nav a .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+nav a .tags { grid-column: 2; font-size: 11px; color: var(--muted); }
+nav a.topic { grid-template-columns: 1fr; }
+nav .empty { padding: 10px 14px; color: var(--muted); }
+
+main { padding: 20px 24px 40px; min-width: 0; }
+aside { border-left: 1px solid var(--line); background: var(--panel); padding: 20px 20px 40px; min-width: 0; }
+
+.title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 6px; }
+.title h2 { margin: 0; font-size: 22px; }
+.title h2 .id { font-family: var(--mono); color: var(--accent); margin-right: 10px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 18px; }
+.pill { font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.pill.ok { color: var(--ok); border-color: currentColor; }
+.pill.logs { color: var(--logs); border-color: currentColor; }
+.pill.tx { color: var(--tx); border-color: currentColor; }
+.pill.digital { color: var(--digital); border-color: currentColor; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.card + .card, .card + p { margin-top: 14px; }
+.grid-wrap { overflow-x: auto; }
+table.grid { border-collapse: collapse; width: 100%; font-family: var(--mono); }
+table.grid th, table.grid td { padding: 7px 10px; text-align: center; border-bottom: 1px solid var(--line); }
+table.grid th { font-size: 12px; font-weight: 700; color: var(--c, var(--muted)); cursor: pointer; user-select: none; position: relative;
+  border-top: 4px solid var(--c, var(--line)); background: var(--panel); }
+table.grid th.src, table.grid td.src { text-align: left; font-family: var(--sans); cursor: default; }
+table.grid td.src { font-size: 13px; white-space: nowrap; }
+table.grid td.src small { display: block; color: var(--muted); font-size: 11px; }
+table.grid td.b { cursor: pointer; font-size: 14px; }
+table.grid tr:last-child td { border-bottom: 0; }
+table.grid tr.doc td { color: var(--muted); }
+table.grid tr.doc td.b { color: var(--ink); opacity: .85; }
+table.grid .col-on { background: color-mix(in srgb, var(--c) 16%, transparent); }
+table.grid th.col-on { color: var(--c); }
+table.grid td.b.sel { outline: 2px solid var(--c); outline-offset: -2px; }
+table.grid td.b.diff { font-weight: 700; color: var(--accent); }
+table.grid td.na { color: var(--line); }
+.inspect { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 14px; border-top: 1px solid var(--line);
+  background: var(--soft); font-size: 13px; color: var(--muted); min-height: 41px; }
+.inspect b { color: var(--ink); font-family: var(--mono); font-weight: 600; }
+.inspect .bits span { font-family: var(--mono); display: inline-block; width: 1.25em; text-align: center; border-radius: 3px; }
+.inspect .bits span.one { background: color-mix(in srgb, var(--c) 25%, transparent); color: var(--ink); }
+.hint { color: var(--muted); font-size: 13px; margin: 10px 2px 0; }
+
+aside h3 { font-size: 13px; margin: 0 0 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+aside h3 .src { margin-left: auto; font-weight: 400; font-size: 12px; }
+aside section + section { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
+aside p, aside ul { margin: 0 0 10px; }
+aside ul { padding-left: 18px; }
+.note { transition: opacity .15s, background .15s; border-radius: 6px; }
+.focus .note:not(.hit) { opacity: .38; }
+.focus .note.hit { font-weight: 600; }
+.focus .note.hit:not(li):not(tr) { background: color-mix(in srgb, var(--hc) 12%, transparent); }
+.focus li.note.hit, .focus tr.note.hit td { background: color-mix(in srgb, var(--hc) 12%, transparent); }
+.row-note { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 7px 8px 7px 10px; margin: 0 0 4px;
+  border-left: 3px solid var(--hc, var(--line)); background: var(--soft); cursor: pointer; }
+.row-note .sig { font-weight: 600; }
+.row-note .val { grid-column: 2; color: var(--ink); }
+.row-note .raw { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.chips { display: inline-flex; gap: 3px; flex-wrap: wrap; align-self: start; }
+.chip { font: 600 11px/1 var(--mono); padding: 3px 5px; border-radius: 4px; color: #fff; background: var(--c); }
+:root[data-theme="dark"] .chip { color: #111; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip { color: #111; } }
+li.note[data-bytes], p.note[data-bytes], tr.note[data-bytes] { cursor: pointer; }
+.callout { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 8px 12px; margin: 0 0 12px; border-radius: 0 6px 6px 0; }
+.callout.warning, .callout.caution { border-color: #c62828; }
+.tbl { overflow-x: auto; margin: 0 0 12px; }
+.tbl table { border-collapse: collapse; font-size: 13px; width: 100%; }
+.tbl th, .tbl td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl th { font-size: 12px; color: var(--muted); font-weight: 600; }
+pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-x: auto; font: 12.5px/1.5 var(--mono); }
+.topic { max-width: 900px; }
+.topic p, .topic ul { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+.back { display: none; }
+#theme { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 6px; padding: 5px 8px; cursor: pointer; font: inherit; font-size: 12px; }
+
+.no-notes .layout { grid-template-columns: 290px minmax(0, 1fr); }
+.no-notes aside { display: none; }
+
+@media (max-width: 1180px) {
+  .layout { grid-template-columns: 260px minmax(0, 1fr); }
+  aside { grid-column: 2; border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 760px) {
+  header { flex-wrap: wrap; gap: 8px; }
+  header .gen { display: none; }
+  #q { max-width: none; order: 3; flex-basis: 100%; }
+  .layout { display: block; }
+  nav { position: static; height: auto; border-right: 0; }
+  body.has-route nav { display: none; }
+  body.has-route .back { display: inline-block; margin-bottom: 10px; }
+  main, aside { padding: 16px; }
+  table.grid th, table.grid td { padding: 6px 5px; }
+  table.grid td.src { white-space: normal; min-width: 120px; }
+  table.grid td.src small { word-break: break-all; }
+  aside { border-top: 1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1><a href="#"><span>S550</span> CAN Database</a></h1>
+  <input id="q" type="search" placeholder="Search IDs or descriptions (0x3B3, tire pressure, byte…)" autocomplete="off" spellcheck="false">
+  <span class="gen" id="gen"></span>
+  <button id="theme" title="Toggle light / dark">◐</button>
+</header>
+<div class="layout">
+  <nav id="list"></nav>
+  <main id="main"></main>
+  <aside id="notes"></aside>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  'use strict';
+  const D = window.S550;
+  const $ = (s, el = document) => el.querySelector(s);
+  const main = $('#main'), notes = $('#notes'), list = $('#list'), q = $('#q');
+
+  if (!D) {
+    main.innerHTML = '<div class="topic"><h2>No data yet</h2><p>Run <code>python build_web.py</code> from the repo root, then reload this page.</p></div>';
+    return;
+  }
+  $('#gen').textContent = 'built ' + D.generated;
+
+  // ------------------------------------------------------------ theme
+  const themeBtn = $('#theme');
+  try { const t = localStorage.getItem('s550-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  themeBtn.onclick = () => {
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('s550-theme', next); } catch (e) {}
+  };
+
+  // ------------------------------------------------------------ index IDs
+  const idNum = id => id === '0x5xx' ? 0x500 - 0.5 : parseInt(id, 16);
+  const IDS = new Map();
+  const getId = id => IDS.get(id) || (IDS.set(id, { id, entries: [] }), IDS.get(id));
+  D.entries.forEach(e => e.ids.forEach(id => getId(id).entries.push(e)));
+  Object.keys(D.samples).forEach(getId);
+  for (const rec of IDS.values()) {
+    const main = rec.entries.find(e => e.variant !== 'cluster-tx') || rec.entries[0];
+    rec.name = main ? main.name : 'Not documented yet';
+    rec.status = main ? main.status.replace(/\s*\(.*$/, '').split(/[,·]/)[0].trim() : 'Logs only';
+    rec.variants = [...new Set(rec.entries.map(e => e.variant))];
+    rec.documented = rec.entries.length > 0;
+    rec.text = [rec.id, ...rec.entries.map(e => e.title + ' ' + flat(e.blocks))].join(' ').toLowerCase();
+  }
+  const SORTED = [...IDS.values()].sort((a, b) => idNum(a.id) - idNum(b.id));
+  D.topics.forEach(t => t.text = (t.title + ' ' + flat(t.blocks)).toLowerCase());
+
+  function flat(blocks) {
+    return blocks.map(b => b.md || b.text || (b.items || []).map(i => i.md).join(' ') ||
+      (b.rows ? b.head.join(' ') + ' ' + b.rows.map(r => r.cells.join(' ')).join(' ') : '') ||
+      (b.fields ? Object.values(b.fields).join(' ') : '')).join(' ');
+  }
+
+  // ------------------------------------------------------------ markdown (inline)
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function md(s) {
+    const code = [];
+    s = esc(s).replace(/`([^`]+)`/g, (_, c) => {
+      const id = /^0x[0-9a-f]{1,3}$/i.test(c) ? '0x' + parseInt(c, 16).toString(16).toUpperCase() : null;
+      code.push(id && IDS.has(id) ? `<a href="#${id}"><code>${c}</code></a>` : `<code>${c}</code>`);
+      return '\u0000' + (code.length - 1) + '\u0000';
+    });
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, u) => {
+      if (u.startsWith('#')) {
+        const m = u.match(/0x[0-9a-f]{1,3}/i);
+        u = m ? '#0x' + parseInt(m[0], 16).toString(16).toUpperCase() : (D.source ? D.source + u : u);
+      }
+      return `<a href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${t}</a>`;
+    });
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return s.replace(/\u0000(\d+)\u0000/g, (_, i) => code[i]);
+  }
+
+  const chip = n => `<span class="chip" style="--c:var(--b${n})">B${n}</span>`;
+  const byteAttr = b => b && b.length ? ` data-bytes="${b.join(',')}" style="--hc:var(--b${b[0]})"` : '';
+  const statusClass = s => /^confirmed/i.test(s) ? 'ok' : /^from logs/i.test(s) ? 'logs' : /cluster sends/i.test(s) ? 'tx' : '';
+  const variantLabel = { analog: '2015-17 analog', digital: '2018+ digital', 'cluster-tx': 'cluster transmit' };
+
+  function renderBlocks(blocks, topic) {
+    return blocks.map(b => {
+      switch (b.t) {
+        case 'meta': {
+          const f = Object.entries(b.fields).filter(([k]) => topic || (k !== 'sample' && k !== 'status' && k !== 'rate'));
+          const extra = f.map(([k, v]) => `<strong>${esc(k)}:</strong> ${md(v)}`).concat(b.extra.map(md));
+          return extra.length ? `<p class="muted">${extra.join(' · ')}</p>` : '';
+        }
+        case 'p': return `<p class="note"${byteAttr(b.bytes)}>${md(b.md)}</p>`;
+        case 'callout': return `<div class="callout note ${esc(b.kind)}"${byteAttr(b.bytes)}>${md(b.md)}</div>`;
+        case 'code': return `<pre>${esc(b.text)}</pre>`;
+        case 'ul': return '<ul>' + b.items.map(i => {
+          const style = (i.depth ? `margin-left:${i.depth * 16}px;` : '') + (i.bytes.length ? `--hc:var(--b${i.bytes[0]})` : '');
+          return `<li class="note"${i.bytes.length ? ` data-bytes="${i.bytes.join(',')}"` : ''}${style ? ` style="${style}"` : ''}>${md(i.md)}</li>`;
+        }).join('') + '</ul>';
+        case 'table': return b.byteCol >= 0 ? byteTable(b) : plainTable(b);
+      }
+      return '';
+    }).join('');
+  }
+
+  // a table with a Byte column: one colored card per row
+  function byteTable(b) {
+    return '<div class="tbl-cards">' + b.rows.map(r => {
+      const raw = r.cells[b.byteCol] || '';
+      const rest = r.cells.map((c, i) => [b.head[i], c]).filter((_, i) => i !== b.byteCol && _[1]);
+      const plain = /^[\d\s,\-]*$/.test(raw);
+      const [sig, ...vals] = rest;
+      return `<div class="row-note note"${byteAttr(r.bytes)}>
+        <span class="chips">${r.bytes.map(chip).join('') || '<span class="chip" style="--c:var(--muted)">?</span>'}</span>
+        <span>${sig ? `<span class="sig">${md(sig[1])}</span>` : ''}${plain ? '' : ` <span class="raw">${md(raw)}</span>`}</span>
+        ${vals.map(v => `<span class="val">${md(v[1])}</span>`).join('')}
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  function plainTable(b) {
+    return `<div class="tbl"><table><thead><tr>${b.head.map(h => `<th>${md(h)}</th>`).join('')}</tr></thead><tbody>` +
+      b.rows.map(r => `<tr class="note"${byteAttr(r.bytes)}>${r.cells.map(c => `<td>${md(c)}</td>`).join('')}</tr>`).join('') +
+      '</tbody></table></div>';
+  }
+
+  // ------------------------------------------------------------ list + search
+  function score(rec, term) {
+    if (!term) return 1;
+    const hex = term.replace(/^0x0*/, '');
+    const idh = rec.id.slice(2).toLowerCase();
+    if (/^[0-9a-fx]{1,5}$/.test(term)) {
+      if (idh === hex) return 100;
+      if (idh.startsWith(hex)) return 50;
+    }
+    if (rec.name.toLowerCase().includes(term)) return 20;
+    return term.split(/\s+/).every(w => rec.text.includes(w)) ? 5 : 0;
+  }
+
+  let current = '';
+  function renderList() {
+    const term = q.value.trim().toLowerCase();
+    const recs = SORTED.map(r => [r, score(r, term)]).filter(x => x[1] > 0);
+    if (term) recs.sort((a, b) => b[1] - a[1] || idNum(a[0].id) - idNum(b[0].id));
+    const item = r => `<a href="#${r.id}" class="${r.id === current ? 'on' : ''}">
+        <span class="id">${r.id}</span><span class="nm">${esc(r.name)}</span>
+        <span class="tags">${[r.status, ...r.variants.filter(v => v === 'digital').map(v => variantLabel[v])].filter(Boolean).join(' · ')}</span></a>`;
+    const docd = recs.filter(x => x[0].documented).map(x => item(x[0]));
+    const logs = recs.filter(x => !x[0].documented).map(x => item(x[0]));
+    const topics = D.topics.filter(t => !term || term.split(/\s+/).every(w => t.text.includes(w)))
+      .map(t => `<a class="topic ${'t/' + t.key === current ? 'on' : ''}" href="#t/${t.key}">${md(t.title)}</a>`);
+    list.innerHTML =
+      (topics.length ? `<h3>Topics</h3>` + topics.join('') : '') +
+      (docd.length ? `<h3>Documented (${docd.length})</h3>` + docd.join('') : '') +
+      (logs.length ? `<h3>In logs, not documented (${logs.length})</h3>` + logs.join('') : '') +
+      (!docd.length && !logs.length && !topics.length ? '<div class="empty">No matches</div>' : '');
+    return recs;
+  }
+  q.addEventListener('input', renderList);
+  q.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const first = list.querySelector('a'); if (first) location.hash = first.getAttribute('href'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); q.select(); }
+  });
+
+  // ------------------------------------------------------------ ID page
+  function samplesFor(rec) {
+    const rows = [];
+    const ids = rec.id === '0x5xx' ? Object.keys(D.samples).filter(i => /^0x5[0-9A-F]{2}$/.test(i)).sort() : [rec.id];
+    ids.forEach(id => (D.samples[id] || []).forEach(s => rows.push({
+      bytes: s.d.split(' '), label: D.vehicles[s.v].label + (ids.length > 1 ? ' · ' + id : ''), sub: s.f, doc: false })));
+    rec.entries.forEach(e => e.samples.forEach(s => rows.push({
+      bytes: s.d.split(' '), doc: true,
+      label: 'database.md' + (e.variant !== 'analog' ? ' (' + variantLabel[e.variant] + ')' : ''), sub: s.label || 'Sample' })));
+    return rows;
+  }
+
+  let active = [];      // selected byte columns
+  let sel = null;       // selected cell [row, col]
+
+  function renderId(rec) {
+    const rows = samplesFor(rec);
+    const meta = rec.entries.map(e => e.blocks.find(b => b.t === 'meta')).find(Boolean);
+    const rate = meta && meta.fields.rate;
+    const pills = [
+      rec.status && `<span class="pill ${statusClass(rec.status)}">${esc(rec.status)}</span>`,
+      ...rec.variants.filter(v => v !== 'analog' || rec.variants.length > 1).map(v => `<span class="pill ${v === 'digital' ? 'digital' : v === 'cluster-tx' ? 'tx' : ''}">${variantLabel[v]}</span>`),
+      rate && `<span class="pill">${md(rate)}</span>`,
+      rec.entries[0] && rec.entries[0].sentBy && `<span class="pill">s550_cluster.py: ${md(rec.entries[0].sentBy)}</span>`,
+    ].filter(Boolean);
+
+    // most common value per column, cells that differ from it are bold
+    const usual = [...Array(8).keys()].map(i => {
+      const n = {};
+      rows.forEach(r => { if (r.bytes[i] !== undefined) n[r.bytes[i]] = (n[r.bytes[i]] || 0) + 1; });
+      return Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+    });
+
+    main.innerHTML = `<a class="back" href="#">← All IDs</a>
+      <div class="title"><h2><span class="id">${rec.id}</span>${esc(rec.name)}</h2></div>
+      <div class="pills">${pills.join('')}</div>
+      ${rows.length ? `<div class="card"><div class="grid-wrap"><table class="grid"><thead><tr>
+        ${[...Array(8).keys()].map(i => `<th data-col="${i}" style="--c:var(--b${i})" title="Click to highlight notes for byte ${i}">B${i}</th>`).join('')}
+        <th class="src">Source</th></tr></thead><tbody>
+        ${rows.map((r, ri) => `<tr class="${r.doc ? 'doc' : ''}">${[...Array(8).keys()].map(i => r.bytes[i] === undefined
+          ? `<td class="b na" data-col="${i}" style="--c:var(--b${i})">··</td>`
+          : `<td class="b${rows.length > 1 && r.bytes[i] !== usual[i] ? ' diff' : ''}" data-col="${i}" data-row="${ri}" style="--c:var(--b${i})">${r.bytes[i]}</td>`).join('')}
+          <td class="src">${esc(r.label)}<small>${esc(r.sub)}</small></td></tr>`).join('')}
+        </tbody></table></div><div class="inspect" id="inspect"></div></div>
+        <p class="hint">Bold bytes differ from the most common value in their column. Click a byte or column to highlight its notes; click a note to highlight its bytes.</p>`
+        : '<p class="muted">No samples in the logs or database.md for this ID.</p>'}`;
+
+    notes.innerHTML = rec.entries.length ? rec.entries.map(e => `<section>
+        <h3>${md(e.title)} ${e.variant !== 'analog' ? `<span class="pill ${e.variant === 'digital' ? 'digital' : 'tx'}">${variantLabel[e.variant]}</span>` : ''}
+        ${D.source && e.line ? `<a class="src" href="${D.source}#L${e.line}" target="_blank" rel="noopener">database.md:${e.line} ↗</a>` : ''}</h3>
+        ${e.status && e.variant !== 'cluster-tx' ? `<p class="muted"><strong>Status:</strong> ${md(e.status)}</p>` : ''}
+        ${renderBlocks(e.blocks) || '<p class="muted">No notes yet.</p>'}
+        ${e.topic ? `<p class="muted">From the <a href="#t/${e.topic}">Cluster (IPC) Transmits</a> list.</p>` : ''}
+      </section>`).join('')
+      : '<section><h3>Not documented yet</h3><p class="muted">Seen in the logs only. Add a <code># ' + rec.id + ' - Name</code> section to database.md to document it.</p></section>';
+
+    active = []; sel = null;
+    main.querySelectorAll('table.grid [data-col]').forEach(c => c.addEventListener('click', () => {
+      const col = +c.dataset.col;
+      if (c.tagName === 'TD' && c.dataset.row !== undefined) {
+        const same = sel && sel[0] === +c.dataset.row && sel[1] === col;
+        sel = same ? null : [+c.dataset.row, col];
+        active = same ? [] : [col];
+      } else {
+        sel = null;
+        active = active.length === 1 && active[0] === col ? [] : [col];
+      }
+      applyFocus(rows);
+    }));
+    notes.querySelectorAll('[data-bytes]').forEach(n => n.addEventListener('click', e => {
+      if (e.target.closest('a')) return;
+      const b = n.dataset.bytes.split(',').map(Number);
+      sel = null;
+      active = active.join() === b.join() ? [] : b;
+      applyFocus(rows);
+    }));
+    applyFocus(rows);
+  }
+
+  function applyFocus(rows) {
+    main.querySelectorAll('table.grid [data-col]').forEach(c => {
+      c.classList.toggle('col-on', active.includes(+c.dataset.col));
+      c.classList.toggle('sel', !!sel && +c.dataset.row === sel[0] && +c.dataset.col === sel[1]);
+    });
+    notes.classList.toggle('focus', active.length > 0);
+    notes.querySelectorAll('[data-bytes]').forEach(n => {
+      const b = n.dataset.bytes.split(',').map(Number);
+      const hit = b.some(x => active.includes(x));
+      n.classList.toggle('hit', hit);
+      if (hit) n.style.setProperty('--hc', `var(--b${b.find(x => active.includes(x))})`);
+    });
+    const insp = $('#inspect');
+    if (!insp) return;
+    if (sel) {
+      const r = rows[sel[0]], v = parseInt(r.bytes[sel[1]], 16);
+      const bits = v.toString(2).padStart(8, '0').split('')
+        .map((x, i) => `<span class="${x === '1' ? 'one' : ''}" title="bit ${7 - i}">${x}</span>`).join('');
+      insp.style.setProperty('--c', `var(--b${sel[1]})`);
+      insp.innerHTML = `<span>${esc(r.label)}</span><span>Byte ${sel[1]} = <b>0x${r.bytes[sel[1]]}</b></span>
+        <span>dec <b>${v}</b></span><span class="bits">bits 7…0 ${bits}</span>`;
+    } else if (active.length) {
+      insp.innerHTML = `<span>Showing notes for ${active.map(chip).join(' ')}</span>`;
+    } else {
+      insp.innerHTML = '<span>Click a byte to inspect it</span>';
+    }
+  }
+
+  // ------------------------------------------------------------ topic / home pages
+  function renderTopic(t) {
+    main.innerHTML = `<a class="back" href="#">← All IDs</a><div class="topic">
+      <div class="title"><h2>${md(t.title)}</h2>${D.source ? `<a href="${D.source}#L${t.line}" target="_blank" rel="noopener">database.md:${t.line} ↗</a>` : ''}</div>
+      ${renderBlocks(t.blocks, true)}</div>`;
+    notes.innerHTML = '';
+  }
+
+  function renderHome() {
+    const t = D.topics[0];
+    main.innerHTML = `<div class="topic"><div class="title"><h2>${md(t.title)}</h2></div>
+      ${renderBlocks(t.blocks)}
+      <p>Pick an ID on the left or search by hex ID or description. Each ID shows the first sample from every vehicle log below,
+      with the notes from <code>database.md</code> beside it, colored by byte.</p>
+      <div class="tbl"><table><thead><tr><th>Vehicle</th><th>Source</th><th>Log files</th></tr></thead><tbody>
+      ${D.vehicles.map(v => `<tr><td>${esc(v.label)}</td><td>${md(v.source)}</td><td>${v.files || '<span class="muted">none</span>'}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="muted">${SORTED.filter(r => r.documented).length} documented IDs, ${SORTED.filter(r => !r.documented).length} more seen in logs only.
+      Generated from <a href="${D.source || '#'}" target="_blank" rel="noopener">database.md</a> by <code>build_web.py</code>.</p></div>`;
+    notes.innerHTML = '';
+  }
+
+  // ------------------------------------------------------------ routing
+  function route() {
+    const h = decodeURIComponent(location.hash.slice(1));
+    let target = '';
+    if (h.startsWith('t/')) {
+      const t = D.topics.find(x => x.key === h.slice(2));
+      if (t) { renderTopic(t); target = h; }
+    } else if (h) {
+      const id = /^0x5xx$/i.test(h) ? '0x5xx' : /^(0x)?[0-9a-f]{1,3}$/i.test(h) ? '0x' + parseInt(h.replace(/^0x/i, ''), 16).toString(16).toUpperCase() : '';
+      if (IDS.has(id)) { renderId(IDS.get(id)); target = id; }
+    }
+    if (!target) renderHome();
+    current = target;
+    document.body.classList.toggle('has-route', !!target);
+    document.body.classList.toggle('no-notes', !notes.innerHTML);
+    document.title = (target && !target.startsWith('t/') ? target + ' · ' : '') + 'S550 CAN Database';
+    renderList();
+    const on = list.querySelector('a.on');
+    if (on) on.scrollIntoView({ block: 'nearest' });
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>
