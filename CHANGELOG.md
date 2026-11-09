@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.4.0] - 9 Nov 2026
+![live test UI](./docs/livetest.png)
+A local web UI for testing every value in `s550_data.py` on the cluster live, without a game running.
+Run `python live_test.py` to access: http://127.0.0.1:8550. 
+
+### live_test.py / live_test.html
+
+- **Interactive Controls**, built from `s550_ipc`'s attributes so new fields show up on their own: Off / On /
+  Flash buttons for icons, toggles for warnings, slider + number box for gauges (°F shown next to °C, inHg / kPa next
+  to boost psi, g next to m/s²). The comment beside each field in `s550_data.py` is shown as its hint.
+- **"not sent" badge** on fields no scheduled sender in `s550_cluster.py` reads. Currently `icon_airbag`,
+  `value_fuel` and `value_odometer` (`send_odometer` exists but isn't in `SCHEDULE`, so 0x430 never goes out).
+- **Frames sent table**: every ID going out with its constant name, rate and last 8 bytes. Bytes that change flash,
+  so you can see which bytes a slider moves.
+- **Scenarios**: animated gauge sweep, rev limiter, drive cycle, g-meter circle, boost / AFR / temps sweeps, plus
+  one-click hazards, idle, cold start, overheat, low tires, all icons on and engine off. Reset all to defaults.
+- **Menu buttons** (0x81) on screen, or the arrow keys / Enter in the page.
+- Uses `s550_cluster.py`'s scheduler and senders, so it tests the real encoding.
+- `--virtual` sends to a python-can virtual bus (no adapter), `--com COM5` overrides the adapter port,
+  `--dummydata` adds `DUMMY_SCHEDULE` like interactive_brute_force.py, `--port` / `--no-browser` for the web server.
+
 ## [2.3.1] - 8 Nov 2026
 
 - update `/web` to `/docs` so the GitHub pages compiles
