@@ -26,7 +26,7 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
 | `cluster_tx.csv` | Bench cluster (2015 analog, FR33) | HS3 | What the cluster transmits on its own, see [Cluster (IPC) Transmits](#cluster-ipc-transmits) |
 | `mustang.c` ([ufnalski's project](https://github.com/ufnalski/ford_mustang_cluster_h503rb/blob/main/Core/Src/mustang.c)) | 2016 Mustang V6, automatic | | Source of `0x3B2` and the `0x76` g meter which enabled TrackApps |
 
-The web viewer (`web/`, built by `build_web.py`) takes the first sample of each ID from every source above that has a
+The web viewer (`docs/`, built by `build_web.py`) takes the first sample of each ID from every source above that has a
 log, and labels it with the Vehicle column.
 
 The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it waits for has to come back on HS3.

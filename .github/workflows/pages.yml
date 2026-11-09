@@ -1,4 +1,4 @@
-# Builds web/ from database.md + the logs and publishes it to GitHub Pages.
+# Builds docs/ from database.md + the logs and publishes it to GitHub Pages.
 # One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
 name: Pages
 
@@ -33,7 +33,7 @@ jobs:
       - run: python build_web.py
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: docs
 
   deploy:
     needs: build

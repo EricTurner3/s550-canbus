@@ -9,7 +9,7 @@
 A searchable web viewer for the CAN database, built from database.md so there's still only one source of truth.
 Hosted on GitHub Pages, or run `python build_web.py` and open `web/index.html` locally (no server or installs).
 
-### Web viewer (`web/`)
+### Web viewer (`docs/`)
 
 - **Search** by hex ID (`3b3`, `0x3B3`, `0x03B3`) or any word in the notes. `/` focuses the search box, Enter opens the
   first result. Every ID has its own link (`#0x3B3`).
@@ -26,7 +26,7 @@ Hosted on GitHub Pages, or run `python build_web.py` and open `web/index.html` l
 
 ### build_web.py
 
-- Parses database.md into `web/data.js` (generated, gitignored). Standard library only, under a second over all logs.
+- Parses database.md into `docs/data.js` (generated, gitignored). Standard library only, under a second over all logs.
 - `# 0xNNN - Name` headings (and `## 0xNNN` under the 2018+ section) become ID entries. Tables with a `Byte`, `Bytes`,
   `Bits` or `Byte / bit` column tag each row with its bytes, and prose like "byte 3" / "bytes 4 - 5" / "b2" is tagged too.
 - Reads every log format in the repo: python-can CSV (`/can`), v-ivanyshyn's text log, the freeze frame export and
