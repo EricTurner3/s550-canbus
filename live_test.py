@@ -60,6 +60,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # fields not listed here get a group from their prefix and a number box
 FIELDS = {
     'engine_on':              dict(group='Power', kind='switch'),
+    'steering_warning_fix':   dict(group='Power', kind='switch'),
 
     'icon_launch_control':    dict(group='Icons', kind='tri'),
     'icon_abs':               dict(group='Icons', kind='tri'),
@@ -84,6 +85,8 @@ FIELDS = {
     'engine_temp':            dict(group='Engine', kind='range', min=-40, max=195, step=1, unit='C'),
     'cylinder_head_temp':     dict(group='Engine', kind='range', min=-40, max=195, step=1, unit='C'),
     'intake_temp':            dict(group='Engine', kind='range', min=-40, max=127, step=1, unit='C'),
+    'outside_temp':           dict(group='APIM', kind='range', min=-40, max=71, step=0.5, unit='C'),
+    'compass_heading':        dict(group='APIM', kind='range', min=0, max=315, step=45, unit='°'),
 
     'accel_lateral':          dict(group='Accelerometer', kind='range', min=-20, max=20, step=0.1, unit='m/s²'),
     'accel_longitudinal':     dict(group='Accelerometer', kind='range', min=-20, max=20, step=0.1, unit='m/s²'),

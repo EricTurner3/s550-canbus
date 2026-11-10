@@ -106,6 +106,10 @@ def temp(v):
     c = v - 60
     return '{} ({}) -> {}c / {:.0f}f'.format(hex(v), v, c, c * 9 / 5 + 32)
 
+# Ford power mode, the apimpower guess for 0x048 byte 4
+POWER_MODES = {0: 'key out', 1: 'key recently out', 2: 'key approved', 3: 'post accessory', 4: 'accessory',
+               5: 'post ignition', 6: 'ignition on', 7: 'running', 9: 'crank'}
+
 def bit(v):
     return 'byte {} bit {} ({:#04x}) -> {}'.format(v // 8, v % 8, 1 << (v % 8), ' '.join('{:02X}'.format(b) for b in build_frame()))
 
@@ -255,6 +259,31 @@ TESTS = {
     'transwarm': dict(can_ids=(0x431,), test_bytes=tuple(range(8)), mode='bits', value_range=(0, 63), step_size=1,
                 step_period=4.0, send_period=cluster.SPEED_FIVE, sample_data=[0x05, 0x1D, 0x40, 0xEB, 0xB7, 0x83, 0x46, 0x00],
                 describe=bit),
+    # 0x048 (s550_cluster.py APIM_2), the APIM doesn't boot without it. Its 0x290 byte 0 goes 01 (starting) -> 7F (up),
+    # and drops to 4F when 0x048 stops. Only bytes 4 (07) and 6 (E0) have bits set, flip one bit of 4 - 6 at a time,
+    # slow enough for the APIM to drop and come back. Run with apim_capture.py --ignition, it prints 0x290 as it changes
+    'apim048': dict(can_ids=(0x048,), test_bytes=(4, 5, 6), mode='bits', value_range=(32, 55), step_size=1,
+                step_period=12.0, send_period=cluster.SPEED_THREE, sample_data=[0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0xE0, 0x00],
+                describe=bit),
+    # 0x77 A/B: our 40 mph frame (send_vehicle_speed_77) and FF FF FF FF FF FF 00 FC, reported to stop the steering assist
+    # warnings (every ABS signal at max = invalid, longitudinal accel -9 m/s^2). Switches every 20 s, run with
+    # --dummydata --speed 40 and EPAS enabled in the as-built. The whole frame is one number, one step goes A -> B -> A
+    'steer77': dict(can_ids=(0x77,), test_bytes=tuple(range(8)), mode='incremental',
+                value_range=(0x1B5808007FF7E602, 0xFFFFFFFFFFFF00FC), step_size=0xFFFFFFFFFFFF00FC - 0x1B5808007FF7E602,
+                step_period=20.0, send_period=cluster.SPEED_TWO, sample_data=[0] * 8,
+                describe=lambda v: '{} -> {}'.format(v.to_bytes(8, 'big').hex(' '),
+                                                     'FF frame' if v == 0xFFFFFFFFFFFF00FC else 'normal 40 mph')),
+    # 0x3B3 byte 4, the APIM shows -26f with s550_cluster.py's 0x10: the digital cluster's outside temp scale
+    # (raw * 0.5 - 40 c) gives -25.6f. The 2015 - 2017 logs only have 10 (18 with turn signals, E0 / E6 at shutdown),
+    # so stay under E0. 0x50 = 0c / 32f, 0x78 = 20c / 68f
+    'apimtemp': dict(can_ids=(0x3B3,), test_bytes=(4,), mode='sequential', value_range=(0x10, 0xC0), step_size=0x10,
+                step_period=8.0, send_period=cluster.SPEED_FOUR, sample_data=[0x40, 0x48, 0x02, 0x0A, 0x10, 0x05, 0x00, 0x02],
+                describe=lambda v: '{:#04x} -> {:.1f}c / {:.0f}f if outside temp'.format(v, v * 0.5 - 40, (v * 0.5 - 40) * 9 / 5 + 32)),
+    # 0x048 byte 4 every value 00 - 1F. apim048 found 07 / 06 on, 03 / 17 off, 05 no change, 27 on: looks like Ford's
+    # power mode (names below are a guess). Booting takes up to ~25 s (0x290 01 -> 7F), so each value is held 30 s
+    'apimpower': dict(can_ids=(0x048,), test_bytes=(4,), mode='sequential', value_range=(0x00, 0x1F), step_size=1,
+                step_period=30.0, send_period=cluster.SPEED_THREE, sample_data=[0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0xE0, 0x00],
+                describe=lambda v: '{:#04x} -> {}'.format(v, POWER_MODES.get(v, '?'))),
 }
 parser = argparse.ArgumentParser(description='Sweep a CAN signal on the cluster')
 parser.add_argument('test', nargs='?', default='afr', choices=TESTS)
@@ -328,6 +357,8 @@ def set_value(v):
     lo, hi = value_range
     value = lo if v > hi else hi if v < lo else v
     print(' - {} bytes {} = {}'.format([hex(i) for i in can_ids], test_bytes, describe(value)))
+    # in cluster_tx_changes.csv too, so what the module did can be lined up with the value under test
+    cluster_tx_changes.append((time.time() - cluster.start, 'test', describe(value).replace(',', ';')))
 
 # the regular cluster functions still run, drop anything they send on an ID this script owns
 _send_msg = cluster.send_msg
@@ -482,6 +513,7 @@ def on_press(key):
     if k == 'space':
         paused = not paused
         print(' - {}'.format('PAUSED' if paused else 'RESUMED'))
+        cluster_tx_changes.append((time.time() - cluster.start, 'key', 'paused' if paused else 'resumed'))
     elif k in ('+', '='):
         set_value(value + step_size)
     elif k == '-':
@@ -498,6 +530,8 @@ rx_count = 0 # frames received since the last status line
 rx_errors = 0
 rx_hooks = [] # functions called with every received frame (fake_forscan.py's fake modules)
 show_status = True # the once a second frames/s line, fake_forscan.py turns it off
+tx_name = 'cluster' # the module on the other end of the bus, for the new ID lines. apim_capture.py sets 'apim'
+quiet_ids = () # IDs left out of the new ID lines, fake_forscan.py prints the diagnostic range itself
 
 def _listen():
     '''
@@ -512,8 +546,8 @@ def _listen():
             rx_errors += 1
             continue
         rx_count += 1
-        if msg.arbitration_id not in cluster_tx:
-            print('* cluster sends {:#05x}: {}'.format(msg.arbitration_id, msg.data.hex(' ')))
+        if msg.arbitration_id not in cluster_tx and msg.arbitration_id not in quiet_ids:
+            print('* {} sends {:#05x}: {}'.format(tx_name, msg.arbitration_id, msg.data.hex(' ')))
         if cluster_tx.get(msg.arbitration_id) != bytes(msg.data):
             cluster_tx_changes.append((time.time() - cluster.start, '{:#05x}'.format(msg.arbitration_id), msg.data.hex(' ')))
         cluster_tx[msg.arbitration_id] = bytes(msg.data)
@@ -664,7 +698,7 @@ def main():
         cluster.SCHEDULE.append((period, [gt_frame_sender(id, recorded)]))
     if args.dummydata:
         cluster.SCHEDULE.extend(cluster.DUMMY_SCHEDULE)
-        print('* Dummy data: 0x217 0x77 0x415 (speeds follow {} mph), 0x85 0x91 0x200 0x82 0x230'.format(cluster_speed))
+        print('* Dummy data: 0x217 0x415 (speeds follow {} mph), 0x85 0x91 0x200 0x82 0x230'.format(cluster_speed))
     if 0x82 in can_ids:
         args.pscm = True
     if args.pscm:

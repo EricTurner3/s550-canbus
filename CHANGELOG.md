@@ -1,5 +1,68 @@
 # Changelog
 
+## [2.5.0] - 10 Nov 2026
+**APIM (SYNC 2) on the bench.** It boots from `0x048` byte 4 (power mode, `04 - 07` accessory to running), which
+`s550_cluster.py` already sent, shows outside temp from `0x3B3` byte 4, and answers Forscan on its HS1 pins (53 / 54)
+while it boots on HS3 (19 / 20). The cluster doesn't need it: the same DTCs come back with or without it.
+
+### apim_capture.py
+
+- Logs everything the APIM sends: start it, then power the APIM. Prints the first frames, each new ID and every change
+  of `0x290` / `0x2E3` (its state, `--watch` for others), and a per-ID summary on Ctrl+C (count, Hz, first seen,
+  payloads, changing bytes)
+- Modes: listen only (nothing sent), `--ignition` (interactive_brute_force.py `idle --dummydata --respond --config
+  --speed 0` underneath, any preset / option passed along), `--forscan` (through fake_forscan.py), `--probe` (asks
+  every diagnostic ID `0x700 - 0x7F7` and `0x7DF` for a session, then common requests to `0x7D0`)
+- Logs go to `can/apim/` as python-can CSV (`replay.py` reads them) plus `_summary.csv`, and `_tx.csv` / `_changes.csv`
+  so `cluster_tx.csv` isn't overwritten. Own folder, the web viewer reads `can/*.csv` as the GT350's logs
+- `--hide-ipc` leaves the cluster's IDs out of the summary, `--verbose` prints every frame
+
+### interactive_brute_force.py
+
+- `steer77` preset: switches `0x77` between our 40 mph frame and `FF FF FF FF FF FF 00 FC` every 20 s
+- `apim048` preset: one bit of `0x048` bytes 4 - 6 at a time. `apimpower`: `0x048` byte 4 `00 - 1F`, 30 s each.
+  `apimtemp`: `0x3B3` byte 4 `10 - C0` (outside temp)
+- Each test step and space pause / resume goes into `cluster_tx_changes.csv`, so a run can be lined up afterwards
+- `tx_name` / `quiet_ids` for the new ID lines, so frames from other modules aren't labeled "cluster sends"
+
+### fake_forscan.py
+
+- Scan tool requests (`0x700 - 0x7FF`) are only printed once as `- diag`, not also as "cluster sends". Other new IDs
+  print as "module sends"
+- Setup moved into `start()` so apim_capture.py `--forscan` can run it
+
+### s550_cluster.py / s550_data.py / live_test.py
+
+- `0x3B3` byte 4 is outside temp, `raw * 0.5 - 40 = °C`, from the new `outside_temp` (20 °C default, kept under `E0`).
+  The fixed `10` copied from the GT350 logs (no outside temp sensor) showed -26 °F on the APIM
+- `0x466` (`send_gps_nav`, 1 Hz): compass from the new `compass_heading` (8 directions) plus the PC's UTC time, the
+  DBC's `APIMGPS_Data_Nav_2` layout. The cluster shows the bearing, the APIM's own compass needs the nav SD card and
+  GPS antenna
+- `APIM_1 - 3` (`0x044 0x048 0x109`) are documented as frames the car sends *to* the APIM (EtoTen's SYNC bench sim)
+- live_test.py has an APIM group with `outside_temp` and `compass_heading`
+- `0x77` moved from `DUMMY_SCHEDULE` to `SCHEDULE`: `FF FF FF FF FF FF 00 FC` while the new `steering_warning_fix` is 1
+  (default, a switch under Power in live_test.py), the real speed frame at 0
+
+### database.md
+
+- New APIM (SYNC) section: `0x048` power mode table, what the APIM sends at wake up and while on, its state in
+  `0x290` byte 0 (`01` off, `7F` booted, `4F` lost `0x048`) and `0x2E3` byte 0 (`01` / `02`), `0x5E2` its module
+  alive frame (only while on), `0x466` compass / time, diagnostics on HS1 only
+- `0x3B3` byte 4 outside temp, Sources row for `can/apim/`, Index rows for `0x048`, `0x290`, `0x2E3`, `0x466`
+- U0253 (`0x2E3`) is a digital cluster code, the analog cluster never sets it
+- `0x77` `FF FF FF FF FF FF 00 FC` keeps Steering Assist Fault and Steering Fault Service Now away with EPAS still
+  enabled in the as-built (another builder's find, confirmed with `steer77` and driving in live_test.py, no Hill Start
+  Assist warning). Either this or the 2.4.1 as-built change fixes them. A real speed in `0x77` brings the fault back
+
+### Still open
+
+| DTC | Cause | Next step |
+|---|---|---|
+| P0460-13, P1346-13 | Fuel level sender inputs open (wired, not CAN) | Resistors on C220 pins 10/2 and 9/1 |
+| U0401-82 | PCM data invalid | |
+| U0146 | GWM missing | |
+| U0184 | Radio missing (no lamp). Stays with the APIM booted on the bus, so it's the audio module (ACM, `0x727`) | Find the ACM's frames |
+
 ## [2.4.1] - 9 Nov 2026
 **Steering Assist Fault / Steering Fault Service Now fixed**: EPAS disabled in the cluster's as-built
 (`720-01-02` `0C1B` → `0C19`, `720-06-01` `…98` → `…88`), written with Forscan through the new `fake_forscan.py`.

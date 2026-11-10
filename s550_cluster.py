@@ -59,9 +59,10 @@ MISC_12 = 0x82 # thanks to v-ivanyshyn's work
 MISC_13 = 0x230
 STEERING_PINION = 0x7E # Ford DBC SteeringPinion_Data, same layout as 0x85. Not in any 2015 - 2017 capture
 STEERING_ANGLE_2 = 0x3A8 # second copy of the 0x85 angle, v-ivanyshyn's GT log only
+# 10 Nov 2026 - sent TO the APIM, not by it (EtoTen's SYNC bench sim). See database.md APIM (SYNC)
 APIM_1 = 0x044 # https://github.com/EtoTen/stm32_can_sim/blob/main/src/main.cpp
-APIM_2 = 0x048
-APIM_3 = 0x109
+APIM_2 = 0x048 # power mode, the APIM only boots with this one (on HS3)
+APIM_3 = 0x109 # RPM / gear / speed per v-ivanyshyn
 # these 5 are odd ones. The first byte is always the digits that come after the 0x5--
 # the rest of the bytes are 00 FF FF FF FF FF FF.
 x5xx_SERIES_1 = 0x581
@@ -82,6 +83,8 @@ OCCUPANT = 0x42C # sending it at all also stops the cluster's U0100 (lost comm w
 KEY_MESSAGES = 0x38D
 BLIND_SPOT_L = 0x3A6 # Ford DBC Side_Detect_L / _R, stop U0232 / U0233 and the blind spot / cross traffic warnings
 BLIND_SPOT_R = 0x3A7
+# 10 Nov 2026 - APIM
+GPS_NAV = 0x466 # compass + GPS time, the DBC's APIMGPS_Data_Nav_2_FD1 (0x463) layout
 
 
 # Stock slcan firmware on Windows
@@ -359,6 +362,10 @@ def send_apim_1(clusterdata):
     return send_msg(APIM_1, start, data)
 
 def send_apim_2(clusterdata):
+    '''
+        Byte 4 bits 4 - 0 power mode: 04 - 07 (accessory - running) turn the APIM on, the rest off (09 crank).
+        07 running, so the APIM boots whenever the cluster is running
+    '''
     data = [0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0xE0, 0x00]
     return send_msg(APIM_2, start, data)
 
@@ -418,6 +425,8 @@ def send_door_status(clusterdata):
                 0x00 is backlight off
                 0x0a is backlight on (mycolor)
                 0x10 is backlight on (white)
+        Byte 4 is outside temp on the APIM, raw * 0.5 - 40 = celsius. The GT350 logs only have 0x10 (-32c, no
+                outside temp sensor on the GT350). Kept under 0xE0 (shutdown in the logs). The analog cluster ignores it
         Byte 7 is Parking Brake On (0x80/0xC0) or Off (0x00)
         Byte 8 deals with the doors
             First digit 0, 1, 2, 3 is Closed, Passenger Ajar, Driver Ajar, Both Ajar respectively.
@@ -433,8 +442,9 @@ def send_door_status(clusterdata):
         lights = 0x0A
     else:
         lights = 0x00
-    # byte 4 0x10 like the car logs, the turn signals are sent on 0x3B2 (send_track_apps)
-    data = [0x40, 0x48, 0x02, lights, 0x10, 0x05, parking_brake_light, 0x02]
+    # the turn signals are sent on 0x3B2 (send_track_apps), byte 4 here is all outside temp
+    outside_temp = clamp((clusterdata.outside_temp + 40) * 2, 0x00, 0xDF)
+    data = [0x40, 0x48, 0x02, lights, outside_temp, 0x05, parking_brake_light, 0x02]
     return send_msg(DOOR_STATUS, start, data)
 
 def send_track_apps(clusterdata):
@@ -672,6 +682,23 @@ def send_blind_spot(clusterdata):
     send_msg(BLIND_SPOT_L, start, data)
     return send_msg(BLIND_SPOT_R, start, data)
 
+# 10 Nov 2026
+def send_gps_nav(clusterdata):
+    '''
+        The DBC's APIMGPS_Data_Nav_2_FD1 (0x463) layout on 0x466, for the APIM's compass without a GPS antenna.
+        Byte 3 bits 2 - 0 + byte 4 bit 7 compass, 0 N 1 NE 2 E 3 SE 4 S 5 SW 6 W 7 NW. UTC from this PC:
+        byte 0 bits 7 - 3 hours, byte 1 bits 7 - 2 minutes, byte 2 bits 7 - 2 seconds, byte 4 bits 5 - 1 day - 1,
+        byte 5 bits 7 - 4 month - 1, byte 6 bits 7 - 3 year - 2010. Byte 0 bit 2 GPS fault (0), byte 3 bits 7 - 3 PDOP * 5,
+        byte 4 bit 6 inferred position (0)
+    '''
+    direction = int(round(clusterdata.compass_heading / 45.0)) % 8
+    now = time.gmtime()
+    data = [now.tm_hour << 3, now.tm_min << 2, now.tm_sec << 2,
+            (5 << 3) | (direction >> 1), # PDOP 1.0
+            ((direction & 1) << 7) | ((now.tm_mday - 1) << 1),
+            (now.tm_mon - 1) << 4, clamp(now.tm_year - 2010, 0, 31) << 3, 0x00]
+    return send_msg(GPS_NAV, start, data)
+
 # dummy data (interactive_brute_force.py --dummydata, ipc_dtc_test.py dummy): chassis messages from database.md with
 # steady values, all speed signals built from value_speed so they agree (mismatched wheel speeds trip Hill Start Assist)
 def send_wheel_speeds(clusterdata):
@@ -685,7 +712,11 @@ def send_vehicle_speed_77(clusterdata):
     '''
         0x77, bytes 0 & 1 speed (14 bit, MPH * 175), bytes 2 & 3 lateral centered at 0x0800
         byte 6 0xE6 keeps Hill Start Assist Not Available off
+        10 Nov 2026 - steering_warning_fix sends FF FF FF FF FF FF 00 FC instead (every ABS signal invalid), which keeps
+        Steering Assist Fault and Steering Fault Service Now off with EPAS enabled in the as-built
     '''
+    if clusterdata.steering_warning_fix:
+        return send_msg(0x77, start, [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFC])
     raw = clamp(clusterdata.value_speed * 175, 0, 0x3FFF)
     return send_msg(0x77, start, [raw >> 8, raw & 0xFF, 0x08, 0x00, 0x7F, 0xF7, 0xE6, 0x02])
 
@@ -739,20 +770,20 @@ def keys():
 # every function in a group is sent once per period. IDs not seen in the GT350 logs (APIM, climate, 0x156, 0x179, 0x3B5) are at a best guess
 SCHEDULE = [
     (SPEED_ONE, [send_rpm, send_misc_8, send_accelerometer]),
-    (SPEED_TWO, [send_speed, send_steering]),
+    (SPEED_TWO, [send_speed, send_steering, send_vehicle_speed_77]),
     (SPEED_THREE, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_launch_control, send_engine_temp,
                    send_climate, send_climate_fan, send_apim_1, send_apim_2, send_apim_3,
                    send_engine_gauges, send_engine_status, send_occupant, send_blind_spot]),
     (SPEED_FOUR, [send_door_status, send_track_apps, send_intake_temp]),
     (SPEED_FIVE, [send_misc_1, send_tire_pressure, MENU_NAV, send_0x5__series,
-                  send_tpms_status, send_trans_warnings, send_key_messages])
+                  send_tpms_status, send_trans_warnings, send_key_messages, send_gps_nav])
 ]
 
 # added to SCHEDULE by --dummydata / dummy. The rest are this file's unscheduled senders
 DUMMY_SCHEDULE = [
     (SPEED_ONE, [send_wheel_speeds, send_misc_4, send_misc_5]), # 0x217, 0x85 steering angle, 0x91 yaw
-    (SPEED_TWO, [send_vehicle_speed_77, send_vehicle_speed_415, send_misc_7, send_misc_12,
-                 send_misc_13]), # 0x200 torque, 0x82 steering mode, 0x230 gear
+    (SPEED_TWO, [send_vehicle_speed_415, send_misc_7, send_misc_12,
+                 send_misc_13]), # 0x200 torque, 0x82 steering mode, 0x230 gear. 0x77 is in SCHEDULE
 ]
 
 # power steering frames that go with 0x82 (interactive_brute_force.py --pscm, on by itself for 0x82 tests).

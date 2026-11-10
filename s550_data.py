@@ -12,6 +12,7 @@ class s550_ipc:
         self.game = game
 
         self.engine_on = 1                  # 1 on; 0 off. Disables backlight when off
+        self.steering_warning_fix = 1       # 1 sends 0x77 all invalid, silences Steering Assist Fault / Service Now. 0 real speed
         # icons have 3 states
         # 0 - off
         # 1 - on
@@ -40,6 +41,8 @@ class s550_ipc:
         self.engine_temp = 110.0            # celsius (230f), the needle sits mid gauge from 106c - 132c
         self.cylinder_head_temp = 99.0      # celsius (210f), gauge is 140f - 340f (60c - 171c)
         self.intake_temp = 22.0             # celsius (72f), gauge is 0f - 240f (-18c - 116c)
+        self.outside_temp = 20.0            # celsius (68f), shown on the APIM (0x3B3 byte 4), -40c - 71c
+        self.compass_heading = 0.0          # degrees, 0 north, 90 east. APIM compass (0x466), rounded to 8 directions
         self.accel_lateral = 0.0            # m/s^2 felt by the driver, positive moves the g meter dot right (left turn)
         self.accel_longitudinal = 0.0       # m/s^2, positive speeding up (dot to accel), negative braking. +-1.5g fills it
         self.accel_vertical = 9.7           # m/s^2, gravity at rest

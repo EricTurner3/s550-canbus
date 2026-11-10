@@ -159,10 +159,18 @@ def on_frame(msg):
     elif msg.arbitration_id >= 0x700: # the scan tool's requests to other modules and their replies
         print(' - diag {}: {}'.format(module_name(msg.arbitration_id), msg.data.hex(' ')))
 
-if __name__ == '__main__':
+def start():
+    '''
+        Hooks the fake modules into interactive_brute_force.py. apim_capture.py --forscan calls it before ib.main()
+    '''
     if not vin:
         print('* No --vin, the fake modules answer VIN requests with 7F (Forscan asks you to pick the car)')
     print('* Fake modules: {}'.format(', '.join(module_name(id) for id in sorted(fake_modules))))
     ib.rx_hooks.append(on_frame)
     ib.show_status = args.status
+    ib.quiet_ids = range(0x700, 0x800) # on_frame prints these as - fake / - diag
+    ib.tx_name = 'module' # the scan tool's frames aren't in this range, whatever else is on the bench sends them
+
+if __name__ == '__main__':
+    start()
     ib.main()

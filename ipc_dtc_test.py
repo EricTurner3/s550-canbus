@@ -336,7 +336,7 @@ if __name__ == '__main__':
         CANDIDATES = parse_candidates(sys.argv[2:])
     if dummy:                                        # same as interactive_brute_force.py --dummydata
         c.SCHEDULE.extend(c.DUMMY_SCHEDULE)
-        print('* dummy data: 0x217 0x77 0x415 0x85 0x91 0x200 0x82 0x230')
+        print('* dummy data: 0x217 0x415 0x85 0x91 0x200 0x82 0x230')
     c.clusterdata = s550_data.s550_ipc('none')        # defaults, no game
     threading.Thread(target=c._scheduler, daemon=True).start()
     threading.Thread(target=_extra_loop, daemon=True).start()

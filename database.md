@@ -14,6 +14,7 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
   - **Confirmed**: tested on the bench cluster.
   - **From logs**: found by correlating logs against known signals, not tested on the cluster yet.
   - **Cluster sends**: the cluster transmits it itself. Never send it, two senders on one ID cause bus errors.
+  - **APIM sends**: same, for the bench APIM (SYNC). See [APIM (SYNC)](#apim-sync).
 - Temperatures `raw - 60 = °C` unless noted.
 
 ## Sources
@@ -23,6 +24,7 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
 | `/can/*.csv` | 2016 Mustang GT350, 6MT | HS1 (OBD port, through the gateway) | Missing 37 IDs the GT has (`0x156 0x166 0x171 0x179 0x331 0x3B5 0x421 0x42D 0x43E` ...), so replaying them on this GT cluster throws warnings |
 | `other_refs/v-ivanyshyn_parse_can_logs` | 2016 Mustang GT, 6R80 | HS1 + HS3 merged | |
 | `other_refs/2015GTPremium_FreezeFrame.csv` | 2015 Mustang GT Premium, 6MT | HS-CAN / HS-CAN2 | One sample per ID from this cluster's car |
+| `/can/apim/*.csv` | Bench APIM (SYNC) | HS3 | `apim_capture.py` logs, APIM alone on the bench. See [APIM (SYNC)](#apim-sync) |
 | `cluster_tx.csv` | Bench cluster (2015 analog, FR33) | HS3 | What the cluster transmits on its own, see [Cluster (IPC) Transmits](#cluster-ipc-transmits) |
 | `mustang.c` ([ufnalski's project](https://github.com/ufnalski/ford_mustang_cluster_h503rb/blob/main/Core/Src/mustang.c)) | 2016 Mustang V6, automatic | | Source of `0x3B2` and the `0x76` g meter which enabled TrackApps |
 
@@ -36,8 +38,9 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 | ID | Name | Status | Sent by `s550_cluster.py` |
 |---|---|---|---|
 | `0x4C` | Airbag / seatbelt indicators | Confirmed | Yes |
+| **`0x048`** | **APIM power mode (required to boot the APIM)** | Confirmed | Yes |
 | `0x76` | Steering angle, Track Apps g meter | Confirmed | Yes |
-| `0x77` | Vehicle speed / yaw | From logs | `--dummydata` |
+| `0x77` | Vehicle speed / yaw, steering warning fix | Confirmed | Yes (`FF ...` by default) |
 | `0x81` | Steering wheel buttons | Confirmed | Yes (menu keys) |
 | `0x82` | Steering mode | Confirmed | `--dummydata` |
 | `0x83` | Clockspring | Confirmed | No |
@@ -52,6 +55,8 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 | `0x200` | Engine torque | From logs | `--dummydata` |
 | `0x202` | Speed gauge | Confirmed | Yes |
 | `0x204` | RPM gauge, pedal | Confirmed | Yes |
+| `0x290` | APIM state | APIM sends | No |
+| `0x2E3` | APIM status, clears the digital cluster's U0253 | APIM sends | No |
 | `0x217` | Wheel speeds | From logs | `--dummydata` |
 | `0x230` | Gear position | From logs | `--dummydata` |
 | `0x331` | Climate / outside temp? | From logs | No |
@@ -72,6 +77,7 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 | `0x42C` | Occupant sensor blocked, cruise status, PCM present | Confirmed | Yes |
 | `0x42D` | Inlet air temp | Confirmed | Yes |
 | `0x430` | Odometer | Cluster sends | No |
+| `0x466` | GPS compass / time (APIM) | Confirmed (compass) | Yes |
 | `0x431` | Transmission warnings | Confirmed | Yes |
 | `0x43E` | AFR, cylinder head temp, boost / vacuum | Confirmed | Yes |
 | `0x453` | Seat occupant sensor serial | From logs | No |
@@ -197,6 +203,22 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 - So the Hill Start Assist message is really the longitudinal accel: `E6 02` is about 0 m/s², `EC 02` is -17.8 m/s² (implausible), which shows the warning.
 - Bytes 4 - 5 high nibble are `7F F_` in every log and not in the DBC. The GT350 `start.csv` opens with `00 00 0F FE 7F FF FB FE` (every value at its max, likely "not ready yet") before the engine runs.
 - The power steering module is one of its receivers in the DBC. With `--dummydata` at 40 mph it adds Steering Fault Service Now to the Steering Assist Fault the missing module already causes. Muting 0x77 removes it, muting 0x217 or 0x415 doesn't.
+
+> [!TIP]
+> **Two fixes for Steering Assist Fault / Steering Fault Service Now on a bench, either one is enough:**
+> 1. Send `0x77` as **`FF FF FF FF FF FF 00 FC`** (no Forscan needed, `s550_cluster.py` does by default)
+> 2. Disable EPAS in the cluster's as-built, see [IPC As-Built](#ipc-as-built-720)
+
+- 10 Nov 2026 - `FF FF FF FF FF FF 00 FC` (reported by another builder) keeps both steering warnings away with EPAS
+  still enabled in the as-built, confirmed with the `steer77` preset and driving in live_test.py. A real speed frame
+  brings Steering Assist Fault and Steering Fault Service Now back at once, and with `0x77` following `0x202` while
+  the speed changes the fault keeps coming back. No Hill Start Assist Not Available with it.
+- Every ABS signal at its max reads as invalid / not ready. Likely the cluster only checks for the power steering
+  module once `0x77` reports a valid moving speed, so any valid speed (whatever the scale) faults on a bench without
+  one, and an invalid one skips the check. Whether U0420-82 still sets isn't tested
+  (`ipc_dtc_test.py probe 077=1B5808007FF7E602@20 dummy` puts the real frame back over the default).
+- `s550_cluster.py` now sends `0x77` in the base schedule (50 Hz): this frame while `steering_warning_fix` is 1 (the
+  default, a switch in live_test.py), the real speed frame above at 0.
 
 # 0x81 - Steering Wheel Buttons
 
@@ -502,6 +524,7 @@ Sending this alongside `0x3B3` makes Track Apps show on this 2015 cluster (FR33)
 | 0 | Cluster on / headlamps | Upper nibble must be `4` or the cluster turns off. `40` headlamps off, `44` on, `41` trunk ajar |
 | 1 | Light mode | `48` DRL, `88` night, `4A` hazard |
 | 3 | Backlight | `0x00` off, `0x0A` on (MyColor), `0x10` on (white), `0x0_` dims / `0x9_` brightens. In the logs the dash dimmer, `0x01 - 0x0C` (`run_light_dim_up` / `_down`) |
+| 4 | Outside temp (APIM) | `raw * 0.5 - 40 = °C`, same as the [digital cluster](#0x3b3-byte-4---outside-temperature-digital). The bench APIM (SYNC 2) shows it (10 Nov 2026, `apimtemp`). The GT350 logs only have `10` (-32 °C / -26 °F, likely "no sensor": the GT350 has no outside temp, only the GT does), `18` with the right turn signal, `E0` / `E6` at shutdown. v-ivanyshyn's GT log and this car's freeze frame are `10` too, unexplained. `s550_cluster.py` sends `outside_temp` from `s550_data`, kept under `E0` |
 | 6 | Parking brake | `0x80` / `0xC0` on, `0x00` off |
 | 7 | Doors | First digit `0` closed, `1` passenger ajar, `2` driver ajar, `3` both. Second digit `2` closed, `A` hood ajar. `02` all closed, `32` both doors open, `2A` driver + hood |
 
@@ -515,7 +538,7 @@ Turn signals in the logs (`run_left_turn` / `run_right_turn` / `run_hazards`), O
 | Left | 1 / `0x02` | Lamp lit (flashes) |
 | Left | 1 / `0x01` | Stalk active (held while signaling) |
 | Left | 6 / `0x40` | Lamp lit (flashes with byte 1 bit `0x02`) |
-| Right | 4 / `0x08` | Lamp lit (flashes) |
+| Right | 4 / `0x08` | Lamp lit (flashes). Shares the byte with outside temp, the bench sends it on `0x3B2` only |
 | Right | 7 / `0x40` | Stalk active |
 | Right | 7 / `0x80` | Lamp lit (flashes with byte 4 bit `0x08`) |
 
@@ -814,7 +837,7 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 | 1 | `00` |
 | 2 - 7 | `FF` |
 
-- `s550_cluster.py` sends `0x581 0x596 0x59E 0x5B3 0x5B5`. The cluster's own is `0x591`.
+- `s550_cluster.py` sends `0x581 0x596 0x59E 0x5B3 0x5B5`. The cluster's own is `0x591`, the APIM's `0x5E2` (only while it's on, see [APIM (SYNC)](#apim-sync)).
 - Faking all of `0x500 - 0x5FF` (`--nm`) changed nothing.
 - 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names them AutoSar network management frames: `0x59E` GWM, `0x5B5` PSCM, `0x596` ABS. Byte 0 is the node ID, byte 1 the control byte. We already send `0x59E` and `0x5B5` and the cluster still sets U0146 (GWM) and U0420 (PSCM), so it wants more than these alive frames.
 
@@ -834,10 +857,113 @@ checksum = (0x07 + 0x20 + block + line + data bytes) & 0xFF      e.g. 720-01-02:
 | `720-01-02` | `0C1B 10` `61` | `0C19 10` `5F` | 2nd byte low nibble, bit 3 Easy Entry/Exit, bit 2 Electric Parking Brake, **bit 1 Electric Power Assist Steering**, bit 0 ESC. `B` → `9` = EPAS disabled |
 | `720-06-01` | `6C7F 0000 98` `B1` | `6C7F 0000 88` `A1` | 5th byte bit 4 = **EPAS Button**, enabled → disabled |
 
-- **Fixes Steering Assist Fault / Steering Fault Service Now** (9 Nov 2026). With EPAS disabled the cluster stops expecting the power steering module, so U0420-82 has nothing to fault. Both fields were changed together; which one does it on its own isn't tested.
+- **Fixes Steering Assist Fault / Steering Fault Service Now** (9 Nov 2026). `0x77` = `FF FF FF FF FF FF 00 FC` fixes them too, without Forscan, see [0x77](#0x77---vehicle-speed--yaw). With EPAS disabled the cluster stops expecting the power steering module, so U0420-82 has nothing to fault. Both fields were changed together; which one does it on its own isn't tested.
 - Every CAN fix tried before this (`0x82` `EPAS_Failure` sweep, `0x085` / `0x07E` counter + checksum, `0x3A8`) didn't clear U0420-82.
 - `fake_forscan.py` lets Forscan connect to the bench cluster: it answers as the PCM and BCM so Forscan finds a car. The ELM327 has to be on the cluster's CAN directly (HS3, Forscan doesn't look for the IPC on the OBD port's HS1 pins).
 - Other IDs from the same Forscan read: F113 `FR33-10849-GF` (part), F188 `FR33-14C026-AG` (strategy), F124 `FR33-14C088-RF` (calibration), F111 `FR33-14F094-GA`, F110 `DS-FR33-1A292-AD`, F18C serial `42262060`.
+
+# APIM (SYNC)
+
+**Status:** Confirmed on the bench (10 Nov 2026) · APIM alone on the bench bus (500k, no cluster), captured with
+`apim_capture.py`. Logs: `can/apim/`
+
+The APIM lives on HS3 with the cluster. It wakes up on any CAN traffic, but only stays on and boots with a valid power
+mode in **`0x048`**. `s550_cluster.py` already sends it (`APIM_2`, `00 00 00 00 07 00 E0 00`), from
+[EtoTen's stm32_can_sim](https://github.com/EtoTen/stm32_can_sim/blob/main/src/main.cpp), a SYNC bench simulator. So
+`APIM_1 - 3` (`0x044 0x048 0x109`) are frames the car sends *to* the APIM, not frames it sends.
+
+- Muting one at a time (`--mute`): without `0x048` it doesn't boot. `0x044` and `0x109` aren't needed to boot.
+- **No diagnostics on HS3.** Booted (`0x290` `7F`), it doesn't answer `10 01` on any request ID `0x700 - 0x7F7` or
+  `0x7DF`, nor `10 01` / `3E 00` / `22 F190` / `22 F188` / `22 0200` / `10 03` on `0x7D0` (`apim_capture.py --probe`),
+  so Forscan doesn't find it on the bench.
+- Bench unit is a **SYNC 2** APIM (the GT350 in the `/can` logs had SYNC 3).
+- **Outside temp** comes from [`0x3B3` byte 4](#0x3b3---cluster-on-doors-lights-parking-brake) (`raw * 0.5 - 40 = °C`). The fixed `10` we used to send (copied from the GT350 logs, which has no outside temp) showed -26 °F.
+- **Compass**: in a car the heading comes from the GPS antenna on the APIM's GPS cable, with ABS wheel speed / direction
+  ([SYNC primer](https://www.mustang6g.com/forums/attachments/s550-mustang-sync-system-and-tech-a-primer-pdf.892066/)).
+  The APIM's compass also needs the nav SD card, so it stays blank on the bench. [`0x466`](#0x466---gps-compass--time)
+  from `s550_cluster.py` does show the bearing on the cluster. The bench APIM (no antenna) never sends `0x466` or the
+  DBC's `APIMGPS_Data_Nav_1 - 3` (`0x462 - 0x464`).
+- **Diagnostics are on HS1** (connector pins 53 / 54, HS3 is 19 / 20). On HS1 alone it doesn't boot (no `0x290`), but
+  `10 01` on `0x7D0` gets `0x7D8` `06 50 01 00 32 01 F4 00` (probe `094903`, cluster on the bus too). Like the car:
+  booted by HS3, reached by Forscan through the OBD port's HS1. HS1 alone (with `fake_forscan.py`) is enough to read
+  and write its as-built, the screen stays off. Move it back to HS3 to use it.
+- **The cluster doesn't need it.** `ipc_dtc_test.py clear dummy` leaves the same 5 codes with the APIM booted on the bus
+  or unplugged (P0460-13, P1346-13, U0146, U0184, U0401-82). U0184 (lost comm radio) stays with the APIM there, so it's
+  the audio module (ACM), not the APIM. This analog cluster never sets U0253 (APIM), so there's nothing to spoof.
+- `0x109` per v-ivanyshyn (HS3): RPM `(b0<<8 + b1) / 4`, gear (`b2` 1 P, 17 R, 33 N, 49 D, 65 S), speed `(b4<<8 + b5) / 100`, `b6` 1 in reverse. Likely the APIM's speed / reverse input. `0x044` unknown.
+
+## 0x048 - Power Mode
+
+**Sample:** `00 00 00 00 07 00 E0 00` · **Rate:** 10 Hz (ours) · **Status:** Confirmed (byte 4)
+
+| Byte | Value |
+|---|---|
+| 4 bits 4 - 0 | Power mode, see below |
+| 4 bits 7 - 5 | Not part of the power mode: `27` (bit 5 + running) still boots. Unknown |
+| 6 | `E0`, untested |
+| 0 - 3, 5, 7 | `00`, untested |
+
+Byte 4 swept `00 - 1F`, 30 s each (`interactive_brute_force.py apimpower`). Names are a guess from Ford's usual power
+mode list, but they match what a car does: the radio comes on in accessory and drops out while cranking.
+
+| Byte 4 | Name (guess) | APIM |
+|---|---|---|
+| `00` | Key out | not tested (the sweep stepped past it at once) |
+| `01` `02` `03` | Key recently out / key approved / post accessory | Off |
+| **`04`** | **Accessory** | **On** - `0x2E3` → `02` in 0.3 s, `0x290` → `7F` 5.5 s later |
+| **`05`** | **Post ignition** | **On** (stays on from `04`, bit flip test: no change either way) |
+| **`06`** | **Ignition on** | **On** |
+| **`07`** | **Running** | **On** (what `s550_cluster.py` sends) |
+| `08` | ? | Off, `0x290` → `01` within 0.5 s |
+| `09` | Crank | Off |
+| `0A - 1F` | - | Off (`17` off too, so bit 4 is part of the field) |
+
+- Off → on takes 5 - 25 s (`0x290` `01` → `7F`), on → off under a second.
+- In "off" the APIM keeps listening: `0x290` stays at 5 Hz with ~19 IDs, so a later valid power mode still boots it.
+
+## 0x466 - GPS Compass / Time
+
+**Sample:** `78 34 D4 28 12 A0 80 00` (15:13:53 UTC, 10 Nov 2026, north) · **Rate:** 1 Hz (ours) · **Status:** Compass confirmed on the cluster, the rest from the DBC
+
+`0x466 compass: v = (b3 & 0x07) * 2 + (b4 >> 7)` (datechnerd, digital cluster) is `GPS_Compass_direction 26|4` of the
+DBC's `APIMGPS_Data_Nav_2_FD1` (`0x463`), so the rest of that layout is assumed:
+
+| Byte | Bits | Signal |
+|---|---|---|
+| 0 | 7 - 3 | UTC hours |
+| 0 | 2 | GPS fault (`Gps_B_Falt`) |
+| 1 | 7 - 2 | UTC minutes |
+| 2 | 7 - 2 | UTC seconds |
+| 3 | 7 - 3 | PDOP, `raw * 0.2` |
+| 3 - 4 | b3 2 - 0, b4 7 | Compass: `0` N, `1` NE, `2` E, `3` SE, `4` S, `5` SW, `6` W, `7` NW |
+| 4 | 6 | Inferred (not actual) position |
+| 4 | 5 - 1 | Day - 1 |
+| 5 | 7 - 4 | Month - 1 |
+| 6 | 7 - 3 | Year - 2010 |
+
+- `s550_cluster.py` `send_gps_nav` sends it from `compass_heading` (degrees, rounded to 8 directions) and the PC's UTC
+  clock. The cluster shows the bearing. The bench APIM ignores it (its compass needs the nav SD card and GPS antenna).
+  In a car with nav the APIM probably sends this itself.
+
+## What the APIM sends
+
+**First at wake up:** `0x5E2` `E2 00 FF FF FF FF FF FF` (its [module alive frame](#0x5xx---module-alive-frames)), then
+~10 ms later once each: `0x086 0x090 0x091 0x101 0x103 0x104 0x105 0x191 0x194 0x19B 0x1A1 0x1A3 0x1D4 0x1D6 0x1D9
+0x1DA 0x1DC 0x1DD 0x1DF 0x1EA 0x1ED 0x1F4 0x1F5 0x1F6 0x1F7 0x1FF 0x227 0x22E 0x22F` (mostly zeros: `0x104`
+`FF 00 00 FF 00 80 FF 00`, `0x191` `3C 00 ...`, `0x1DA` `0C EF 07 FF ...`, `0x1DD` `FF FF F0 00 00 00 3F FF`,
+`0x1F6` `80 03 FF FF FF FF 00 00`). Without a valid `0x048` it stops `0x5E2` after 5 s and stays in the listening state.
+
+**5 Hz:** `0x290`. **1 Hz:** `0x192 0x215 0x222 0x229 0x2D0 0x2D1 0x2D2 0x2E0 0x2E3 0x2EE 0x320 0x321 0x34E 0x35B
+0x362 0x3DA 0x3F0 0x3F1`, and `0x5E2` while on. **0.2 Hz once booted:** `0x2CB` `10 0A 61 71 00 01 03 40` (byte 1
+`08 - 0B`).
+
+| ID | Data | Notes |
+|---|---|---|
+| `0x290` | `01 00 ...` | **Byte 0 = APIM state:** `01` starting / off, `7F` booted, `4F` was on and lost `0x048` |
+| `0x2E3` | `01 00 ...` | Byte 0 `01` starting / off, `02` on. Held at zeros it clears the digital cluster's U0253 (lost comm APIM), see [Fault / lamp suppression](#fault--lamp-suppression-digital-standalone--no-gwm). The analog cluster never sets U0253 |
+| `0x2D0` | `77 04 10 07 00 ...` | Byte 1 `04` → `24` and byte 2 `10` / `20` change around boot |
+| `0x229` | `00 00 03 00 00 ...` | Byte 1 counts `10 30 20 00` for a few seconds after boot |
+| `0x103` `0x222` | `00 ...` | Short pulses after boot (`0x103` `01 01 ...` every 5 s, `0x222` `40` / `10`) |
 
 ---
 
