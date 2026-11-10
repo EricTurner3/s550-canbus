@@ -69,7 +69,12 @@ nav a.topic { grid-template-columns: 1fr; }
 nav .empty { padding: 10px 14px; color: var(--muted); }
 
 main { padding: 20px 24px 40px; min-width: 0; }
-aside { border-left: 1px solid var(--line); background: var(--panel); padding: 20px 20px 40px; min-width: 0; }
+aside { border-left: 1px solid var(--line); background: var(--panel); padding: 20px 20px 40px; min-width: 0;
+  position: sticky; top: 53px; height: calc(100vh - 53px); overflow-y: auto; }
+.general { margin-top: 26px; max-width: 900px; }
+.general h3 { font-size: 15px; margin: 0 0 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.general section + section { margin-top: 22px; }
+.general p, .general ul { margin: 0 0 12px; }
 
 .title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 6px; }
 .title h2 { margin: 0; font-size: 22px; }
@@ -146,7 +151,7 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
 
 @media (max-width: 1180px) {
   .layout { grid-template-columns: 260px minmax(0, 1fr); }
-  aside { grid-column: 2; border-left: 0; border-top: 1px solid var(--line); }
+  aside { grid-column: 2; border-left: 0; border-top: 1px solid var(--line); position: static; height: auto; overflow: visible; }
 }
 @media (max-width: 760px) {
   header { flex-wrap: wrap; gap: 8px; }
@@ -259,7 +264,7 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
           return extra.length ? `<p class="muted">${extra.join(' · ')}</p>` : '';
         }
         case 'p': return `<p class="note"${byteAttr(b.bytes)}>${md(b.md)}</p>`;
-        case 'callout': return `<div class="callout note ${esc(b.kind)}"${byteAttr(b.bytes)}>${md(b.md)}</div>`;
+        case 'callout': return `<div class="callout note ${esc(b.kind)}"${byteAttr(b.bytes)}>${md(b.md).replace(/\n/g, '<br>')}</div>`;
         case 'code': return `<pre>${esc(b.text)}</pre>`;
         case 'ul': return '<ul>' + b.items.map(i => {
           const style = (i.depth ? `margin-left:${i.depth * 16}px;` : '') + (i.bytes.length ? `--hc:var(--b${i.bytes[0]})` : '');
@@ -269,6 +274,25 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
       }
       return '';
     }).join('');
+  }
+
+  // byte specific blocks go beside the grid, general ones under it. Nested list items follow their parent
+  function splitBlocks(blocks) {
+    const bytes = [], general = [];
+    blocks.forEach(b => {
+      if (b.t === 'ul') {
+        const by = [], gen = [];
+        let to = gen;
+        b.items.forEach(i => { if (!i.depth) to = i.bytes.length ? by : gen; to.push(i); });
+        if (by.length) bytes.push({ t: 'ul', items: by });
+        if (gen.length) general.push({ t: 'ul', items: gen });
+      } else if (b.t === 'table') {
+        (b.byteCol >= 0 || b.rows.some(r => r.bytes.length) ? bytes : general).push(b);
+      } else {
+        (b.bytes && b.bytes.length ? bytes : general).push(b);
+      }
+    });
+    return { bytes, general };
   }
 
   // a table with a Byte column: one colored card per row
@@ -379,11 +403,21 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
         <p class="hint">Bold bytes differ from the most common value in their column. Click a byte or column to highlight its notes; click a note to highlight its bytes.</p>`
         : '<p class="muted">No samples in the logs or database.md for this ID.</p>'}`;
 
-    notes.innerHTML = rec.entries.length ? rec.entries.map(e => `<section>
+    const parts = rec.entries.map(e => splitBlocks(e.blocks));
+    const genHtml = parts.map(p => renderBlocks(p.general));
+    const general = rec.entries.map((e, i) => [e, genHtml[i]]).filter(x => x[1]);
+    if (general.length) {
+      main.insertAdjacentHTML('beforeend', '<div class="general">' + general.map(([e, html]) => `<section>
+        <h3>${general.length > 1 || rec.entries.length > 1 ? md(e.title) : 'Notes'}
+        ${e.variant !== 'analog' ? `<span class="pill ${e.variant === 'digital' ? 'digital' : 'tx'}">${variantLabel[e.variant]}</span>` : ''}</h3>
+        ${html}</section>`).join('') + '</div>');
+    }
+
+    notes.innerHTML = rec.entries.length ? rec.entries.map((e, i) => `<section>
         <h3>${md(e.title)} ${e.variant !== 'analog' ? `<span class="pill ${e.variant === 'digital' ? 'digital' : 'tx'}">${variantLabel[e.variant]}</span>` : ''}
         ${D.source && e.line ? `<a class="src" href="${D.source}#L${e.line}" target="_blank" rel="noopener">database.md:${e.line} ↗</a>` : ''}</h3>
         ${e.status && e.variant !== 'cluster-tx' ? `<p class="muted"><strong>Status:</strong> ${md(e.status)}</p>` : ''}
-        ${renderBlocks(e.blocks) || '<p class="muted">No notes yet.</p>'}
+        ${renderBlocks(parts[i].bytes) || `<p class="muted">${genHtml[i] ? 'No byte notes, see the notes under the grid.' : 'No notes yet.'}</p>`}
         ${e.topic ? `<p class="muted">From the <a href="#t/${e.topic}">Cluster (IPC) Transmits</a> list.</p>` : ''}
       </section>`).join('')
       : '<section><h3>Not documented yet</h3><p class="muted">Seen in the logs only. Add a <code># ' + rec.id + ' - Name</code> section to database.md to document it.</p></section>';
@@ -481,6 +515,7 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
     const on = list.querySelector('a.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
     window.scrollTo(0, 0);
+    notes.scrollTop = 0;
   }
   window.addEventListener('hashchange', route);
   route();

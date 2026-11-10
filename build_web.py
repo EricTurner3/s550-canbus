@@ -5,7 +5,7 @@
     Builds docs/data.js for the database viewer (docs/index.html) from database.md and the logs it lists.
     database.md stays the only source of truth, this just parses it:
 
-      - Each "# 0xNNN - Name" heading (and "## 0xNNN - Name" under the 2018+ digital heading) is an ID entry.
+      - Each "# 0xNNN - Name" or "## 0xNNN - Name" heading is an ID entry (digital under the 2018+ heading).
       - Tables with a Byte / Bytes / Bits column (or "Byte N" columns) tag each row with the byte(s) it describes,
         prose that says "byte 3" / "bytes 4 - 5" / "b2" gets tagged too. The viewer colors notes by those bytes.
       - The Sources table's Vehicle column labels the sample rows. Every source whose path exists on disk is read
@@ -131,7 +131,7 @@ def parse_blocks(lines, start_line):
             if m:
                 kind = m.group(1).lower()
                 body = body[1:]
-            md = ' '.join(body)
+            md = ''.join(('\n' if re.match(r'(\d+\.|[-*]) ', l) else ' ') + l for l in body).strip()
             blocks.append({'t': 'callout', 'kind': kind, 'md': md, 'bytes': bytes_from_prose(md)})
             continue
 
@@ -255,7 +255,7 @@ def parse_database(path):
                         sources.append({'path': m.group(1).lstrip('/') if m else '', 'label': r['cells'][vi],
                                         'md': r['cells'][0]})
 
-        if ids and (sec['level'] == 1 or digital):
+        if ids:
             meta = next((b for b in blocks if b['t'] == 'meta'), None)
             entries.append({
                 'ids': ids, 'title': title, 'name': name.strip(), 'line': sec['line'],

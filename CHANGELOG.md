@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.5.1] - 10 Nov 2026
+Web viewer fixes for the APIM entries.
+
+### Web viewer (`docs/`, build_web.py)
+
+- Any `## 0xNNN - Name` heading is an ID entry, not just under the 2018+ digital heading. `0x048` and `0x466` were
+  showing as topics with an empty ID page
+- Notes that aren't about a byte (no Byte column, no "byte N") go under the grid. The right column only has byte notes
+  and scrolls on its own on desktop, so the grid stays in view
+- Numbered / bulleted lines in callouts keep their line breaks
+
+### database.md
+
+- `0x77` lists the `FF FF FF FF FF FF 00 FC` frame as a second sample, so it shows in the web viewer's grid
+
 ## [2.5.0] - 10 Nov 2026
 **APIM (SYNC 2) on the bench.** It boots from `0x048` byte 4 (power mode, `04 - 07` accessory to running), which
 `s550_cluster.py` already sent, shows outside temp from `0x3B3` byte 4, and answers Forscan on its HS1 pins (53 / 54)

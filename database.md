@@ -181,7 +181,7 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 
 # 0x77 - Vehicle Speed / Yaw
 
-**Sample:** `18 3B 08 00 7F F7 E5 E5` · **Status:** From logs
+**Sample:** `18 3B 08 00 7F F7 E5 E5` (logs), `FF FF FF FF FF FF 00 FC` (steering warning fix, s550_cluster.py default) · **Status:** From logs
 
 | Bytes | Signal | Encoding |
 |---|---|---|
