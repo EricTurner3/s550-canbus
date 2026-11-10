@@ -234,7 +234,7 @@ Sent by the power steering module. The Ford DBC (`ford_lincoln_base_pt.dbc`, `EP
 - Value names from `other_refs/VehicleCAN.dbcx`:
     - `EPAS_Failure`: `0` OK / no message, `1` Power Steering Assist Fault, `2` Service Power Steering, `3` Service Power Steering Now
     - `SteMdule_D_Stat`: `0` initializing, `1` limited assist, `2` full assist, `3` shutdown, `4` system failure, `5` / `6` EPAS failure 2 / 3
-- The DBC lists only the GWM and IPMA as receivers of these, not the cluster. Sweeping `EPAS_Failure` 0 - 3 and the state 0 - 7 with `--dummydata` changed nothing on screen, but Steering Assist Fault and Service Now were already showing (U0420-82 and the 0x77 speed). The 2018 project saw "Steering Loss - Stop Safely" with `FF` on 0x02D - 0x089, so the cluster may read something in that range. `epasfail` without `--dummydata` (Service Now not showing) also changed nothing at `2` / `3`, so on this 2015 cluster the warnings don't come from 0x82 directly. They follow U0420-82 and, for Service Now, the 0x77 speed.
+- The DBC lists only the GWM and IPMA as receivers of these, but its message comment says "IPC needs EPAS_Failure for msg to driver", so the cluster gets it through the GWM. Sweeping `EPAS_Failure` 0 - 3 and the state 0 - 7 with `--dummydata` changed nothing on screen, but Steering Assist Fault and Service Now were already showing (U0420-82 and the 0x77 speed). The 2018 project saw "Steering Loss - Stop Safely" with `FF` on 0x02D - 0x089, so the cluster may read something in that range. `epasfail` without `--dummydata` (Service Now not showing) also changed nothing at `2` / `3`, so on this 2015 cluster the warnings don't come from 0x82 directly. They follow U0420-82 and, for Service Now, the 0x77 speed. Fixed by disabling EPAS in the cluster's as-built, see [IPC As-Built](#ipc-as-built-720).
 - `epasfail` / `epasstat` in `interactive_brute_force.py` sweep the failure and state fields to see if the cluster reads them for the steering warnings.
 
 # 0x83 - Clockspring
@@ -257,8 +257,14 @@ Sent by the power steering module. The Ford DBC (`ford_lincoln_base_pt.dbc`, `EP
 | Bytes | Signal | Encoding |
 |---|---|---|
 | 0 - 1 | Steering wheel angle | Unsigned with offset, center ~`0x7CD3` (31955). ~27350 - 36520 seen driving (±4600). Likely 0.1° per bit (±460°, about lock to lock). Increases with yaw |
-| 5 (upper nibble) | Rolling counter | `+0x10` per frame |
+| 2 bit 7 | Steering power request (`StePw_B_Rq`) | `1` running, `0` in the `FF FF 00 00` boot frames |
+| 4 | Checksum | `0xFF - (b0 + b1 + counter + b6 + b7)`, low 8 bits. Matches all 88,614 GT350 frames and all 7,002 in v-ivanyshyn's log. Drops by 1 as the counter goes up, jumps up 15 when it wraps F → 0, and stays put when the angle and counter move in opposite directions on the same frame |
+| 5 (upper nibble) | Rolling counter | `+0x10` per frame, lower nibble always `0` |
+| 6 - 7 | Learned steering center | Same scale as the angle, doesn't follow the wheel. `FF FE` at key on and until the car has driven ~1 minute (`drive.csv`), then steps between about -4° and -6°. `7C EA` GT350 parked, `7C 7F` v-ivanyshyn's GT |
 
+- Ford DBC `SteeringPinion_Data` (0x7E) has the same layout, which `s550_cluster.pinion_frame` builds for both IDs. Bytes 2 (low 7 bits) - 3 there are a compensated angle, always `0` on 2015 - 2017.
+- `0x3A8` (v-ivanyshyn's GT only, 20 ms) bytes 2 - 3 are the same angle minus 21873 (center ~`0x278F`). No counter or checksum, the other bytes are `00`.
+- Sending this frame with a correct counter and checksum doesn't clear U0420-82. Disabling EPAS in the cluster's as-built does, see [IPC As-Built](#ipc-as-built-720).
 - Confirm the direction by turning the wheel left while parked.
 
 # 0x91 - Yaw Rate
@@ -811,6 +817,27 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - `s550_cluster.py` sends `0x581 0x596 0x59E 0x5B3 0x5B5`. The cluster's own is `0x591`.
 - Faking all of `0x500 - 0x5FF` (`--nm`) changed nothing.
 - 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names them AutoSar network management frames: `0x59E` GWM, `0x5B5` PSCM, `0x596` ABS. Byte 0 is the node ID, byte 1 the control byte. We already send `0x59E` and `0x5B5` and the cluster still sets U0146 (GWM) and U0420 (PSCM), so it wants more than these alive frames.
+
+# IPC As-Built (720)
+
+**Status:** Confirmed on the bench · Written with Forscan, read with UDS `22 DExx` on `0x720` (no security for reads, writes need Forscan's security access)
+
+The cluster's configuration. Block `720-NN` is DID `DE00 + NN - 1`, line `-01` is its first 5 bytes, line `-02` the rest. Forscan shows a checksum byte after each line that the UDS read leaves out:
+
+```
+checksum = (0x07 + 0x20 + block + line + data bytes) & 0xFF      e.g. 720-01-02: 07+20+01+02+0C+1B+10 = 61
+```
+
+| Line | This cluster (FR33-10849-GF) | Bench | Field (Forscan) |
+|---|---|---|---|
+| `720-01-01` | `8C0B 1064 70` | same | |
+| `720-01-02` | `0C1B 10` `61` | `0C19 10` `5F` | 2nd byte low nibble, bit 3 Easy Entry/Exit, bit 2 Electric Parking Brake, **bit 1 Electric Power Assist Steering**, bit 0 ESC. `B` → `9` = EPAS disabled |
+| `720-06-01` | `6C7F 0000 98` `B1` | `6C7F 0000 88` `A1` | 5th byte bit 4 = **EPAS Button**, enabled → disabled |
+
+- **Fixes Steering Assist Fault / Steering Fault Service Now** (9 Nov 2026). With EPAS disabled the cluster stops expecting the power steering module, so U0420-82 has nothing to fault. Both fields were changed together; which one does it on its own isn't tested.
+- Every CAN fix tried before this (`0x82` `EPAS_Failure` sweep, `0x085` / `0x07E` counter + checksum, `0x3A8`) didn't clear U0420-82.
+- `fake_forscan.py` lets Forscan connect to the bench cluster: it answers as the PCM and BCM so Forscan finds a car. The ELM327 has to be on the cluster's CAN directly (HS3, Forscan doesn't look for the IPC on the OBD port's HS1 pins).
+- Other IDs from the same Forscan read: F113 `FR33-10849-GF` (part), F188 `FR33-14C026-AG` (strategy), F124 `FR33-14C088-RF` (calibration), F111 `FR33-14F094-GA`, F110 `DS-FR33-1A292-AD`, F18C serial `42262060`.
 
 ---
 

@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.4.1] - 9 Nov 2026
+**Steering Assist Fault / Steering Fault Service Now fixed**: EPAS disabled in the cluster's as-built
+(`720-01-02` `0C1B` → `0C19`, `720-06-01` `…98` → `…88`), written with Forscan through the new `fake_forscan.py`.
+U0420-82 was never a CAN problem on the bench, the cluster was configured to expect a power steering module.
+
+### fake_forscan.py
+
+- Lets Forscan connect to a bench cluster. Answers as the PCM (OBD supported PIDs, VIN, no DTCs, UDS sessions /
+  tester present / VIN) and the BCM, the two modules Forscan needs before it looks for the rest. `--modules` fakes more
+- Runs interactive_brute_force.py underneath, every other option is passed through (test defaults to `idle`, speed to 0)
+- Logs every diagnostic frame with the module's name (`- diag 0x744 (DSM - Driver Seat Module): ...`), from the Ford DBC
+  and Forscan's scan. The frames/s status line is off, `--status` brings it back
+- The ELM327 has to be wired to the cluster's CAN directly, Forscan looks for the IPC on HS3, not the OBD port's HS1 pins
+
+### interactive_brute_force.py
+
+- `idle` preset: nothing under test, only the background frames
+- `epasbyte1` preset: every value of 0x82 byte 1 (EPAS_Failure, steer active, park assist bits)
+- `--pscm` sends 0x085, 0x07E (rolling counter + checksum) and 0x3A8 alongside 0x82, on by itself for the 0x82 presets
+- `rx_hooks` (every received frame) and `main()` so another script can run it, `show_status` mutes the frames/s line
+
+### s550_cluster.py
+
+- `0x085` was static with a stuck counter and a bad checksum (`7A`, should be `1A`). `pinion_frame()` now rolls it:
+  byte 5 upper nibble counter, byte 4 = `0xFF - (b0 + b1 + counter + b6 + b7)`, checked against all 88,614 GT350 frames and
+  all 7,002 in v-ivanyshyn's log. Fixes `--dummydata` and `ipc_dtc_test.py dummy`
+- `0x07E` (DBC SteeringPinion_Data, same layout) and `0x3A8` (second copy of the steering angle) senders, `PSCM_SCHEDULE`
+
+### database.md
+
+- `0x85` fully decoded: steering power request bit, checksum, learned steering center in bytes 6 - 7, `0x3A8`
+- `0x82`: the DBC says the IPC reads `EPAS_Failure` (through the GWM)
+- New IPC As-Built (720) section: block / line → `DExx` mapping, the checksum formula, this cluster's values and part numbers
+
 ## [2.4.0] - 9 Nov 2026
 ![live test UI](./docs/livetest.png)
 A local web UI for testing every value in `s550_data.py` on the cluster live, without a game running.
@@ -131,7 +165,7 @@ Remaining with dummy data: Fuel Level Low, See Manual, Steering Assist Fault (pl
 | DTC | Cause | Next step |
 |---|---|---|
 | P0460-13, P1346-13 | Fuel level sender inputs open (wired, not CAN) | Resistors on C220 pins 10/2 and 9/1, ~100 Ω to start |
-| U0420-82 | PSCM data invalid, drives the steering warnings. Correct `0x085` / `0x07E` counters and `0x82` don't clear it | Capture from the GWM / HS3 side |
+| ~~U0420-82~~ | PSCM data invalid, drives the steering warnings. Correct `0x085` / `0x07E` counters and `0x82` don't clear it | **Solved 9 Nov 2026**: EPAS disabled in the cluster's as-built (`720-01-02`, `720-06-01`), see database.md |
 | U0401-82 | PCM data invalid. `0x202` with a correct counter doesn't clear it | Same |
 | U0146, U0184 | GWM, radio missing (U0184 has no lamp) | Same |
 

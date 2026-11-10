@@ -11,9 +11,33 @@ Main Scripts
 * s550_cluster.py <game> - Currently supports Forza Horizon 5, American Truck Simulator & Euro Truck Simulator 2 in an alpha state. Allows that game to interface with the cluster. See s550_data.py for the model in translating other game data
     * [Video Demonstration](https://youtu.be/KNyn1v3_cwc)
     * [Video Demonstration v2](https://www.youtube.com/shorts/0d_nqnypM2c) - 7 November 2026, shows new AFR, Boost, Inlet Air Temp, Track Apps Accelerometer gauges
-* interactive_brute_force.py - This script allows you to use the up,down,left,right,enter keys to control the menu on the cluster
+* interactive_brute_force.py - Sends the full set of cluster messages and sweeps one signal (a preset) so you can watch what changes. The up,down,left,right,enter keys control the menu on the cluster, space pauses the sweep, + / - step the value by hand, r resets it
     * arrows.py and brute_force.py were merged into a single interactive script
     * [Video Demonstration](https://youtu.be/OzUs28GIq0A)
+    * Every preset and option is listed at the top of the script and with `python interactive_brute_force.py --help`
+    ```
+    python interactive_brute_force.py afr                                  # sweep the AFR gauge
+    python interactive_brute_force.py epasbyte1 --dummydata                # 0x82 byte 1, power steering frames sent alongside
+    python interactive_brute_force.py cht --dummydata --respond --freeze   # steady chassis data, answer the cluster's startup requests
+    python interactive_brute_force.py cht --gt-only 0x421,0x434            # add frames from v-ivanyshyn's GT log
+    python interactive_brute_force.py afr --dummydata --mute 0x82,0x85     # stop sending IDs to find which one raises a warning
+    python interactive_brute_force.py idle --dummydata --respond --config --vin 1FA6P8... --speed 0   # nothing under test, a steady parked car
+    ```
+* fake_forscan.py - Lets [Forscan](https://forscan.org/) connect to a cluster on the bench (read DTCs, change as-built). Runs interactive_brute_force.py and answers Forscan as the PCM and BCM so it finds a car, the real cluster answers for itself. Every other option goes to interactive_brute_force.py (test defaults to `idle`, speed to 0)
+    * Wire the ELM327 (needs the HS / MS switch Forscan uses) straight to the cluster's CAN, Forscan doesn't look for the cluster on the OBD port's HS1 pins
+    * Prints each diagnostic frame with the module's name, e.g. `- diag 0x728 (IPC - Instrument Panel Cluster reply): ...`
+    * This is how Steering Assist Fault was fixed: EPAS disabled in the cluster's as-built, see the IPC As-Built section of [database.md](database.md)
+    ```
+    python fake_forscan.py --dummydata --respond --config --vin 1FA6P8...
+    python fake_forscan.py --dummydata --respond --config --vin 1FA6P8... --modules 0x726,0x7E1,0x7D0   # fake more modules
+    python fake_forscan.py --dummydata --respond --vin 1FA6P8... --status                              # show the frames/s line
+    ```
+* ipc_dtc_test.py - Reads and clears the cluster's DTCs over UDS (0x720 / 0x728), and tests which frames keep a code away
+    ```
+    python ipc_dtc_test.py read
+    python ipc_dtc_test.py clear                      # clear, wait, read back what re-set
+    python ipc_dtc_test.py probe 085roll 3A8=0000278F00000000@20
+    ```
 
 ![live test UI](./docs/livetest.png)
 * live_test.py - Local web UI with sliders / buttons for every value in s550_data.py, sent to the cluster live so you can check gauges, icons and warnings without a game. Run `python live_test.py` and it opens http://127.0.0.1:8550

@@ -57,6 +57,8 @@ MISC_10 = 0x130
 MISC_11 = 0x77
 MISC_12 = 0x82 # thanks to v-ivanyshyn's work
 MISC_13 = 0x230
+STEERING_PINION = 0x7E # Ford DBC SteeringPinion_Data, same layout as 0x85. Not in any 2015 - 2017 capture
+STEERING_ANGLE_2 = 0x3A8 # second copy of the 0x85 angle, v-ivanyshyn's GT log only
 APIM_1 = 0x044 # https://github.com/EtoTen/stm32_can_sim/blob/main/src/main.cpp
 APIM_2 = 0x048
 APIM_3 = 0x109
@@ -215,9 +217,38 @@ def send_misc_3(clusterdata):
     data = [0x1A, 0x58, 0x1A, 0x58, 0x1A, 0x84, 0x1A, 0x74]
     return send_msg(MISC_3, start, data)
 
+# steering angle, 0.1 deg per bit, 0x7D00 = center. 0x7CFF is the parked GT350 (run_*.csv)
+STEERING_ANGLE = 0x7CFF
+pinion_counters = {}
+
+def pinion_frame(id):
+    '''
+        0x85 / 0x7E SteeringPinion_Data, checked against every frame in the GT350 logs and v-ivanyshyn's GT log
+            Bytes 0 & 1 - steering angle (STEERING_ANGLE)
+            Byte 2 bit 7 - steering power request, 1 running
+            Byte 4 - checksum, 0xFF - (b0 + b1 + counter + b6 + b7)
+            Byte 5 - bits 7 - 4 counter, +1 every frame
+            Bytes 6 & 7 - learned steering center, same scale as the angle. FF FE until the car has driven a bit,
+                          0x7CEA on the GT350, 0x7C7F on v-ivanyshyn's GT
+        Each ID keeps its own counter
+    '''
+    cnt = pinion_counters[id] = (pinion_counters.get(id, -1) + 1) & 0x0F
+    data = [STEERING_ANGLE >> 8, STEERING_ANGLE & 0xFF, 0x80, 0x00, 0x00, cnt << 4, 0x7C, 0xEA]
+    data[4] = (0xFF - (data[0] + data[1] + cnt + data[6] + data[7])) & 0xFF
+    return data
+
 def send_misc_4(clusterdata):
-    data = [0x7C, 0xFF, 0x80, 0x00, 0x7A, 0x40, 0x7C, 0xEA]
-    return send_msg(MISC_4, start, data)
+    return send_msg(MISC_4, start, pinion_frame(MISC_4))
+
+def send_steering_pinion(clusterdata):
+    return send_msg(STEERING_PINION, start, pinion_frame(STEERING_PINION))
+
+def send_steering_angle_2(clusterdata):
+    '''
+        0x3A8, bytes 2 & 3 = the 0x85 angle - 21873 (center ~0x278F), no counter or checksum, the rest 00. 20 ms
+    '''
+    raw = STEERING_ANGLE - 21873
+    return send_msg(STEERING_ANGLE_2, start, [0x00, 0x00, raw >> 8, raw & 0xFF, 0x00, 0x00, 0x00, 0x00])
 
 def send_misc_5(clusterdata):
     data = [0x7E, 0xE3, 0x7F, 0x39, 0x3D, 0x93, 0xF0, 0x00]
@@ -722,6 +753,13 @@ DUMMY_SCHEDULE = [
     (SPEED_ONE, [send_wheel_speeds, send_misc_4, send_misc_5]), # 0x217, 0x85 steering angle, 0x91 yaw
     (SPEED_TWO, [send_vehicle_speed_77, send_vehicle_speed_415, send_misc_7, send_misc_12,
                  send_misc_13]), # 0x200 torque, 0x82 steering mode, 0x230 gear
+]
+
+# power steering frames that go with 0x82 (interactive_brute_force.py --pscm, on by itself for 0x82 tests).
+# 0x85 is in DUMMY_SCHEDULE too, the brute force skips it here when --dummydata is on
+PSCM_SCHEDULE = [
+    (SPEED_ONE, [send_misc_4, send_steering_pinion]), # 0x85, 0x7E
+    (SPEED_TWO, [send_steering_angle_2]), # 0x3A8
 ]
 
 def load_game(game):

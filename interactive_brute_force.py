@@ -30,6 +30,9 @@
         python interactive_brute_force.py tpmssys / tpmslamp / tpmslf / tpmsrf / tpmsrr / tpmslr
         python interactive_brute_force.py trans / transwarm
         python interactive_brute_force.py oil
+        python interactive_brute_force.py epasfail / epasbyte1 / epasstat
+        python interactive_brute_force.py idle --dummydata --respond --config --vin 1FA6P8... --speed 0
+    idle sends the background frames with nothing under test. fake_forscan.py runs it with a fake PCM / BCM for Forscan
         python interactive_brute_force.py accel
         python interactive_brute_force.py gx
         python interactive_brute_force.py gy
@@ -49,6 +52,9 @@
         python interactive_brute_force.py afr --dummydata --mute 0x82,0x85
     --gt-all sends every GT log ID live (s550_cluster.py's versions too), s550_cluster.py only fills what the log lacks
         python interactive_brute_force.py cht --gt-all
+    --pscm sends the power steering frames that go with 0x82: 0x85 and 0x7E with a rolling counter and checksum, and
+    0x3A8 (s550_cluster.PSCM_SCHEDULE). Turned on by itself for the 0x82 tests, --mute 0x7E etc. drops one
+        python interactive_brute_force.py epasbyte1 --dummydata
     --nm sends Ford "module alive" frames (like 0x596: 96 00 FF FF FF FF FF FF) for a range of IDs, to fake modules
     that are missing. New IDs the cluster transmits are printed as they show up
         python interactive_brute_force.py cht --gt-all --nm 0x500-0x5FF
@@ -221,6 +227,13 @@ TESTS = {
     'epasfail': dict(can_ids=(0x82,), test_bytes=(1,), mode='sequential', value_range=(0x00, 0x03), step_size=1,
                 step_period=6.0, send_period=0.02, sample_data=[0x83, 0x00, 0x14, 0x34, 0xAF, 0x00, 0x44, 0xFF],
                 describe=lambda v: 'EPAS_Failure {}'.format(v)),
+    # nothing under test, only the background frames (e.g. a steady car for Forscan: idle --config --vin ... --speed 0)
+    'idle': dict(can_ids=(), test_bytes=(), mode='sequential', value_range=(0, 0), step_size=0,
+                step_period=3600.0, send_period=1.0, sample_data=[0] * 8, describe=lambda v: 'nothing under test'),
+    # every value of byte 1: EPAS_Failure (bits 1 - 0), driver steer active (bit 2), park assist status (bits 7 - 3)
+    'epasbyte1': dict(can_ids=(0x82,), test_bytes=(1,), mode='sequential', value_range=(0x00, 0xFF), step_size=1,
+                step_period=3.0, send_period=0.02, sample_data=[0x83, 0x00, 0x14, 0x34, 0xAF, 0x00, 0x44, 0xFF],
+                describe=lambda v: '{} -> EPAS_Failure {}, steer active {}, SAPP {:05b}'.format(hex(v), v & 3, (v >> 2) & 1, v >> 3)),
     'epasstat': dict(can_ids=(0x82,), test_bytes=(6,), mode='sequential', value_range=(0x04, 0xE4), step_size=0x20,
                 step_period=6.0, send_period=0.02, sample_data=[0x83, 0x00, 0x14, 0x34, 0xAF, 0x00, 0x44, 0xFF],
                 describe=lambda v: 'module state {}'.format(v >> 5)),
@@ -255,6 +268,9 @@ parser.add_argument('--gt-all', action='store_true', help="send every GT log ID,
                     "s550_cluster.py only fills the IDs the log doesn't have")
 parser.add_argument('--dummydata', action='store_true',
                     help='add steady chassis messages (wheel speeds, yaw, accelerometer, steering ...) with matching speeds')
+parser.add_argument('--pscm', action='store_true',
+                    help='send the power steering frames that go with 0x82: 0x85 and 0x7E (rolling counter + checksum), '
+                         '0x3A8. On by itself when 0x82 is under test')
 parser.add_argument('--nm', type=replay.parse_ids, default=set(), metavar='IDS',
                     help='send "module alive" frames (ID low byte, 00, FF x6 at 1 Hz) for these IDs, e.g. 0x500-0x5FF. '
                          "IDs the cluster sends itself are skipped")
@@ -480,6 +496,8 @@ CLUSTER_TX_CHANGES = 'cluster_tx_changes.csv'
 cluster_tx_changes = [] # (seconds, id, data) each time a cluster ID changes value, plus key presses
 rx_count = 0 # frames received since the last status line
 rx_errors = 0
+rx_hooks = [] # functions called with every received frame (fake_forscan.py's fake modules)
+show_status = True # the once a second frames/s line, fake_forscan.py turns it off
 
 def _listen():
     '''
@@ -499,6 +517,8 @@ def _listen():
         if cluster_tx.get(msg.arbitration_id) != bytes(msg.data):
             cluster_tx_changes.append((time.time() - cluster.start, '{:#05x}'.format(msg.arbitration_id), msg.data.hex(' ')))
         cluster_tx[msg.arbitration_id] = bytes(msg.data)
+        for hook in rx_hooks:
+            hook(msg)
         if args.respond is not None and msg.arbitration_id == 0x3E0:
             if msg.data[0] and msg.data[4] & 0x04:
                 respond(msg.data)
@@ -561,8 +581,9 @@ def _status():
         failed = sum(cluster.fail_count.values())
         cluster.sent_count.clear()
         cluster.fail_count.clear()
-        print('* {} frames/s, {} failed, cluster sent {} frames/s ({} IDs, {} errors), testing {}'.format(
-            sent, failed, rx_count, len(cluster_tx), rx_errors, describe(value)))
+        if show_status:
+            print('* {} frames/s, {} failed, cluster sent {} frames/s ({} IDs, {} errors), testing {}'.format(
+                sent, failed, rx_count, len(cluster_tx), rx_errors, describe(value)))
         rx_count = 0
         rx_errors = 0
         _save_cluster_tx()
@@ -586,7 +607,12 @@ def _save_cluster_tx():
         print('* could not write {}: {}'.format(CLUSTER_TX_LOG, e))
 
 
-if __name__ == "__main__":
+def main():
+    '''
+        Schedules everything the command line asked for and runs the cluster. fake_forscan.py imports this file and
+        calls it after adding its rx_hooks
+    '''
+    global test_bytes, can_ids
     if isinstance(test_bytes, int):
         test_bytes = (test_bytes,)
     if isinstance(can_ids, int):
@@ -639,6 +665,14 @@ if __name__ == "__main__":
     if args.dummydata:
         cluster.SCHEDULE.extend(cluster.DUMMY_SCHEDULE)
         print('* Dummy data: 0x217 0x77 0x415 (speeds follow {} mph), 0x85 0x91 0x200 0x82 0x230'.format(cluster_speed))
+    if 0x82 in can_ids:
+        args.pscm = True
+    if args.pscm:
+        for period, funcs in cluster.PSCM_SCHEDULE:
+            # --dummydata already sends 0x85, a second copy would put two counters on the bus
+            funcs = [f for f in funcs if not (args.dummydata and f is cluster.send_misc_4)]
+            cluster.SCHEDULE.append((period, funcs))
+        print('* Power steering: 0x85 0x7E (counter + checksum), 0x3A8')
     if args.respond is not None:
         print('* Answering 0x3E0 requests on 0x3E3 (04 07 on 0x3E6): 00 {:02x} xx xx 80 {}{}'.format(args.respond, args.respond_tail.hex(' '),
               '' if args.respond_sweep is None else ', byte {} +1 per repeat'.format(args.respond_sweep)))
@@ -656,3 +690,7 @@ if __name__ == "__main__":
     threading.Thread(target=_listen, daemon=True).start()
     set_value(value)
     cluster._scheduler()
+
+
+if __name__ == "__main__":
+    main()
