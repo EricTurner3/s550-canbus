@@ -69,18 +69,30 @@ ROLLERS = {'085roll': (0x085, pscm_roller(), 0.01),
 # 0x202 speed with the real car's counter: b2 bits 6-3, b1 = 0xFF - (counter + Qf 3 + b6 + b7)
 # (checked against can/drive.csv). The heartbeat's 0x202 has neither; this replaces it while on.
 # The counter goes up by 2 every frame at 50 Hz (14137 of 14559 GT350 steps; ivan's log drops frames, steps 2/4/6)
+# and is always odd (b2 bit 3 = 1) in both the GT350 and ivan's GT log. The first version counted 2, 4 .. 0 (bit 3 = 0)
+# and didn't clear U0401-82. b0 is 04 in the GT (00 in the GT350, not in the checksum)
 def speed_roller():
-    cnt = 0
+    cnt = 1
     def roll():
         nonlocal cnt
         cnt = (cnt + 2) & 0x0F
         v = int(c.clusterdata.value_speed) * 175 if c.clusterdata else 0     # same scale as send_speed
-        d = [0x00, 0x00, cnt << 3, 0x00, 0x60, 0x00, (v >> 8) & 0xFF, v & 0xFF]
+        d = [0x04, 0x00, cnt << 3, 0x00, 0x60, 0x00, (v >> 8) & 0xFF, v & 0xFF]
         d[1] = (0xFF - (cnt + 3 + d[6] + d[7])) & 0xFF
         return d
     return roll
 
 ROLLERS['202roll'] = (0x202, speed_roller(), 0.02)
+
+# 0x084 GlobalClock_Data_FD1 from the GWM (DBC), 1 Hz in ivan's GT log: 17 00 01 11 2D 1B 11 00 = 2023, day 273, 17:45:27.
+# b0 year - 2000, b2-3 day of the year, b4 minute, b5 second, b6 hour. No counter. Sent here from the PC's clock
+def clock_roller():
+    def roll():
+        t = time.localtime()
+        return [t.tm_year - 2000, 0x00, t.tm_yday >> 8, t.tm_yday & 0xFF, t.tm_min, t.tm_sec, t.tm_hour, 0x00]
+    return roll
+
+ROLLERS['084clock'] = (0x084, clock_roller(), 1.0)
 
 # Counter hunt without knowing the layout: every nibble of the frame counts 0-F together
 # (00 11 22 .. FF), so a 4-bit alive counter is valid wherever it sits. The checksum (if any)

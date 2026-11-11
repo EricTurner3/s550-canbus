@@ -113,7 +113,7 @@ Only `0x18B 0x350 0x3C8 0x3E0 0x430 0x434` show up in the HS1 logs (passed throu
 | `0x317` | `03 FE 00 00 00 00 00 00` | |
 | `0x318` | `00 ...` | v-ivanyshyn: bytes 5 & 6 slowly decrease during a drive, fuel in tank? |
 | `0x350` | `00 ...` | Byte 0 `0x40` at times (also in `start.csv`) |
-| `0x353` | `00 00 00 00 00 05 10 13` | Bytes 4 & 5 `0x03E7` (999) once, then 5 → 0. Distance to empty? (no fuel sender on the bench, the cluster shows Fuel Level Low) |
+| `0x353` | `00 00 00 00 00 05 10 13` | Bytes 4 & 5 `0x03E7` (999) once, then 5 → 0. Distance to empty? (seen before the bench had [fuel sender resistors](#fuel-level-senders-wired-c220)) |
 | `0x3C8` | | MyColor / drive mode, see [0x3C8](#0x3c8---drive-mode-mycolor) |
 | `0x3E0` | `00 00 00 00 80 00 00 00` | Startup requests, see [0x3E0](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies) |
 | `0x3FB` | `00 ...` | |
@@ -840,6 +840,25 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - `s550_cluster.py` sends `0x581 0x596 0x59E 0x5B3 0x5B5`. The cluster's own is `0x591`, the APIM's `0x5E2` (only while it's on, see [APIM (SYNC)](#apim-sync)).
 - Faking all of `0x500 - 0x5FF` (`--nm`) changed nothing.
 - 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names them AutoSar network management frames: `0x59E` GWM, `0x5B5` PSCM, `0x596` ABS. Byte 0 is the node ID, byte 1 the control byte. We already send `0x59E` and `0x5B5` and the cluster still sets U0146 (GWM) and U0420 (PSCM), so it wants more than these alive frames.
+
+# Fuel Level Senders (wired, C220)
+
+Fuel level isn't on CAN, the cluster reads two resistive senders (saddle tank) on C220 pins **1 + 9** and **2 + 10**.
+Left open the cluster sets P0460-13 / P1346-13 and shows Fuel Level Low.
+
+| Measured (10 Nov 2026) | Pins 1 + 9 | Pins 2 + 10 |
+|---|---|---|
+| Open circuit | ~7.1 V | ~7.1 V |
+| Short circuit (meter on mA) | 68.6 mA | 68.6 mA |
+
+- Lower resistance = lower voltage = more fuel. 7.1 V / 68.6 mA is ~100 Ω inside the cluster, but the loaded voltages
+  don't fit that: 100 Ω read 4.2 V and 200 Ω read 6.2 V (both resistors checked with an ohmmeter). Tune by measuring.
+- **Clears the Fuel Level Low warning:** 100 Ω on pins 1 + 9, 200 Ω with 3 × 330 Ω in parallel (~71 Ω) on pins 2 + 10.
+  The gauge reads about 1/4 tank. A lower resistance on pins 1 + 9 should read fuller.
+- Another builder reads ~3.3 V across a pair as half a tank, ~2.9 V as more than half.
+- The needle is heavily damped, give it a key cycle after a change.
+- A bare LED across a pair would draw ~38 mA (too much). 4 silicon diodes in series hold ~3.2 - 3.6 V whatever the
+  cluster's internal resistance, not tested.
 
 # IPC As-Built (720)
 

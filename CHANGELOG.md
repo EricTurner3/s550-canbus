@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.2] - 10 Nov 2026
+
+### database.md
+
+- New Fuel Level Senders section: open circuit / short circuit measurements on C220 pins 1 + 9 and 2 + 10, and the
+  resistors that clear Fuel Level Low (100 Ω on 1 + 9, 200 Ω ‖ 3 × 330 Ω on 2 + 10, gauge at about 1/4)
+
 ## [2.5.1] - 10 Nov 2026
 Web viewer fixes for the APIM entries.
 
