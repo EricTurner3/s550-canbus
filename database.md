@@ -58,6 +58,7 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 | `0x290` | APIM state | APIM sends | No |
 | `0x2E3` | APIM status, clears the digital cluster's U0253 | APIM sends | No |
 | `0x217` | Wheel speeds | From logs | `--dummydata` |
+| `0x223` | Radio present (stops U0184) | Confirmed | Yes |
 | `0x230` | Gear position | From logs | `--dummydata` |
 | `0x331` | Climate / outside temp? | From logs | No |
 | `0x38D` | Key / start messages, Track Apps | Confirmed | Yes |
@@ -74,12 +75,13 @@ The cluster is on HS3 (DLC pins 12 / 13). It only talks on HS3, so anything it w
 | `0x416` | ABS / traction control icons | Confirmed | Yes |
 | `0x421` | Oil pressure status, check engine | Confirmed | Yes |
 | `0x422` | Coolant temp | From logs | No |
-| `0x42C` | Occupant sensor blocked, cruise status, PCM present | Confirmed | Yes |
+| `0x42C` | Occupant sensor blocked, battery icon, U0401-82, PCM present | Confirmed | Yes |
 | `0x42D` | Inlet air temp | Confirmed | Yes |
 | `0x430` | Odometer | Cluster sends | No |
 | `0x466` | GPS compass / time (APIM) | Confirmed (compass) | Yes |
 | `0x431` | Transmission warnings | Confirmed | Yes |
 | `0x43E` | AFR, cylinder head temp, boost / vacuum | Confirmed | Yes |
+| `0x46A` | GWM present (stops U0146) | Confirmed | Yes |
 | `0x453` | Seat occupant sensor serial | From logs | No |
 | `0x454` | Airbag module serial | From logs | No |
 | `0x4B0` | Braking pressure? | From logs | No |
@@ -441,6 +443,16 @@ Checked against every log (`0x202` speed, `0x91` yaw):
 - Order is likely FL, FR, RL, RR: when `0x85` steering is above center, wheels 2 & 4 run faster than 1 & 3.
 - Wheel speeds that don't agree with vehicle speed (`0x202` / `0x77` / `0x415`) make Hill Start Assist Not Available flash.
 
+# 0x223 - Radio Present
+
+**Sample:** `00 00 00 00 00 00 00 00` · **Rate:** 100 ms here · **Status:** Confirmed (U0184)
+
+- Sending it keeps the cluster's U0184-00 (lost communication with the radio) away (11 Nov 2026, `ipc_dtc_test.py scan dummy batch=64 000-3FF`, zeros on every ID we don't send, confirmed on the repeat). Not in the GT350 or GT logs (HS1) or in the bench GWM capture (no radio behind it), so it is a frame the GWM builds on HS3 from the radio on MS-CAN. Bytes untested.
+- The same frame at zeros stops U0193 (digital audio module) on the 2018 digital cluster, see [Fault / lamp suppression](#fault--lamp-suppression-digital-standalone--no-gwm).
+- Alive frames don't do it: `b0 = ID low byte, 00, FF ...` on every unsent ID `0x400 - 0x5FF` (`0x427` included) left U0184 set.
+- `s550_cluster.py` sends it (`send_radio_present`). With `0x42C` byte 0 `10` and `0x46A` that is every DTC on the bench cleared by CAN: U0401-82, U0146, U0184.
+- The wrench stays on with U0184 gone, so it isn't the radio either.
+
 # 0x230 - Gear Position
 
 **Sample:** `30 1C 00 00 55 00 00 00` · **Status:** From logs
@@ -518,6 +530,8 @@ Sending this alongside `0x3B3` makes Track Apps show on this 2015 cluster (FR33)
 > **The cluster's wake-up message.** Without it the cluster doesn't boot and ignores everything else, and it goes back
 > to sleep shortly after it stops. Send it first and keep it going (`s550_cluster.py` sends it at 2.5 Hz).
 > Byte 0's upper nibble must be `4`, anything else turns the cluster off.
+
+- **Key off first, key off last** (11 Nov 2026). In the car every module is already talking while byte 0 says key off (`1_`, 8 s in `start.csv`) and the powertrain frames keep going ~2 s after it drops back to `1_` (`shutoff.csv`). `s550_cluster.py` does the same: `10` for the first 1.5 s (`KEY_ON_DELAY`), then `40`, and at exit `10` with every other frame for 3 s more (`KEY_OFF_GRACE`). Before this the frames all stopped with the key in run and the cluster stored a lost-communication code for each module on every exit (U0140, U0232, U0233, U0401 ...); with it the next start has only U0184 stored.
 
 | Byte | Signal | Values |
 |---|---|---|
@@ -679,7 +693,7 @@ Sent by the body control module (BCM), it's the vehicle config the other modules
 
 # 0x42C - Occupant Sensor Blocked, Cruise Status
 
-**Sample:** `80 00 00 00 9C 60 00 00` (quiet) · **Rate:** 51 ms · **Status:** Confirmed (byte 0, `interactive_brute_force.py occupant` / `occupantbits`)
+**Sample:** `10 00 FF 00 9C 60 00 00` (quiet on the bench) · **Rate:** 51 ms · **Status:** Confirmed (byte 0, `interactive_brute_force.py occupant` / `occupantbits`)
 
 Logged values: GT350 `8C 00 00 00 9C 60 00 00` in every log (`84 ..` and `8C 04 ..` briefly in `start.csv`), freeze frame `8C 00 00 00 68 A0 00 00`, v-ivanyshyn's GT `8C 60 00 00 B2 20 00 00`. Replaying any of them shows Occupant Sensor Blocked on this cluster.
 
@@ -687,9 +701,18 @@ Logged values: GT350 `8C 00 00 00 9C 60 00 00` in every log (`84 ..` and `8C 04 
 |---|---|---|
 | 0 | Cruise status (bits 7 - 5) | From a 2018 GWM bench (2018-2023_S550_Digital_Cluster): the GWM repacks the PCM's `CcStat_D_Actl` here, bit 4 set while the PCM's cruise frame is present, `0x80` with no cruise data. Not tested here |
 | 0 | Occupant Sensor Blocked (bit 3, `0x08`) | `0x80` - `0x87` nothing. `0x88`, `0x8C`, `0x8F` show Occupant Sensor Blocked with the passenger icon, gone as soon as the frame stops |
-| 1, 4, 5 | | Data in the logs, but flipping every bit of bytes 0 - 5 one at a time (from `80 00 00 00 9C 60 00 00`) changed nothing visible beyond bit 3 above |
+| 0 | Cruise status valid (bit 4, `0x10`) | Set, U0401-82 is gone (`10 30 50 70 90 B0 D0 F7 FF`). Clear, the cluster sets it and shows no cruise icon (`00 80 84 8C A0 C0 82 81`). The 2018 GWM bench saw the same bit set while the PCM's cruise frame is present |
+| 0 | Cruise control icon (bits 7 - 5, needs bit 4) | `10`, `30` no icon · `50` grey icon with SET (standby) · `70` grey stayed on, not told apart from `50` · `90`, `B0` green icon (active) · `D0` no icon. No set speed above the icon with any of them, so that text is another signal. `s550_data.py` `icon_cruise_control`: 0 → `10`, 1 → `90`, 2 → `50` |
+| 2 | Red battery icon | `FF` turns the icon off within ~2 s, `00` (every log) shows it again ~6 s later. Which bits isn't tested |
+| 6 | Spin out message | `FF` shows "Hazards activated due to spin out detected" (the hazards don't flash), stays up for a while after the byte goes back to `00` |
+| 1, 3, 4, 5, 7 | | Data in the logs (1, 4, 5), but `FF` in any one of them changed nothing on screen or in the DTCs. Flipping every bit of bytes 0 - 5 one at a time (from `80 00 00 00 9C 60 00 00`) changed nothing visible beyond bit 3 above |
 
-- Sending `0x42C` at all stops the cluster's U0100 (lost communication with the PCM), found with `ipc_dtc_test.py scan`. With the PCM counted as present the cluster then logs U0401-82 (invalid data from the PCM, alive counter), likely `0x202`'s missing counter (`ipc_dtc_test.py probe ... 202roll`).
+- `s550_cluster.py` sends `10 00 FF 00 9C 60 00 00`: no battery icon, no cruise icon, no U0401-82. Occupant Sensor Blocked was tested as `88`, it is sent as `18` now (not retested).
+- Without `0x42C` the cluster sets U0100 (lost communication with the PCM), found with `ipc_dtc_test.py scan`. It isn't the only frame U0100 looks at: with `0x42C` and `0x3B3` alone on the bus U0100 sets too (`ipc_dtc_test.py mute`).
+- **U0401-82 (invalid data from the PCM) comes from this frame, not from a PCM counter** (11 Nov 2026, `ipc_dtc_test.py mute` / `sweep`). It stays set with every heartbeat frame but `0x3B3` and `0x42C` muted, turns into U0100 when `0x42C` stops, and is gone with byte 0 bit 4 set (`10`). `0x202` with the car's counter and checksum never cleared it. None of the logged payloads (`8C 00 00 00 9C 60`, `8C 60 00 00 B2 20`, `8C 00 00 00 68 A0`) clear it on the bench either.
+- A 2018 GWM on a bench sends `10 00 00 00 FE 00 00 00` on HS3 with nothing but key-on behind it (datechnerd's `gwm_hs3_keyon_30s.csv`, every frame in it is static), the same byte 0 found here.
+- With U0401-82 gone the only code left asking for a lamp is U0146-00 (lost communication with the GWM, status `8A`; U0184 is `0A`, no lamp), so the wrench is most likely U0146's. `0x168` zeros (the digital cluster's wrench fix) changes nothing here.
+- The wrench / See Manual stays on with U0401-82 gone and with all 8 bytes `FF`, so it isn't this frame or that code. `FF` in each of `0x421 0x167 0x200 0x204 0x230 0x202 0x156 0x43E 0x42D 0x178 0x431` (one at a time, 14 s each) doesn't move it or any DTC either.
 
 # 0x42D - Inlet Air Temp
 
@@ -791,6 +814,17 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - Tracks `0x167` MAP (corr 0.94). Only `0x2A00 - 0x4200` in the GT log (NA engine, vacuum side).
 - v-ivanyshyn reads it as engine load %, `(b5 << 8 | b6) / 72 - 140`.
 - Not in the GT350 logs.
+
+# 0x46A - GWM Present
+
+**Sample:** `00 00 00 00 00 00 00 00` · **Rate:** 1 s from a 2018 GWM, 100 ms here · **Status:** Confirmed (U0146)
+
+- Sending it keeps the cluster's U0146-00 (lost communication with the GWM) away (11 Nov 2026). Found by holding the 28 frames a bench 2018 GWM sends on HS3 that we didn't (`other_refs/GWM_HS3_2018_KeyOn.csv`, from datechnerd's `gwm_hs3_keyon_30s.csv`) and bisecting: `ipc_dtc_test.py scan dummy batch=100 file=other_refs/GWM_HS3_2018_KeyOn.csv`. The `0x59E` alive frame alone never cleared it.
+- `s550_cluster.py` sends it (`send_gwm_present`). With it and the `0x42C` fix the only code left after a clear was U0184, see [0x223](#0x223---radio-present).
+- On the 2018 digital cluster byte 1 bit 3 is a "TCS off" message and byte 2 bit 6 the TCS OFF lamp (datechnerd). Untested on the analog cluster.
+- All zeros is what the GWM sends with nothing behind it. With a car's frames on HS1 it packs status in (datechnerd's `gwm_map`): byte 5 bit 4 follows `0x179`, byte 6 bit 5 follows `0x230`, byte 3 is `08` or `80` in different captures. Untested here.
+- **Wrench / See Manual, still open.** No DTC is behind it: it stays on with no codes left, with or without `--dummydata`, through zeros on every unsent ID `0x000 - 0x3FF`, the alive payload on `0x400 - 0x5FF`, `0x168` zeros (the digital cluster's fix), `FF` on `0x421 0x167 0x200 0x204 0x230 0x202 0x156 0x43E 0x42D 0x178 0x431` and `FF` / zeros on `0x179`. The one time it moved: with all 28 GWM frames held at once it went out ~2 s after they started and came back ~4 s later while U0146 stayed away. Next: the `0x46A` values above, and the 28 frames in groups of 7. See TODO.md.
+- Zeros on an ID in `0x14D - 0x194` shows "Collision detection unavailable" and sets U0405-56 while held (not narrowed down).
 
 # 0x453 - Seat Occupant Sensor Serial Number
 

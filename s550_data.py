@@ -27,6 +27,7 @@ class s550_ipc:
         self.icon_right_signal = 0          # either 0 or 2
         self.icon_high_beams = 0            # no flashing
         self.icon_check_engine = 0          # 0 off, 1 solid, 2 flashing
+        self.icon_cruise_control = 0        # 0 off, 1 green (active), 2 grey with SET (standby)
 
         # raw values, typically numbers used in gauges
         self.value_speed = 0.0              # miles per hour

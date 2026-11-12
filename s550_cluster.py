@@ -32,6 +32,13 @@ SPEED_THREE = 0.1 * modifier    # 10 Hz  - 0x4C, 0x83, 0x178, 0x416, 0x430
 SPEED_FOUR = 0.4 * modifier     # 2.5 Hz - 0x3B3, 0x3B2
 SPEED_FIVE = 1.0 * modifier     # 1 Hz   - 0x81, 0x3C3, 0x431, 0x5xx series
 
+# 11 Nov 2026 - key state (0x3B3 byte 0), like the car in start.csv / shutoff.csv: the other modules are already
+# talking while the key is off (1_) and keep going for a few seconds after it turns off again, so the cluster
+# never sees a module missing with the key in run (4_)
+KEY_ON_DELAY = 1.5      # s of key off at start, long enough for every frame to have been sent once
+KEY_OFF_GRACE = 3.0     # s of key off at exit before the bus goes quiet
+key_on = False
+
 #CAN IDs
 RPM = 0x204
 SPEED = 0x202
@@ -85,6 +92,8 @@ BLIND_SPOT_L = 0x3A6 # Ford DBC Side_Detect_L / _R, stop U0232 / U0233 and the b
 BLIND_SPOT_R = 0x3A7
 # 10 Nov 2026 - APIM
 GPS_NAV = 0x466 # compass + GPS time, the DBC's APIMGPS_Data_Nav_2_FD1 (0x463) layout
+GWM_PRESENT = 0x46A # 11 Nov 2026 - sending it stops the cluster's U0146 (lost comm with the GWM)
+RADIO_PRESENT = 0x223 # 11 Nov 2026 - sending it stops the cluster's U0184 (lost comm with the radio)
 
 
 # Stock slcan firmware on Windows
@@ -444,7 +453,8 @@ def send_door_status(clusterdata):
         lights = 0x00
     # the turn signals are sent on 0x3B2 (send_track_apps), byte 4 here is all outside temp
     outside_temp = clamp((clusterdata.outside_temp + 40) * 2, 0x00, 0xDF)
-    data = [0x40, 0x48, 0x02, lights, outside_temp, 0x05, parking_brake_light, 0x02]
+    key = 0x40 if key_on else 0x10
+    data = [key, 0x48, 0x02, lights, outside_temp, 0x05, parking_brake_light, 0x02]
     return send_msg(DOOR_STATUS, start, data)
 
 def send_track_apps(clusterdata):
@@ -458,7 +468,8 @@ def send_track_apps(clusterdata):
     lit = int((time.time() - start) / SPEED_FOUR) % 2 == 0
     right = 0x08 if clusterdata.icon_right_signal == 1 or (clusterdata.icon_right_signal == 2 and lit) else 0x00
     left = 0x40 if clusterdata.icon_left_signal == 1 or (clusterdata.icon_left_signal == 2 and lit) else 0x00
-    data = [0x40, 0x00, 0x00, 0x12, 0x10 | right, 0x00, left, 0x02]
+    key = 0x40 if key_on else 0x10
+    data = [key, 0x00, 0x00, 0x12, 0x10 | right, 0x00, left, 0x02]
     return send_msg(TRACK_APPS, start, data)
 
 def send_rpm(clusterdata):
@@ -645,11 +656,18 @@ def send_occupant(clusterdata):
     '''
     Byte 0 - bit 3 (0x08) Occupant Sensor Blocked with the passenger icon. 0x80 - 0x87 show nothing
         Every GT350 / freeze frame / GT log value has it set (8C), don't replay those
-        Bits 7 - 5 cruise status per a 2018 GWM bench, untested here
-    Bytes 1 - 5 - no visible effect, 9C 60 from the GT350 logs
+        Bit 4 (0x10) - cruise status valid. Set, U0401-82 is gone (11 Nov 2026); clear (0x80, 0xA0, 0xC0) the
+            cluster sets it and ignores the status
+        Bits 7 - 5 cruise status: 0x10, 0x30 no icon, 0x50 grey icon with SET (standby), 0x90, 0xB0 green icon
+            (active), 0xD0 no icon
+    Byte 2 - FF turns the red battery icon off (11 Nov 2026, ipc_dtc_test.py sweep), 00 like the logs shows it
+    Byte 6 - FF shows "Hazards activated due to spin out detected"
+    Bytes 1, 3 - 5, 7 - no visible effect, 9C 60 from the GT350 logs
     '''
-    occupant = 0x88 if clusterdata.warning_occupant_sensor_pass else 0x80
-    data = [occupant, 0x00, 0x00, 0x00, 0x9C, 0x60, 0x00, 0x00]
+    occupant = (0x10, 0x90, 0x50)[clusterdata.icon_cruise_control]
+    if clusterdata.warning_occupant_sensor_pass:
+        occupant |= 0x08
+    data = [occupant, 0x00, 0xFF, 0x00, 0x9C, 0x60, 0x00, 0x00]
     return send_msg(OCCUPANT, start, data)
 
 # 8 Nov 2026 - byte 4 high nibble (Ford DBC immoMsgTxt_D_Rq). The first True in this order is sent
@@ -681,6 +699,23 @@ def send_blind_spot(clusterdata):
     data = [0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]
     send_msg(BLIND_SPOT_L, start, data)
     return send_msg(BLIND_SPOT_R, start, data)
+
+# 11 Nov 2026
+def send_gwm_present(clusterdata):
+    '''
+        0x46A, all zeros like a 2018 GWM sends it on HS3 (datechnerd's gwm_hs3_keyon_30s.csv). Keeps U0146 (lost
+        communication with the GWM) away, found with ipc_dtc_test.py scan. On the 2018 digital cluster byte 1 bit 3
+        is a "TCS off" message and byte 2 bit 6 the TCS OFF lamp, untested here
+    '''
+    return send_msg(GWM_PRESENT, start, [0x00] * 8)
+
+# 11 Nov 2026
+def send_radio_present(clusterdata):
+    '''
+        0x223, all zeros. Keeps U0184 (lost communication with the radio) away, found with ipc_dtc_test.py scan
+        000-3FF. The same frame stops U0193 (digital audio module) on the 2018 digital cluster. Bytes untested
+    '''
+    return send_msg(RADIO_PRESENT, start, [0x00] * 8)
 
 # 10 Nov 2026
 def send_gps_nav(clusterdata):
@@ -773,7 +808,8 @@ SCHEDULE = [
     (SPEED_TWO, [send_speed, send_steering, send_vehicle_speed_77]),
     (SPEED_THREE, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_launch_control, send_engine_temp,
                    send_climate, send_climate_fan, send_apim_1, send_apim_2, send_apim_3,
-                   send_engine_gauges, send_engine_status, send_occupant, send_blind_spot]),
+                   send_engine_gauges, send_engine_status, send_occupant, send_blind_spot, send_gwm_present,
+                   send_radio_present]),
     (SPEED_FOUR, [send_door_status, send_track_apps, send_intake_temp]),
     (SPEED_FIVE, [send_misc_1, send_tire_pressure, MENU_NAV, send_0x5__series,
                   send_tpms_status, send_trans_warnings, send_key_messages, send_gps_nav])
@@ -826,8 +862,18 @@ def _game_loop(game):
 
 # 6 Nov 2026 - one thread sends everything on its own deadline, like an ECU would.
 # Threads per speed don't help here: the GIL and the bus send lock mean they only wait on each other
-def _scheduler():
+scheduler_runs = 0
+
+def _scheduler(key_off_for=None):
+    '''
+        Runs until the next _scheduler call takes over. Starts with the key off for KEY_ON_DELAY, then run.
+        key_off_for - seconds to send with the key off, then return (the exit sequence, see _key_off)
+    '''
+    global key_on, scheduler_runs
+    scheduler_runs += 1
+    run = scheduler_runs
     now = time.perf_counter()
+    key_change = now + (KEY_ON_DELAY if key_off_for is None else key_off_for)
     queue = []
     for period, funcs in SCHEDULE:
         for n, m in enumerate(funcs):
@@ -839,6 +885,12 @@ def _scheduler():
         wait = deadline - time.perf_counter()
         if wait > 0:
             time.sleep(wait)
+        if run != scheduler_runs:
+            return
+        if deadline >= key_change:
+            if key_off_for is not None:
+                return
+            key_on = True
         m(clusterdata)
         # if we fell more than a period behind (adapter stalled), skip ahead instead of bursting to catch up
         next_deadline = deadline + period
@@ -846,6 +898,20 @@ def _scheduler():
         if next_deadline < now - period:
             next_deadline = now + period
         heapq.heapreplace(queue, (next_deadline, key, period, m))
+
+def _key_off():
+    global key_on
+    if not scheduler_runs or clusterdata is None:
+        return # nothing was sent
+    key_on = False
+    print('* Key off, sending for {} s more'.format(KEY_OFF_GRACE))
+    try:
+        _scheduler(KEY_OFF_GRACE)
+    except KeyboardInterrupt:
+        pass
+
+# registered after bus.shutdown, so it runs before the port closes
+atexit.register(_key_off)
 
 def _status():
     while True:

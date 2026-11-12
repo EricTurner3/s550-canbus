@@ -72,6 +72,7 @@ FIELDS = {
     'icon_right_signal':      dict(group='Icons', kind='tri'),
     'icon_high_beams':        dict(group='Icons', kind='tri', states=[0, 1]),
     'icon_check_engine':      dict(group='Icons', kind='tri'),
+    'icon_cruise_control':    dict(group='Icons', kind='tri'),
 
     'value_speed':            dict(group='Gauges', kind='range', min=0, max=200, step=1, unit='mph'),
     'value_rpm':              dict(group='Gauges', kind='range', min=0, max=10000, step=50, unit='rpm'),

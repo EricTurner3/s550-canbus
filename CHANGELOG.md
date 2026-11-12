@@ -1,5 +1,66 @@
 # Changelog
 
+## [2.6.0] - 11 Nov 2026
+**Every DTC on the bench has a CAN fix.** After a clear the cluster used to set U0401-82, U0146 and U0184 again. All
+three are answered by frames the gateway builds on HS3, none by a counter. Each fix was confirmed with
+`ipc_dtc_test.py`; the three together in the heartbeat (`0x223` was added last) haven't had a bench run yet. The red battery icon is gone too. Still on: the
+wrench / See Manual, which has no DTC behind it (see TODO.md).
+
+| DTC / warning | Fix | How it was found |
+|---|---|---|
+| U0401-82 (invalid data from the PCM) | `0x42C` byte 0 bit 4 (`10`) | `mute`: the code stays with everything but `0x3B3` + `0x42C` muted, so it isn't `0x202`'s counter. `sweep`: byte 0 `FF`, then bit 4 |
+| Red battery icon | `0x42C` byte 2 = `FF` | `sweep`, one byte at `FF` at a time |
+| U0146 (GWM missing, the last code asking for a lamp) | `0x46A`, all zeros | `scan` over the 28 frames a bench 2018 GWM sends that we didn't (datechnerd's capture) |
+| U0184 (radio missing) | `0x223`, all zeros | `scan 000-3FF`, zeros |
+| Stored lost-communication codes at every start (U0140, U0232, U0233 ...) | Key off first and last in `0x3B3` | The car's own `start.csv` / `shutoff.csv` |
+
+### s550_cluster.py / s550_data.py / live_test.py
+
+- `0x42C` (`send_occupant`) is `10 00 FF 00 9C 60 00 00` (was `80 00 00 00 9C 60 00 00`). Occupant Sensor Blocked is
+  sent as `18` now, tested as `88`
+- New `icon_cruise_control` in `s550_data.py` (`0x42C` byte 0): 0 off (`10`), 1 green icon (`90`), 2 grey icon with
+  SET (`50`). A switch under Icons in live_test.py. No set speed shown, that is another signal
+- New senders `send_gwm_present` (`0x46A`) and `send_radio_present` (`0x223`), both zeros at 10 Hz
+- **Key off first, key off last.** `0x3B3` / `0x3B2` byte 0 is `10` for the first 1.5 s (`KEY_ON_DELAY`) while every
+  other frame is already going, then `40`. At exit (Ctrl+C) it goes back to `10` and everything keeps sending for 3 s
+  (`KEY_OFF_GRACE`) before the port closes. Every script that uses the scheduler gets it. Closing the terminal window
+  skips it
+
+### ipc_dtc_test.py
+
+- `mute`: stops heartbeat frames instead of adding candidates and finds the ones a code needs to set (`keep=` are
+  never muted, `3B3,42C` by default). Lights up the cluster while it runs, every module looks missing
+- `sweep <id> <payload> ...`: one heartbeat ID, one payload after another (`off` = not sent, `bits=<payload>` every
+  single-bit flip), codes gone / new for each
+- `watch off|zeros|ff`: for warnings with no DTC. One heartbeat ID at a time is muted or replaced for 6 s, times logged
+  to match against the cluster by eye. Not run yet
+- `read` / `clear` also list the codes that haven't run, with their lamp flag
+- Logs: `dtc_mute_`, `dtc_sweep_`, `dtc_watch_<time>.txt`
+
+### database.md
+
+- `0x42C`: byte table (bit 4 valid / U0401-82, bits 7 - 5 cruise icon, byte 2 battery icon, byte 6 spin out message),
+  U0100 needs more than this frame, the 2018 GWM's own `10 00 00 00 FE 00 00 00`
+- New `0x46A` (GWM present) and `0x223` (radio present) sections, with everything tried on the wrench under `0x46A`
+- `0x3B3`: the key off / run sequence
+- `other_refs/GWM_HS3_2018_KeyOn.csv`: one sample of each of the 37 IDs in datechnerd's bench GWM capture, in the
+  freeze frame layout `ipc_dtc_test.py scan file=` reads
+
+### Ruled out
+
+- `0x202` with the car's counter and checksum (the formula matches every frame in every log but 25 at start up in
+  `start.csv`): U0401-82 was never about it
+- `0x427` as the radio's alive frame, and the alive payload on any unsent ID `0x400 - 0x5FF`
+- For the wrench: `0x168` zeros (the digital cluster's fix), `FF` on `0x421 0x167 0x200 0x204 0x230 0x202 0x156 0x43E
+  0x42D 0x178 0x431`, `FF` / zeros on `0x179` (those show Check Fuel Fill Inlet / Oil Change Required), zeros on every
+  unsent ID `0x000 - 0x3FF`, running without `--dummydata`
+
+### Still open
+
+| What | Next step |
+|---|---|
+| Wrench / See Manual | TODO.md: `0x46A` with the values a real GWM sends, then the 28 GWM frames in groups of 7 |
+
 ## [2.5.2] - 10 Nov 2026
 
 ### database.md

@@ -37,6 +37,10 @@ Main Scripts
     python ipc_dtc_test.py read
     python ipc_dtc_test.py clear                      # clear, wait, read back what re-set
     python ipc_dtc_test.py probe 085roll 3A8=0000278F00000000@20
+    python ipc_dtc_test.py scan dummy batch=64 000-3FF            # hold unsent IDs, bisect to the one that clears a code
+    python ipc_dtc_test.py mute dummy                             # stop frames we send, find the ones a code needs
+    python ipc_dtc_test.py sweep 42C dummy off 9000FF009C600000   # one ID, one payload after another
+    python ipc_dtc_test.py watch zeros dummy                      # no DTCs: change one ID at a time, watch the cluster
     ```
 
 ![live test UI](./docs/livetest.png)

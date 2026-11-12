@@ -12,6 +12,16 @@
 #   python ipc_dtc_test.py scan [000-6FF ...] [file=<freeze frame csv>] [batch=24] [payload=<16 hex>|roll|nm] [ms=100]
 #                                          hold batches of IDs, keep the ones that make a code stay away,
 #                                          and bisect each down to the single ID. Log: dtc_scan_<time>.txt
+#   python ipc_dtc_test.py mute [keep=3B3,42C] [076 200-230 ...]
+#                                          the other way round: stop heartbeat frames and find the ones a code needs
+#                                          to set (e.g. a frame we send with a frozen counter). keep= are never muted.
+#                                          Log: dtc_mute_<time>.txt
+#   python ipc_dtc_test.py sweep 42C off 8C0000009C600000 [bits=<16 hex>] [ms=50]
+#                                          one heartbeat ID, one payload after another (`off` = not sent,
+#                                          bits= every single-bit flip of a payload). Log: dtc_sweep_<time>.txt
+#   python ipc_dtc_test.py watch [off|zeros|ff] [secs=6] [230 400-4FF ...]
+#                                          for a warning with no DTC behind it: change one heartbeat ID at a time
+#                                          (not sent / all 00 / all FF) and watch the cluster. Log: dtc_watch_<time>.txt
 #
 #   add `dummy` to any of these to also send s550_cluster.DUMMY_SCHEDULE (interactive_brute_force.py --dummydata)
 #
@@ -115,9 +125,11 @@ SCAN_SKIP = set(range(0x700, 0x800)) | {
 _send_raw = c.send_msg
 heartbeat_ids = set()
 
+muted = set()
+
 def _send_heartbeat(id, ts, data):
     heartbeat_ids.add(id)
-    if extra_on and id in CANDIDATES:
+    if id in muted or (extra_on and id in CANDIDATES):
         return
     return _send_raw(id, ts, data)
 
@@ -211,6 +223,9 @@ def show(label, codes):
     print('{} ({} faults, {} not-run listed)'.format(label, len(failed), len(codes) - len(failed)))
     for k, st in sorted(failed.items()):
         print('  {}  status {:02X}{}'.format(k, st, '  lamp' if st & 0x80 else ''))
+    for k, st in sorted(codes.items()):
+        if k not in failed:
+            print('  ({}  status {:02X}{}, not run)'.format(k, st, '  lamp' if st & 0x80 else ''))
 
 def clear():
     r = uds([0x14, 0xFF, 0xFF, 0xFF], timeout=2.0)
@@ -340,6 +355,147 @@ def scan(args):
             bisect(b, gone)
     log('done')
 
+# ---- mute ----
+# 0x3B3 keeps the cluster on. 0x42C is what makes it count the PCM as present: without it U0401 turns into U0100
+MUTE_KEEP = {0x3B3, 0x42C}
+
+def mute_scan(args):
+    global muted
+    keep, ranges = set(MUTE_KEEP), []
+    for a in args:
+        if a.startswith('keep='):
+            keep = {int(x, 16) for x in a[5:].split(',') if x}
+        elif '-' in a:
+            ranges.append(tuple(int(x, 16) for x in a.split('-')))
+        else:
+            ranges.append((int(a, 16), int(a, 16)))
+    cand = sorted(i for i in heartbeat_ids - keep
+                  if not ranges or any(lo <= i <= hi for lo, hi in ranges))
+    fmt = lambda ids: ' '.join('%03X' % i for i in sorted(ids)) or '-'
+
+    log = open_log('dtc_mute')
+    log('never muted', fmt(keep))
+    log('muting {} heartbeat IDs: {}'.format(len(cand), fmt(cand)))
+
+    def run(sent):
+        # heartbeat with only `sent` of the candidates on the bus -> fault codes after a clear
+        global muted
+        while True:
+            muted = set(cand) - set(sent)
+            time.sleep(2.0)
+            clear()
+            time.sleep(SETTLE)
+            codes = read_dtcs()
+            if codes is not None:
+                muted = set()
+                return set(faults(codes))
+            log('  no DTC reply (cluster asleep / power?) - retrying in 10 s')
+            time.sleep(10)
+
+    ctrl = run(cand)
+    log('control (nothing muted):', fmt_codes(ctrl))
+    got = run([])
+    gone = ctrl - got
+    log('all muted: gone {}  new {}'.format(fmt_codes(gone), fmt_codes(got - ctrl)))
+    if not gone:
+        log('no code needs a muted frame: look at the kept frames ({}) or a frame we do not send'.format(fmt(keep)))
+        return
+
+    def find(part, codes):
+        # a code comes back whenever at least one of the frames it needs is on the bus again
+        back = codes & run(part)
+        log('  only {} sent: back {}'.format(fmt(part), fmt_codes(back)))
+        if not back:
+            return
+        if len(part) == 1:
+            log('  *** 0x{:03X} sets: {}'.format(part[0], fmt_codes(back)))
+            return
+        half = len(part) // 2
+        find(part[:half], back)
+        find(part[half:], back)
+
+    half = len(cand) // 2
+    find(cand[:half], gone)
+    find(cand[half:], gone)
+    log('done')
+
+# ---- sweep ----
+def sweep(args):
+    # one heartbeat ID, one payload after another: which codes are set with each
+    global CANDIDATES, extra_on, muted
+    id, period, payloads = int(args[0], 16), 0.05, []
+    for a in args[1:]:
+        if a.startswith('ms='):
+            period = int(a[3:]) / 1000
+        elif a.startswith('bits='):                  # every single-bit flip of this payload
+            base = int(a[5:].ljust(16, '0'), 16)
+            payloads += ['%016X' % (base ^ (1 << (63 - n))) for n in range(64)]
+        else:
+            payloads.append(a)                       # 16 hex digits, or `off` = don't send the ID at all
+    log = open_log('dtc_sweep')
+    log('sweeping 0x{:03X}, {} payloads every {:.0f} ms'.format(id, len(payloads), period * 1000))
+
+    def run(p):
+        global CANDIDATES, extra_on, muted
+        while True:
+            if p == 'off':
+                muted = {id}
+            elif p:
+                CANDIDATES = {id: (list(bytes.fromhex(p.ljust(16, '0')))[:8], period)}
+                extra_on = True
+            time.sleep(2.0)
+            clear()
+            time.sleep(SETTLE)
+            codes = read_dtcs()
+            extra_on, CANDIDATES, muted = False, {}, set()
+            if codes is not None:
+                return set(faults(codes))
+            log('  no DTC reply (cluster asleep / power?) - retrying in 10 s')
+            time.sleep(10)
+
+    ctrl = run(None)
+    log('control (heartbeat payload):', fmt_codes(ctrl))
+    for p in payloads:
+        got = run(p)
+        label = p if p == 'off' else bytes.fromhex(p.ljust(16, '0')).hex(' ')
+        log('{}: gone {}  new {}{}'.format(label, fmt_codes(ctrl - got), fmt_codes(got - ctrl),
+                                          '   ***' if ctrl - got else ''))
+    log('done')
+
+# ---- watch ----
+def watch(args):
+    # no DTCs involved: one heartbeat ID at a time is muted or replaced, the times are logged to match by eye
+    global CANDIDATES, extra_on, muted
+    how, secs, ranges = 'off', 6.0, []
+    for a in args:
+        if a in ('off', 'zeros', 'ff'):
+            how = a
+        elif a.startswith('secs='):
+            secs = float(a[5:])
+        elif '-' in a:
+            ranges.append(tuple(int(x, 16) for x in a.split('-')))
+        else:
+            ranges.append((int(a, 16), int(a, 16)))
+    skip = {0x3B3} | ({0x179} if how == 'ff' else set())    # 0x179 byte 5 is the odometer's distance counter
+    ids = sorted(i for i in heartbeat_ids - skip
+                 if not ranges or any(lo <= i <= hi for lo, hi in ranges))
+    log = open_log('dtc_watch')
+    log('{} IDs, each {} for {:.0f} s, then 3 s back to normal'.format(len(ids), how, secs))
+    for i in ids:
+        log('0x{:03X} {}'.format(i, how))
+        if how == 'off':
+            muted = {i}
+        else:
+            CANDIDATES = {i: ([0x00 if how == 'zeros' else 0xFF] * 8, 0.05)}
+            extra_on = True
+        time.sleep(secs)
+        extra_on, CANDIDATES, muted = False, {}, set()
+        time.sleep(3.0)
+    log('done')
+
+def fmt_codes(codes):
+    return ' '.join(sorted(codes)) or '-'
+
 if __name__ == '__main__':
     dummy = 'dummy' in sys.argv
     sys.argv = [a for a in sys.argv if a != 'dummy']
@@ -363,6 +519,12 @@ if __name__ == '__main__':
         clear_and_read('{} s after clear'.format(SETTLE))
     elif mode == 'scan':
         scan(sys.argv[2:])
+    elif mode == 'mute':
+        mute_scan(sys.argv[2:])
+    elif mode == 'sweep':
+        sweep(sys.argv[2:])
+    elif mode == 'watch':
+        watch(sys.argv[2:])
     elif mode == 'probe':
         base = clear_and_read('CONTROL (heartbeat only)')
         extra_on = True

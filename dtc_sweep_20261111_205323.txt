@@ -1,0 +1,19 @@
+20:53:23 sweeping 0x42C, 16 payloads every 50 ms
+20:53:37 control (heartbeat payload): U0146-00 U0184-00 U0401-82
+20:53:52 ff 00 00 00 9c 60 00 00: gone U0401-82  new -   ***
+20:54:06 80 ff 00 00 9c 60 00 00: gone -  new -
+20:54:20 80 00 ff 00 9c 60 00 00: gone -  new -
+20:54:34 80 00 00 ff 9c 60 00 00: gone -  new -
+20:54:48 80 00 00 00 ff 60 00 00: gone -  new -
+20:55:03 80 00 00 00 9c ff 00 00: gone -  new -
+20:55:17 80 00 00 00 9c 60 ff 00: gone -  new -
+20:55:31 80 00 00 00 9c 60 00 ff: gone -  new -
+20:55:45 80 ff ff ff ff ff ff ff: gone -  new -
+20:55:59 ff 00 ff ff ff ff ff ff: gone U0401-82  new -   ***
+20:56:14 ff ff 00 ff ff ff ff ff: gone U0401-82  new -   ***
+20:56:28 ff ff ff 00 ff ff ff ff: gone U0401-82  new -   ***
+20:56:42 ff ff ff ff 9c ff ff ff: gone U0401-82  new -   ***
+20:56:56 ff ff ff ff ff 60 ff ff: gone U0401-82  new -   ***
+20:57:10 ff ff ff ff ff ff 00 ff: gone U0401-82  new -   ***
+20:57:25 ff ff ff ff ff ff ff 00: gone U0401-82  new -   ***
+20:57:25 done

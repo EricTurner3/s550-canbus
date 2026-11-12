@@ -1,0 +1,5 @@
+21:33:18 sweeping 0x179, 2 payloads every 50 ms
+21:33:32 control (heartbeat payload): U0146-00 U0184-00
+21:33:47 ff ff ff ff ff 00 ff ff: gone -  new -
+21:34:01 00 00 00 00 00 00 00 00: gone -  new -
+21:34:01 done

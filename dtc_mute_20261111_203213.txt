@@ -1,0 +1,5 @@
+20:32:13 never muted 3B3 42C
+20:32:13 muting 41 heartbeat IDs: 044 048 04C 076 077 081 082 085 091 092 109 156 167 178 179 200 202 204 217 230 326 35E 38D 3A6 3A7 3B2 3B4 3B5 3C3 415 416 421 42D 431 43E 466 581 596 59E 5B3 5B5
+20:32:27 control (nothing muted): U0146-00 U0184-00 U0401-82
+20:32:41 all muted: gone -  new U0100-00 U0121-00 U0151-00 U0212-00 U0232-00 U0233-00
+20:32:41 no code needs a muted frame: look at the kept frames (3B3 42C) or a frame we do not send

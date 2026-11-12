@@ -1,0 +1,4 @@
+21:16:09 sweeping 0x156, 1 payloads every 50 ms
+21:16:24 control (heartbeat payload): U0146-00 U0184-00 U0401-82
+21:16:38 ff ff ff ff ff ff ff ff: gone -  new -
+21:16:38 done
