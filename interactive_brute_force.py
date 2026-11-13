@@ -74,6 +74,8 @@
     --respond-tail sets bytes 5 - 7 (freeze frame from the car this cluster came out of: 00 01 04 11 80 01 64 00)
         python interactive_brute_force.py cht --dummydata --respond --respond-tail "01 64 00"
         python interactive_brute_force.py cht --dummydata --respond --respond-sweep 5
+    07 01 is answered on 0x3E1 with the freeze frame's 80 00 00 07 01 80 00 00, --respond-0701 sends another frame
+        python interactive_brute_force.py cht --dummydata --respond --respond-0701 "00 00 07 01 80 00 00 00"
     Each module answers on its own ID in the 0x3Dx / 0x3Ex range (idle 00 00 00 00 80 ..). The GT350 (start.csv) answers
     04 07 on 0x3E6 7ms after the request, so 04 07 goes out on 0x3E6, everything else on 0x3E3
 
@@ -309,6 +311,9 @@ parser.add_argument('--respond-tail', type=lambda v: bytes.fromhex(v)[:3].ljust(
                     help='bytes 5 - 7 of the 0x3E3 reply, e.g. "01 64 00" (default 00 00 00)')
 parser.add_argument('--respond-sweep', type=int, choices=range(8), default=None, metavar='BYTE',
                     help='add 1 to this reply byte each time the cluster repeats a request')
+parser.add_argument('--respond-0701', type=lambda v: bytes.fromhex(v)[:8].ljust(8, bytes(1)), metavar='"B0 .. B7"',
+                    default=bytes.fromhex('8000000701800000'),
+                    help='the whole 0x3E1 reply to request 07 01 (default 80 00 00 07 01 80 00 00, the freeze frame)')
 parser.add_argument('--freeze', action='store_true',
                     help="send the freeze frame from this cluster's car for every ID nothing else sends")
 parser.add_argument('--config', action='store_true', help="send 0x40A vehicle config pages from this cluster's car")
@@ -561,7 +566,9 @@ def _listen():
         counts = cluster_tx_log.setdefault(msg.arbitration_id, {})
         counts[bytes(msg.data)] = counts.get(bytes(msg.data), 0) + 1
 
-REPLY_IDS = {bytes([0x04, 0x07]): 0x3E6} # request -> the ID its module answers on, 0x3E3 for the rest
+# request -> the ID its module answers on, 0x3E3 for the rest. 12 Nov 2026 - 07 01 on 0x3E1: the freeze frame from this
+# cluster's car has 0x3E1 as 80 00 00 07 01 80 00 00, a different layout (--respond-0701 sends the whole frame)
+REPLY_IDS = {bytes([0x04, 0x07]): 0x3E6, bytes([0x07, 0x01]): 0x3E1}
 reply_tries = {} # request bytes 0 & 1 -> replies sent
 last_reply = None # (time of the first reply, request, last reply) waiting to see if the cluster moves on
 
@@ -576,6 +583,8 @@ def respond(request):
     tries = reply_tries.get(key, 0)
     reply_tries[key] = tries + 1
     data = [0x00, args.respond, request[0], request[1], 0x80] + list(args.respond_tail)
+    if key == bytes([0x07, 0x01]):
+        data = list(args.respond_0701)
     if args.respond_sweep is not None:
         data[args.respond_sweep] = (data[args.respond_sweep] + tries) & 0xFF
     _send_msg(REPLY_IDS.get(key, 0x3E3), cluster.start, data)

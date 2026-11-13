@@ -1,0 +1,10 @@
+07:25:01 sweeping 0x46A, 7 payloads every 50 ms
+07:25:15 control (heartbeat payload): -
+07:25:29 00 00 00 08 00 00 00 00: gone -  new -
+07:25:44 00 00 00 80 00 00 00 00: gone -  new -
+07:25:58 00 00 00 00 00 10 00 00: gone -  new -
+07:26:12 00 00 00 00 00 00 20 00: gone -  new -
+07:26:26 00 00 00 80 00 10 20 00: gone -  new -
+07:26:40 00 00 00 08 00 10 20 00: gone -  new -
+07:26:54 ff ff ff ff ff ff ff ff: gone -  new -
+07:26:54 done

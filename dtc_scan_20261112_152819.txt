@@ -1,0 +1,17 @@
+15:28:19 skipping heartbeat 044 048 04C 076 077 081 082 085 091 092 109 156 167 178 179 200 202 204 217 223 230 326 35E 38D 3A6 3A7 3B2 3B3 3B4 3B5 3C3 415 416 421 42C 42D 431 43E 466 46A 581 596 59E 5B3 5B5
+15:28:19 skipping cluster TX 087 123 18B 190 193 195 19A 1EE 1F2 1F8 1F9 1FA 1FB 1FC 220 225 287 2F4 2FD 30A 313 315 316 317 318 346 348 350 353 363 3C8 3E0 3FB 430 434 45A 591
+15:28:19 scanning 750 IDs 400-6FF, batches of 64, payload 00 00 00 00 00 00 00 00 every 100 ms
+15:28:32 control: 
+15:28:46 batch 0x400-0x448 (64): gone -  new -
+15:29:00 batch 0x449-0x48B (64): gone -  new -
+15:29:13 batch 0x48C-0x4CB (64): gone -  new -
+15:29:27 batch 0x4CC-0x50B (64): gone -  new -
+15:29:41 batch 0x50C-0x54B (64): gone -  new -
+15:29:54 batch 0x54C-0x58C (64): gone -  new -
+15:30:08 batch 0x58D-0x5D1 (64): gone -  new -
+15:30:22 batch 0x5D2-0x611 (64): gone -  new -
+15:30:35 batch 0x612-0x651 (64): gone -  new -
+15:30:49 batch 0x652-0x691 (64): gone -  new -
+15:31:03 batch 0x692-0x6D1 (64): gone -  new -
+15:31:16 batch 0x6D2-0x6FF (46): gone -  new -
+15:31:16 done

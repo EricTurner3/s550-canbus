@@ -2,34 +2,31 @@
 
 ## Wrench / See Manual (the last warning on the bench)
 
-No DTC is behind it any more. What has been tried is in database.md under [0x46A](database.md#0x46a---gwm-present).
-The only time it moved: with all 28 bench GWM frames held at once it went out for ~4 s.
+No DTC is behind it. Per the workshop manual it defaults on when the transmission, engine or body service required
+message is missing for 5 s, and one missing is enough. The lead and everything tried are in database.md under
+[Wrench / See Manual](database.md#wrench--see-manual-powertrain-malfunction-rtt).
 
-For every run: note the clock time whenever the wrench goes out, even briefly. Each log line is printed at the
-**end** of its 14 s test. Exit with Ctrl+C, not by closing the window (key off sequence).
+Per the manual it should go out as soon as all three messages arrive, so watch it mid-run first. If it stays, pull
+the cluster's power for 10 s with the candidates still running. Exit with Ctrl+C, not by closing the window (key off
+sequence).
 
-- [ ] **0. New default, nothing else.** `0x223` (radio present) went in after the last bench run and hasn't been on the
-      cluster yet. Expect no faults at all after the clear.
+- [x] No faults with the 2.6.0 heartbeat (Forscan, 12 Nov 2026), the wrench stays
+- [x] `0x46A` value sweep, the GWM frames in groups of 7, `watch off` / `watch zeros`: nothing
+- [ ] **1. The service required frames we don't send**, zeros (quiet, 1 min).
       ```
-      python ipc_dtc_test.py clear dummy
+      python ipc_dtc_test.py probe dummy 168 263 4A2
       ```
-      Does the wrench blink off right after `clear: ok`? If it does, it follows a code, not a signal.
-- [ ] **1. `0x46A` the way a real GWM fills it** (~2 min). A TCS lamp may come on, on the 2018 cluster some of these
-      bits are traction control.
+- [ ] **2. Every unsent ID at once**, zeros once a second (~1,700 frames/s, every other warning lights up, only the
+      wrench matters). `@2000` if the gauges drop out, still inside the 5 s timeout.
       ```
-      python ipc_dtc_test.py sweep 46A dummy 0000000800000000 0000008000000000 0000000000100000 0000000000002000 0000008000102000 0000000800102000 FFFFFFFFFFFFFFFF
+      python ipc_dtc_test.py probe dummy 000-6FF@1000
       ```
-- [ ] **2. The GWM frames in groups of 7** (~1.5 min), to find the group that made the wrench blink.
-      ```
-      python ipc_dtc_test.py scan dummy batch=7 file=other_refs/GWM_HS3_2018_KeyOn.csv
-      ```
-      If one group does it, rerun with `batch=1` and that group's ID range (e.g. `... batch=1 270-2FF file=...`).
-- [ ] **3. Frames we already send** (~7 min each), if 1 and 2 find nothing. One ID at a time not sent, then as zeros.
-      Other lamps flicker, only the wrench matters.
-      ```
-      python ipc_dtc_test.py watch off dummy
-      python ipc_dtc_test.py watch zeros dummy
-      ```
+      If the wrench goes out: halve the range (`000-37F@1000`, `380-6FF@1000` ...) until the frames are found. It may
+      need two of them together, so when neither half does it, keep one half and split the other.
+- [ ] **3. If it stays on with everything present** a bit is set in a frame we send. Step 2 again with `0x179` and
+      `0x230` as zeros on top (`... 000-6FF@1000 179 230`), then `0x3B3` byte 1 bit by bit.
+- [ ] Ask the two builders with the same wrench which frames they send, and anyone with a BCM on a bench for its HS3
+      / HS1 frames (body service required, and the `07 01` request on `0x3E0`)
 
 ## Smaller things
 

@@ -1,0 +1,4 @@
+07:32:12 sweeping 0x46A, 1 payloads every 50 ms
+07:32:27 control (heartbeat payload): -
+07:32:41 off: gone -  new U0146-00
+07:32:41 done

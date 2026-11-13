@@ -15,6 +15,7 @@
         python replay.py longerdrive --only 0x3B3,0x204  -> only send these IDs
         python replay.py longerdrive --set 0x178:7=0x14  -> force byte 7 of 0x178 to 0x14 (repeatable)
         python replay.py "other_refs/v-ivanyshyn_parse_can_logs/log Mustang S550.txt"  -> v-ivanyshyn's 2015 GT log
+        python replay.py other_refs/2015GTPremium_cantact_log  -> candump format, this cluster's car (key on, engine off)
 
     Keys
         arrows / enter - menu navigation
@@ -99,12 +100,27 @@ def read_txt(path):
             ts, id = parts[0].split()
             yield int(ts) / 1000, int(id, 16), bytes.fromhex(parts[1])
 
+def read_candump(path):
+    '''
+        candump / CANtact log format (other_refs/2015GTPremium_cantact_log), timestamp in seconds
+            (6.530000) can0 078#00E2000000000000
+    '''
+    with open(path) as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) != 3 or '#' not in parts[2]:
+                continue
+            id, data = parts[2].split('#')
+            yield float(parts[0].strip('()')), int(id, 16), bytes.fromhex(data)
+
 def load(path, only, skip, overrides):
     '''
         Returns [(seconds from start, id, data)]
     '''
     frames = []
-    reader = read_csv if path.endswith('.csv') else read_txt
+    with open(path) as f:
+        candump = f.read(1) == '('
+    reader = read_csv if path.endswith('.csv') else read_candump if candump else read_txt
     for t, id, data in reader(path):
         if (only and id not in only) or id in skip:
             continue

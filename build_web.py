@@ -322,7 +322,12 @@ def read_frames(path):
         elif first.startswith('id,count,data'):                    # cluster_tx.csv
             for row in csv.DictReader(f):
                 yield int(row['id'], 16), row['data']
-        else:                                                      # "820298   0x085: 7C 33 80 .."
+        elif first.startswith('('):                                # candump: "(6.530000) can0 078#00E2000000000000"
+            for line in f:
+                m = re.match(r'\([\d.]+\)\s+\S+\s+([0-9A-Fa-f]+)#((?:[0-9A-Fa-f]{2})+)\s*$', line)
+                if m:
+                    yield int(m.group(1), 16), ' '.join(re.findall('..', m.group(2)))
+        else:                                                     # "820298   0x085: 7C 33 80 .."
             for line in f:
                 m = re.search(r'0x([0-9A-Fa-f]+):\s*((?:[0-9A-Fa-f]{2}\s*)+)$', line)
                 if m:

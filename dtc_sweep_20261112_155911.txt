@@ -1,0 +1,5 @@
+15:59:11 sweeping 0x431, 2 payloads every 50 ms
+15:59:25 control (heartbeat payload): -
+15:59:39 05 1d 42 03 97 83 42 00: gone -  new -
+15:59:53 00 00 00 00 00 00 00 00: gone -  new -
+15:59:53 done

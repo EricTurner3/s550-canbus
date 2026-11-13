@@ -1,0 +1,4 @@
+07:58:11 2 IDs, each off for 10 s, then 3 s back to normal
+07:58:11 0x46A off
+07:58:24 0x59E off
+07:58:37 done

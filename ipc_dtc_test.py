@@ -9,6 +9,9 @@
 #                                          payload = 16 hex digits default zeros, optional @ms default 100,
 #                                          or a named rolling-counter frame from ROLLERS)
 #                                          <id>=roll = every nibble counts 0-F together (default @20)
+#                                          file=<freeze frame csv> = every ID in it the heartbeat doesn't send
+#                                          000-6FF[=<16 hex>][@1000] = every ID in the range the heartbeat and the
+#                                          cluster don't send
 #   python ipc_dtc_test.py scan [000-6FF ...] [file=<freeze frame csv>] [batch=24] [payload=<16 hex>|roll|nm] [ms=100]
 #                                          hold batches of IDs, keep the ones that make a code stay away,
 #                                          and bisect each down to the single ID. Log: dtc_scan_<time>.txt
@@ -22,6 +25,10 @@
 #   python ipc_dtc_test.py watch [off|zeros|ff] [secs=6] [230 400-4FF ...]
 #                                          for a warning with no DTC behind it: change one heartbeat ID at a time
 #                                          (not sent / all 00 / all FF) and watch the cluster. Log: dtc_watch_<time>.txt
+#   python ipc_dtc_test.py supported       every code the cluster can set (19 0A), with status. Log: dtc_supported_<time>.txt
+#   python ipc_dtc_test.py dids [DE00-DEFF ...] [mute=46A]
+#                                          read every data ID (22 xxxx, default 0000-FFFF) and log the ones that
+#                                          answer. mute= stops heartbeat IDs for the run. Log: dtc_dids_<time>.txt
 #
 #   add `dummy` to any of these to also send s550_cluster.DUMMY_SCHEDULE (interactive_brute_force.py --dummydata)
 #
@@ -141,7 +148,9 @@ def _extra_loop():
         now = time.time()
         if extra_on:
             for i, (d, p) in list(CANDIDATES.items()):
-                if now >= nxt.get(i, 0):
+                if i not in nxt:
+                    nxt[i] = now + (i % 64) / 64 * p     # spread the first sends so a big set doesn't go out as one burst
+                if now >= nxt[i]:
                     nxt[i] = now + p
                     _send_raw(i, c.start, d() if callable(d) else d)
         time.sleep(0.002)
@@ -238,10 +247,19 @@ def clear_and_read(label):
     show(label, codes)
     return codes or {}
 
+FILE_IDS = set()                                     # candidates that came from file= or a range
+
 def parse_candidates(args):
     # <id>[=<16 hex>][@<ms>] or a ROLLERS name; no payload = zeros, no period = 100 ms
     out = {}
     for a in args:
+        if a.startswith('file='):                    # every ID in a freeze-frame style csv, as scan's file=
+            import csv
+            for r in csv.DictReader(open(a[5:])):
+                i = int(r['ID (HEX)'], 16)
+                FILE_IDS.add(i)
+                out[i] = (list(bytes.fromhex(r['Sample Data'].replace(' ', '').ljust(16, '0')))[:8], 0.1)
+            continue
         if a in ROLLERS:
             i, f, p = ROLLERS[a]
             out[i] = (f, p)
@@ -252,7 +270,15 @@ def parse_candidates(args):
         if h == 'roll':
             out[int(i, 16)] = (nibble_roller(), int(ms or 20) / 1000)
             continue
-        out[int(i, 16)] = (list(bytes.fromhex(h.ljust(16, '0')))[:8], int(ms or 100) / 1000)
+        d = (list(bytes.fromhex(h.ljust(16, '0')))[:8], int(ms or 100) / 1000)
+        if '-' in i:                                 # a range: every ID in it the heartbeat doesn't send
+            lo, hi = (int(x, 16) for x in i.split('-'))
+            for j in range(lo, hi + 1):
+                FILE_IDS.add(j)
+                out[j] = d
+            continue
+        FILE_IDS.discard(int(i, 16))                 # named on its own: replaces the heartbeat's frame
+        out[int(i, 16)] = d
     return out
 
 def open_log(name):
@@ -493,6 +519,46 @@ def watch(args):
         time.sleep(3.0)
     log('done')
 
+# ---- supported / dids ----
+def supported():
+    # every code the cluster can set (19 0A), failed or not: the list of what it monitors
+    r = uds([0x19, 0x0A], timeout=2.0)
+    log = open_log('dtc_supported')
+    if r is None or r[0] != 0x59:
+        log('no list:', r.hex(' ') if r else 'no reply')
+        return
+    codes = [(dtc_name(r[i], r[i + 1], r[i + 2]), r[i + 3]) for i in range(3, len(r) - 3, 4)]
+    log('{} supported codes'.format(len(codes)))
+    for k, st in sorted(codes):
+        log('{}  status {:02X}{}'.format(k, st, '  lamp' if st & 0x80 else ''))
+
+def dids(args):
+    # ask for every data ID (22 xxxx) and log the ones that answer. Run it twice, e.g. as is and with mute=46A
+    # (U0146 set), and compare the two logs for the IDs that follow a fault
+    global muted
+    ranges = []
+    for a in args:
+        if a.startswith('mute='):
+            muted = {int(x, 16) for x in a[5:].split(',') if x}
+        else:
+            lo, _, hi = a.partition('-')
+            ranges.append((int(lo, 16), int(hi or lo, 16)))
+    ranges = ranges or [(0x0000, 0xFFFF)]
+    log = open_log('dtc_dids')
+    log('ranges', ' '.join('%04X-%04X' % r for r in ranges), 'muted', ' '.join('%03X' % i for i in sorted(muted)) or '-')
+    if muted:
+        time.sleep(SETTLE)                           # let the muted frame's code set first
+    found = 0
+    for lo, hi in ranges:
+        for d in range(lo, hi + 1):
+            if d & 0xFF == 0:
+                print('  {:04X} ... {} found'.format(d, found), flush=True)
+            r = uds([0x22, d >> 8, d & 0xFF], timeout=0.3)
+            if r and r[0] == 0x62:
+                found += 1
+                log('{:04X}: {}'.format(d, r[3:].hex(' ')))
+    log('done, {} answered'.format(found))
+
 def fmt_codes(codes):
     return ' '.join(sorted(codes)) or '-'
 
@@ -525,10 +591,24 @@ if __name__ == '__main__':
         sweep(sys.argv[2:])
     elif mode == 'watch':
         watch(sys.argv[2:])
+    elif mode == 'supported':
+        supported()
+    elif mode == 'dids':
+        dids(sys.argv[2:])
     elif mode == 'probe':
+        cluster_tx = set()                           # what the cluster transmits itself, as scan
+        end = time.time() + 2
+        with rx_lock:
+            while FILE_IDS and time.time() < end:
+                m = c.bus.recv(0.05)
+                if m:
+                    cluster_tx.add(m.arbitration_id)
+        for i in FILE_IDS & (heartbeat_ids | SCAN_SKIP | cluster_tx):    # a file / range only adds IDs, the heartbeat keeps its own
+            del CANDIDATES[i]
+        print('* {} candidates, {:.0f} frames/s'.format(len(CANDIDATES), sum(1 / p for _, p in CANDIDATES.values())))
         base = clear_and_read('CONTROL (heartbeat only)')
         extra_on = True
-        print('* adding', ', '.join(hex(i) for i in CANDIDATES))
+        print('* adding', ', '.join(hex(i) for i in CANDIDATES) if len(CANDIDATES) <= 40 else '{} IDs'.format(len(CANDIDATES)))
         time.sleep(2)
         test = clear_and_read('WITH candidates')
         base, test = set(faults(base)), set(faults(test))

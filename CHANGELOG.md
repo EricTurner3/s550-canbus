@@ -1,5 +1,53 @@
 # Changelog
 
+## [2.6.1] - 12 Nov 2026
+**The wrench has a lead.** Forscan confirms the bench cluster has no DTCs with the 2.6.0 heartbeat, and the wrench /
+See Manual is still on. The workshop manual says it defaults on when the transmission, engine or body service required
+message is missing for 5 s, which is when it shows after power up. Which frames the 2015 cluster reads them from isn't
+found yet (see TODO.md).
+
+### ipc_dtc_test.py
+
+- `supported`: every code the cluster can set (UDS `19 0A`) with its status. Log: `dtc_supported_<time>.txt`
+- `dids [ranges] [mute=46A]`: reads every data ID (`22 0000` - `22 FFFF`, 18 min) and logs the ones that answer.
+  Log: `dtc_dids_<time>.txt`
+- `probe` takes `file=<freeze frame csv>` and ranges (`000-6FF[=<payload>][@1000]`): every ID in them that the
+  heartbeat and the cluster don't send. First sends are spread out so a big set isn't one burst. The range form
+  hasn't been on the cluster yet
+
+### interactive_brute_force.py
+
+- `--respond-0701 "B0 .. B7"`: answers the cluster's `07 01` request on `0x3E1` (default the freeze frame's
+  `80 00 00 07 01 80 00 00`). Not accepted in any of the three layouts tried
+
+### replay.py / build_web.py
+
+- Both read candump / CANtact logs (`(6.530000) can0 078#00E2000000000000`)
+- New source `other_refs/2015GTPremium_cantact_log`: this cluster's own car at the gateway, 54 s from key on, engine
+  never started. 55 IDs, none new. In the web viewer as "2015 Mustang GT Premium, 6MT (key on, engine off)"
+
+### database.md
+
+- New **Wrench / See Manual** section: the manual text, the service required bits in the 2018+ DBC (`0x230`, `0x179`,
+  `0x3B3`, `0x168`, `0x263`, `0x4A2`), the boot timing and everything tried
+- New **IPC Data IDs (720)** section: the 83 data IDs that answer, with values. `D137` is the only one that follows
+  a fault (`00` → `05` with `0x46A` muted), none follows the wrench. `EE00` / `EE01` are a log of 32 byte fuel
+  sender records, `A48A` holds the last 4 VINs seen
+- New **IPC Supported DTCs (720)** section: the 38 codes
+- IPC As-Built: all six blocks `DE00` - `DE05`. The bench is back on the original EPAS values, `0x77` alone keeps the
+  steering faults away
+- `0x3E0`: request timing from power up, `07 01` replies tried
+- `0x431`: this car's key on value `05 1D 40 1C B7 83 46 00`
+
+### Ruled out for the wrench
+
+- A DTC (none set, none of the supported codes asks for a lamp), the radio (`0x223` muted), the fuel senders
+- Zeros on every unsent ID `0x400 - 0x6FF`, `watch off` / `watch zeros` on every heartbeat ID, the freeze frame's
+  values on unsent IDs, the GWM frames in groups of 7
+- From power up: clutch `0x42F` + brake `0x165`, this car's key on values for `0x431 0x178 0x42F 0x165 0x167 0x416`,
+  all 27 GWM frames at once
+- The `07 01` request on `0x3E0`: unanswered or answered, the wrench shows at the same time
+
 ## [2.6.0] - 11 Nov 2026
 **Every DTC on the bench has a CAN fix.** After a clear the cluster used to set U0401-82, U0146 and U0184 again. All
 three are answered by frames the gateway builds on HS3, none by a counter. Each fix was confirmed with

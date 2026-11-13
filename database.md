@@ -24,6 +24,7 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
 | `/can/*.csv` | 2016 Mustang GT350, 6MT | HS1 (OBD port, through the gateway) | Missing 37 IDs the GT has (`0x156 0x166 0x171 0x179 0x331 0x3B5 0x421 0x42D 0x43E` ...), so replaying them on this GT cluster throws warnings |
 | `other_refs/v-ivanyshyn_parse_can_logs` | 2016 Mustang GT, 6R80 | HS1 + HS3 merged | |
 | `other_refs/2015GTPremium_FreezeFrame.csv` | 2015 Mustang GT Premium, 6MT | HS-CAN / HS-CAN2 | One sample per ID from this cluster's car |
+| `other_refs/2015GTPremium_cantact_log` | 2015 Mustang GT Premium, 6MT (key on, engine off) | HS1 (at the gateway) | CANtact log from this cluster's car, 54 s from key on (`0x3B3` byte 0 `10` → `44`), engine never started (`0x167` byte 0 `00`). 55 IDs, none new. Lossy, about a quarter of the frames (`0x204` at ~27 Hz), so use it for values, not rates. No `0x156 0x179 0x421 0x42D 0x43E` here either: the only log with those is v-ivanyshyn's automatic |
 | `/can/apim/*.csv` | Bench APIM (SYNC) | HS3 | `apim_capture.py` logs, APIM alone on the bench. See [APIM (SYNC)](#apim-sync) |
 | `cluster_tx.csv` | Bench cluster (2015 analog, FR33) | HS3 | What the cluster transmits on its own, see [Cluster (IPC) Transmits](#cluster-ipc-transmits) |
 | `mustang.c` ([ufnalski's project](https://github.com/ufnalski/ford_mustang_cluster_h503rb/blob/main/Core/Src/mustang.c)) | 2016 Mustang V6, automatic | | Source of `0x3B2` and the `0x76` g meter which enabled TrackApps |
@@ -153,6 +154,7 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 - In a car each request is held ~40 - 60 ms. Unanswered, the cluster repeats it every ~1 - 2 s and gives up after 5 s, then sends `07 01` (never seen in a car).
 - Byte 1 `0x02 - 0x07` time out for every request except `04 0D`, which takes anything.
 - Other IDs in the same family: `0x3DF` `0x3E2` (idle frames), `0x3EB` `02 04 14 00 00 20 ..` (different layout), freeze frame `0x3E1` `80 00 00 07 01 80 00 00`, `0x3DA` `01 64 00 ..` (GT log all zeros).
+- 12 Nov 2026 - from power up the requests go out at 1.14 - 2.39 s when answered and `07 01 00 00 84` from 2.89 s, every 1 s (`can/apim/apim_ignition_20261112_174016.csv`). `07 01` isn't accepted on `0x3E3` (`00 01 07 01 80 ..`, 5 tries) or on `0x3E1` as `80 00 00 07 01 80 00 00`, `00 00 07 01 80 ..` or `00 01 07 01 80 ..` (`interactive_brute_force.py --respond-0701`). A BCM request? No BCM to check against.
 - Answering every request doesn't clear the startup faults (blind spot, cross traffic, steering assist, tire pressure monitor). Those modules' own messages aren't in any log.
 
 ---
@@ -767,7 +769,7 @@ Logged values: GT350 `8C 00 00 00 9C 60 00 00` in every log (`84 ..` and `8C 04 
 
 **Sample:** `05 1B 40 04 0F 83 42 00` (no message) · **Rate:** ~1 Hz · **Status:** Confirmed (`interactive_brute_force.py trans` / `transwarm`)
 
-Not in any DBC. Logged values: warm (`longerdrive.csv`) `05 1B 40 04 0F 83 42 00`, idle `05 1D 42 03 97 83 42 00`, freeze frame `05 1D 40 EB B7 83 46 00` (shows Transmission Warming Up). Leaving `0x431` out shows no transmission message.
+Not in any DBC. Logged values: warm (`longerdrive.csv`) `05 1B 40 04 0F 83 42 00`, idle `05 1D 42 03 97 83 42 00`, freeze frame `05 1D 40 EB B7 83 46 00` (shows Transmission Warming Up), this car with the key on and engine off (`2015GTPremium_cantact_log`) `05 1D 40 1C B7 83 46 00` (Transmission Warming Up, Please Wait when sent from power up, 12 Nov 2026). Leaving `0x431` out shows no transmission message.
 
 Messages found by flipping one bit at a time (only one bit changed from the base each time):
 
@@ -823,7 +825,7 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - `s550_cluster.py` sends it (`send_gwm_present`). With it and the `0x42C` fix the only code left after a clear was U0184, see [0x223](#0x223---radio-present).
 - On the 2018 digital cluster byte 1 bit 3 is a "TCS off" message and byte 2 bit 6 the TCS OFF lamp (datechnerd). Untested on the analog cluster.
 - All zeros is what the GWM sends with nothing behind it. With a car's frames on HS1 it packs status in (datechnerd's `gwm_map`): byte 5 bit 4 follows `0x179`, byte 6 bit 5 follows `0x230`, byte 3 is `08` or `80` in different captures. Untested here.
-- **Wrench / See Manual, still open.** No DTC is behind it: it stays on with no codes left, with or without `--dummydata`, through zeros on every unsent ID `0x000 - 0x3FF`, the alive payload on `0x400 - 0x5FF`, `0x168` zeros (the digital cluster's fix), `FF` on `0x421 0x167 0x200 0x204 0x230 0x202 0x156 0x43E 0x42D 0x178 0x431` and `FF` / zeros on `0x179`. The one time it moved: with all 28 GWM frames held at once it went out ~2 s after they started and came back ~4 s later while U0146 stayed away. Next: the `0x46A` values above, and the 28 frames in groups of 7. See TODO.md.
+- **Wrench / See Manual, still open**, see [Wrench / See Manual](#wrench--see-manual-powertrain-malfunction-rtt). No DTC is behind it: it stays on with no codes left, with or without `--dummydata`, through zeros on every unsent ID `0x000 - 0x3FF`, the alive payload on `0x400 - 0x5FF`, `0x168` zeros (the digital cluster's fix), `FF` on `0x421 0x167 0x200 0x204 0x230 0x202 0x156 0x43E 0x42D 0x178 0x431` and `FF` / zeros on `0x179`. The one time it moved: with all 28 GWM frames held at once it went out ~2 s after they started and came back ~4 s later while U0146 stayed away.
 - Zeros on an ID in `0x14D - 0x194` shows "Collision detection unavailable" and sets U0405-56 while held (not narrowed down).
 
 # 0x453 - Seat Occupant Sensor Serial Number
@@ -875,6 +877,62 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - Faking all of `0x500 - 0x5FF` (`--nm`) changed nothing.
 - 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names them AutoSar network management frames: `0x59E` GWM, `0x5B5` PSCM, `0x596` ABS. Byte 0 is the node ID, byte 1 the control byte. We already send `0x59E` and `0x5B5` and the cluster still sets U0146 (GWM) and U0420 (PSCM), so it wants more than these alive frames.
 
+# Wrench / See Manual (Powertrain Malfunction RTT)
+
+**Status:** Still open, 12 Nov 2026 · the last warning on the bench
+
+The wrench at the bottom of the display with a See Manual popup. OK dismisses the popup, the wrench stays. No DTC is
+behind it: Forscan and `ipc_dtc_test.py read` find none, none of the 38 [supported codes](#ipc-supported-dtcs-720) is
+failed or asks for a lamp, and no [data ID](#ipc-data-ids-720) follows it. Two other builders with working fuel senders
+have it too.
+
+The workshop manual (413-01, Powertrain Malfunction (Wrench) RTT, the same text for the 2015 and the 2019 IPC):
+
+> If the transmission service required, engine service required or body service required message is missing for less
+> than 5 seconds, the IPC defaults the powertrain malfunction (wrench) RTT to the last indication state (on or off),
+> based upon the last message received. If [it] is missing for 5 seconds or longer, the IPC defaults the powertrain
+> malfunction (wrench) RTT on. Possible sources: communication concern, BCM, GWM, PCM, IPC.
+
+So three messages feed it and one missing is enough. That fits the bench:
+
+- From power up the odometer is back at once, the gauges go from white to MyColor at ~2.5 s, the menu at ~3 s (the
+  bulb check, `0x430` byte 6 bit 7, ends at 3.06 s) and See Manual at ~4 - 5.7 s: the 5 s timeout.
+- A defaulted lamp isn't a fault code.
+- The zeros scans held 24 IDs at a time. With two of the three messages missing in different batches, none could
+  put it out. The one time it went out was with all the GWM frames at once.
+
+The 2018+ DBC (`other_refs/VehicleCAN.dbcx`) has one service required bit per module. The digital cluster's wrench fix
+is one of them:
+
+| Signal | Frame | Bit | Bench |
+|---|---|---|---|
+| `TrnSrvcRqd_B_Rq` (transmission) | `0x230` | byte 1 bit 0 | Sent, 0. `0x431` byte 3 `14` shows the Transmission Service Required text |
+| `EngSrvcRqd_B_Rq` (engine) | `0x179` | byte 2 bit 3 | Sent, 0 |
+| `BodySrvcRqd_B_Rq` (body, from the BCM) | `0x3B3` | byte 1 bit 2 | Sent, 0 |
+| `GsmSrvcRqd_B_Rq` (shifter) | `0x168` | byte 2 bit 7 | Not sent. Zeros is the digital cluster's fix, nothing here |
+| `AwdSrvcRqd_B_Rq` | `0x263` | byte 0 bit 0 | Not sent |
+| `LsdSrvcRqd_B_Rq` | `0x4A2` | byte 2 bit 5 | Not sent |
+
+By that layout all three are already sent with the bit clear, so the 2015 cluster must read at least one of them from
+another frame, or from another bit of one we send. Not found yet.
+
+Tried on 12 Nov 2026, wrench unchanged every time. "From power up" = the frames already running, then the cluster's
+power pulled for 10 s:
+
+- A plain clear, `0x223` muted, zeros on every unsent ID `0x400 - 0x6FF`, `watch off` and `watch zeros` on every
+  heartbeat ID, `0x431` idle / zeros, the freeze frame's values on the IDs we don't send, the GWM frames in groups of 7.
+- From power up: clutch `0x42F` + brake `0x165`; this car's key on values (`2015GTPremium_cantact_log`) for `0x431`
+  `0x178` `0x42F` `0x165`, then with `0x167` and `0x416` too (adds Transmission Warming Up, Please Wait); all 27
+  GWM frames at once (`probe dummy file=other_refs/GWM_HS3_2018_KeyOn.csv`).
+- A reply to the `07 01` request on `0x3E1`, three layouts, see [0x3E0](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies). `07 01` goes out at ~2.9 s, about when the wrench shows, but that looks like chance.
+- The fuel senders: P1243-06 (not run) sits with the fuel codes and the two resistors differ, but the builders with
+  working senders have the wrench too.
+- Replaying a car's log doesn't count: HS1 logs have no `0x46A` / `0x223`, so U0146 sets and asks for the lamp itself.
+- Nothing the cluster transmits follows it (`0x430`, `0x225`, `0x350`, `0x3E0`, `0x434`).
+
+Not tried: `0x168` + `0x263` + `0x4A2` zeros from power up, and every unsent ID at once (`probe dummy 000-6FF@1000`,
+~1,700 frames/s, noisy). See TODO.md.
+
 # Fuel Level Senders (wired, C220)
 
 Fuel level isn't on CAN, the cluster reads two resistive senders (saddle tank) on C220 pins **1 + 9** and **2 + 10**.
@@ -904,16 +962,112 @@ The cluster's configuration. Block `720-NN` is DID `DE00 + NN - 1`, line `-01` i
 checksum = (0x07 + 0x20 + block + line + data bytes) & 0xFF      e.g. 720-01-02: 07+20+01+02+0C+1B+10 = 61
 ```
 
-| Line | This cluster (FR33-10849-GF) | Bench | Field (Forscan) |
+| Line | This cluster (FR33-10849-GF) | EPAS disabled | Field (Forscan) |
 |---|---|---|---|
 | `720-01-01` | `8C0B 1064 70` | same | |
 | `720-01-02` | `0C1B 10` `61` | `0C19 10` `5F` | 2nd byte low nibble, bit 3 Easy Entry/Exit, bit 2 Electric Parking Brake, **bit 1 Electric Power Assist Steering**, bit 0 ESC. `B` → `9` = EPAS disabled |
 | `720-06-01` | `6C7F 0000 98` `B1` | `6C7F 0000 88` `A1` | 5th byte bit 4 = **EPAS Button**, enabled → disabled |
 
 - **Fixes Steering Assist Fault / Steering Fault Service Now** (9 Nov 2026). `0x77` = `FF FF FF FF FF FF 00 FC` fixes them too, without Forscan, see [0x77](#0x77---vehicle-speed--yaw). With EPAS disabled the cluster stops expecting the power steering module, so U0420-82 has nothing to fault. Both fields were changed together; which one does it on its own isn't tested.
+- 12 Nov 2026 - the bench cluster is back on its original values (EPAS and the EPAS button enabled) and `0x77` alone keeps the steering faults away, so the as-built change isn't needed.
 - Every CAN fix tried before this (`0x82` `EPAS_Failure` sweep, `0x085` / `0x07E` counter + checksum, `0x3A8`) didn't clear U0420-82.
 - `fake_forscan.py` lets Forscan connect to the bench cluster: it answers as the PCM and BCM so Forscan finds a car. The ELM327 has to be on the cluster's CAN directly (HS3, Forscan doesn't look for the IPC on the OBD port's HS1 pins).
 - Other IDs from the same Forscan read: F113 `FR33-10849-GF` (part), F188 `FR33-14C026-AG` (strategy), F124 `FR33-14C088-RF` (calibration), F111 `FR33-14F094-GA`, F110 `DS-FR33-1A292-AD`, F18C serial `42262060`.
+
+All six blocks as read on 12 Nov 2026 (original values, `DE06` and up don't answer):
+
+| DID | Block | Data |
+|---|---|---|
+| `DE00` | `720-01` | `8C 0B 10 64 70 0C 1B 10` |
+| `DE01` | `720-02` | `2D 80 3C 30 1E 48 00 D1` |
+| `DE02` | `720-03` | `60 02 5E 00 00 CA 18 00` |
+| `DE03` | `720-04` | `04 00 00 00 00 55 53 00` (bytes 5 & 6 are ASCII `US`) |
+| `DE04` | `720-05` | `00 00 00 00 00 00 00 00` |
+| `DE05` | `720-06` | `6C 7F 00 00 98 00 00 00` |
+
+# IPC Data IDs (720)
+
+**Status:** From a full sweep on the bench, 12 Nov 2026 · `ipc_dtc_test.py dids dummy` asks `22 0000` - `22 FFFF` on `0x720` (18 min), 83 answer
+
+Read with no security access. The meanings are guesses from the values unless they say otherwise. Three passes were compared:
+the full sweep, a repeat of the ranges that answer, and the same with `0x46A` muted (U0146 set).
+
+| DID | Value | Notes |
+|---|---|---|
+| `0202` | `00` | |
+| `404C` | `11 3F C1` | Odometer, 0.1 km, same as [0x430](#0x430---odometer) |
+| `40B5` | `03` | |
+| `4190`, `4193` | `01 19`, `00 EE` | The two fuel sender inputs (100 Ω and ~71 Ω on the bench), move by a count between reads |
+| `4194` - `4197` | `04 F1`, `04 F6`, `00 9E`, `00 70` | Didn't move |
+| `600E`, `600F`, `601E`, `601F`, `6022`, `6023` | zeros | |
+| `61A4`, `61A5`, `61A9`, `61B0`, `61B5`, `61BD` | zeros | |
+| `61B1`, `61B2` | `1B`, `2F` | |
+| `61B7`, `61B8` | `01 1A`, `00 EF` | The fuel sender inputs again, a count off `4190` / `4193` |
+| `630F` | `C1 00 31 46 41 36 50 38 C1 01 ..` | The VIN as the three [0x40A](#0x40a---vin--vehicle-config) pages, `1FA6P8CF3F5310004` |
+| `9A01` | `AD` → `AC` → `AA` | Drifted down over 40 minutes, supply voltage? |
+| `A48A` | 4 VINs, 17 ASCII characters each | `1FA6P8CF8G5234507` twice, `1FA6P8JZ0G5522695`, `1FA6P8CF3F5310004`: the VINs of the logs replayed on the bench and the cluster's own last. A history of the VINs seen on `0x40A`? |
+| `D100` | `01` | |
+| `D137` | `00`, `05` with `0x46A` muted | **The only ID that followed the fault.** It reads `00` with the wrench on |
+| `D700`, `D701` | `FF 00 00 00`, `00 00 29 00` | |
+| `DE00` - `DE05` | | As-built, see [IPC As-Built](#ipc-as-built-720) |
+| `EE00`, `EE01` | 250 bytes each | A log of 32 byte records, see below. `EE02` - `EE0F` answer with zeros |
+| `F110`, `F111`, `F113`, `F124`, `F188`, `F18C` | | Part numbers and serial, see [IPC As-Built](#ipc-as-built-720). `F15F`, `F163` (`03`), `F166`, `F17C` answer too |
+| `FD10`, `FD11`, `FD13` | `45 26`, `06 1B 0E`, `E5 26` | |
+| `FD20` | `01` | |
+| `FD30`, `FD31` | 9 × 16 bit values, e.g. `01 B9 01 B5 01 99 02 AD 02 3C 00 0D 01 04 02 96 02 42` | Each moves by a count or two between reads, analog inputs? The two differ in values 6 and 7 (`00 0D 01 04` / `02 67 02 92`) |
+| `FD32` | `01 01 01 00 ..` (16 bytes) | Same with and without the fault |
+| `FD33`, `FD34`, `FD35`, `FD36` | `00`, `00`, `96`, `08 98` | |
+| `FD46`, `FD47` | `46 00 00 00` | |
+| `FD48` | `CE 00 00` × 4 | |
+| `FD69`, `FD70` | `61 09 5B 0C`, `B4 6B EE 80` | |
+| `FD80`, `FD81`, `FD82` | zeros | |
+
+- `EE00` + `EE01` are one log of 32 byte records. Bytes 0 - 1 are the record number, bytes 2 - 3 a type (`00 01` or `00 20`),
+  the rest is mostly pairs of the fuel sender readings (`01 19 00 EF`, with flag bits on top in some: `21 18 20 EE`, `3D 19 3C EF`,
+  `3F FF 3F FF`). A record is added each time the cluster wakes: 12 at 18:00, 15 at 18:36, 16 at 18:41. Fuel level
+  snapshots for refuel detection?
+  ```
+  00 02 00 20 02 41 3D 19 3C EF 01 19 00 EF 01 06 01 06 00 00 00 00 80 00 80 00 0B E3 07 F3 CE 0F
+  00 09 00 20 02 00 3F FF 3F FF 01 19 00 EF 01 05 01 06 21 18 20 EE 21 18 20 EE 0B E3 07 F3 44 46
+  ```
+- **Nothing readable tracks the wrench / See Manual.** It was on for all three passes and the only ID that changed with a fault (`D137`) reads `00`.
+
+# IPC Supported DTCs (720)
+
+**Status:** From the bench, 12 Nov 2026 · `ipc_dtc_test.py supported dummy` (UDS `19 0A`)
+
+Every code the cluster can set, 38 of them. All read status `00` (tested, passed) but the three marked not run (`40`, never tested
+this power cycle). None asks for a lamp. The last byte is the failure type: `00` none, `11` short to ground, `13` open,
+`16` / `17` voltage low / high, `56` invalid configuration, `81` invalid data, `82` alive counter, `86` signal invalid.
+
+| Code | Meaning |
+|---|---|
+| `P0460-11`, `-13` | Fuel level sender A, see [Fuel Level Senders](#fuel-level-senders-wired-c220) |
+| `P1346-11`, `-13` | Fuel level sender B |
+| `P1243-06` | **Not run.** `06` = algorithm based failure |
+| `P1534-01`, `P1706-00` | |
+| `U0100-00` | Lost communication with the PCM, see [0x42C](#0x42c---occupant-sensor-blocked-cruise-status) |
+| `U0104-00` | Lost communication with the cruise control module |
+| `U0121-00` | Lost communication with the ABS |
+| `U0140-00` | Lost communication with the BCM |
+| `U0146-00` | Lost communication with the GWM, see [0x46A](#0x46a---gwm-present) |
+| `U0151-00` | Lost communication with the airbag module (RCM) |
+| `U0159-00` | Lost communication with the parking aid module |
+| `U0184-00` | Lost communication with the radio, see [0x223](#0x223---radio-present) |
+| `U0212-00` | Lost communication with the steering column module |
+| `U0232-00`, `U0233-00` | Lost communication with the blind spot modules, left / right |
+| `U0401-00`, `-81`, `-82` | Invalid data from the PCM |
+| `U0405-56` | Invalid data from the cruise control module |
+| `U0415-00`, `-81` | Invalid data from the ABS |
+| `U0420-82` | Invalid data from the power steering module, see [0x77](#0x77---vehicle-speed--yaw) |
+| `U0422-00` | Invalid data from the BCM |
+| `U0433-82` | **Not run** |
+| `U0452-81` | Invalid data from the airbag module |
+| `U046B-86`, `U0533-56`, `U0534-56` | |
+| `U2100-00` | Initial configuration not complete |
+| `U3000-44`, `-46`, `-54` | Control module memory / calibration. **`-46` not run** |
+| `U3003-16`, `-17` | Battery voltage low / high |
+| `U300A-64` | Ignition switch |
 
 # APIM (SYNC)
 
