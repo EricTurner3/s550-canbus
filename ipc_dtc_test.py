@@ -12,6 +12,8 @@
 #                                          file=<freeze frame csv> = every ID in it the heartbeat doesn't send
 #                                          000-6FF[=<16 hex>][@1000] = every ID in the range the heartbeat and the
 #                                          cluster don't send
+#                                          hb = zeros on every heartbeat ID too (all but MUTE_KEEP), in place of
+#                                          the heartbeat's own frame
 #   python ipc_dtc_test.py scan [000-6FF ...] [file=<freeze frame csv>] [batch=24] [payload=<16 hex>|roll|nm] [ms=100]
 #                                          hold batches of IDs, keep the ones that make a code stay away,
 #                                          and bisect each down to the single ID. Log: dtc_scan_<time>.txt
@@ -25,21 +27,56 @@
 #   python ipc_dtc_test.py watch [off|zeros|ff] [secs=6] [230 400-4FF ...]
 #                                          for a warning with no DTC behind it: change one heartbeat ID at a time
 #                                          (not sent / all 00 / all FF) and watch the cluster. Log: dtc_watch_<time>.txt
+#   python ipc_dtc_test.py watch bits 3B3 42C [secs=6] [key]
+#                                          one bit of each named heartbeat ID flipped at a time. 0x3B3 byte 0 (the key
+#                                          state) is left alone unless `key`
 #   python ipc_dtc_test.py supported       every code the cluster can set (19 0A), with status. Log: dtc_supported_<time>.txt
 #   python ipc_dtc_test.py dids [DE00-DEFF ...] [mute=46A]
 #                                          read every data ID (22 xxxx, default 0000-FFFF) and log the ones that
 #                                          answer. mute= stops heartbeat IDs for the run. Log: dtc_dids_<time>.txt
+#   python ipc_dtc_test.py ident [session=03] [F10C ...]
+#                                          read the F1xx identity DIDs (strategy F188=FR33-14C026, calibration,
+#                                          hw/sw versions, serial). No security. Log: fw_ident_<time>.txt
+#   python ipc_dtc_test.py memread <addr_hex> <len_hex> [step=100] [session=03]
+#                                          ReadMemoryByAddress walk -> fw_mem_<time>.bin. Stops on the first NRC
+#                                          (app region usually NRC 33 = needs security).
+#   python ipc_dtc_test.py seeds [n=10] [level=31] [session=03] [delay=0.5]
+#                                          request the seed (27 31 - this IPC's level, not 01) n times, log each, and
+#                                          say if it's static / rotating / session-seeded. Safe (seed requests don't
+#                                          lock). Compare against Forscan's seeds on the same module. Log: fw_seeds_<time>.txt
+#   python ipc_dtc_test.py seedsniff [secs=600]
+#                                          passive: log every seed (67 31) and key (27 32) while Forscan unlocks the
+#                                          IPC. Run it, then unlock in Forscan a few times to collect seed/key pairs to
+#                                          derive the 3-byte algorithm from. Ctrl+C to stop. Log: fw_seedsniff_<time>.txt
+#   python ipc_dtc_test.py upload <addr_hex> <len_hex> [session=02] [sec=01]
+#                                          the strategy dump: RequestUpload + TransferData loop -> fw_upload_<time>.bin.
+#                                          sec=01 requests the seed and prints it (no key sent). Drop your key algo into
+#                                          security()'s key_fn to unlock, then rerun. 3 bad keys = ~10 min lockout.
 #
 #   add `dummy` to any of these to also send s550_cluster.DUMMY_SCHEDULE (interactive_brute_force.py --dummydata)
 #
 # A candidate with the same ID as a heartbeat frame replaces it while it is on.
 # Run with the venv from this folder; it imports s550_cluster (opens COM3), so close s550_cluster.py first.
-import sys, time, threading
-import can
+import sys, time, threading, builtins
+try:
+    from uds_security import KEY_FNS   # per-level key functions; only needed to unlock for programming / diag
+except ImportError:
+    KEY_FNS = {}                       # file kept out of the repo: tooling still runs, just can't send a key
+
+# hh:mm:ss before every console line (s550_cluster's too, so before it is imported), to match against the cluster by eye
+_print = builtins.print
+def _stamped_print(*a, **k):
+    s = k.get('sep', ' ').join(str(x) for x in a)
+    body = s.lstrip('\n')
+    _print('\n' * (len(s) - len(body)) + time.strftime('%H:%M:%S ') + body, **{x: v for x, v in k.items() if x != 'sep'})
+builtins.print = _stamped_print
+
 import s550_cluster as c
 import s550_data
 
 REQ, RSP = 0x720, 0x728
+BOOT_WAIT = 6        # s of heartbeat before the first request / clear
+ADD_WAIT = 6         # s between probe's candidates starting and its clear: past the wrench's 5 s timeout
 SETTLE = 12          # s after a clear: lost-comm codes re-set ~5 s, counter codes up to ~10 s
 
 # candidate frames for `probe`: id -> (payload or function returning one, period s)
@@ -134,13 +171,26 @@ heartbeat_ids = set()
 
 muted = set()
 
+last_hb = {}         # id -> the heartbeat's latest payload, sent or not
+
 def _send_heartbeat(id, ts, data):
     heartbeat_ids.add(id)
+    last_hb[id] = list(data)
     if id in muted or (extra_on and id in CANDIDATES):
         return
     return _send_raw(id, ts, data)
 
 c.send_msg = _send_heartbeat
+
+# TesterPresent keep-alive. 3E 80 = suppress-positive-response (no reply, won't collide with our 0x728 reads).
+# Functional 0x7DF so the whole bus's S3 timer stays alive. On only during the diagnostic flows that need the
+# session held (unlock / upload / memread); sent well under the ~5 s S3 timeout. Prevents a re-lock mid-dump.
+tp_on = False
+def _tp_loop():
+    while True:
+        if tp_on:
+            _send_raw(0x7DF, c.start, [0x02, 0x3E, 0x80, 0, 0, 0, 0, 0])
+        time.sleep(2.0)
 
 def _extra_loop():
     nxt = {}
@@ -284,9 +334,9 @@ def parse_candidates(args):
 def open_log(name):
     log_f = open(time.strftime(name + '_%Y%m%d_%H%M%S.txt'), 'w')
     def log(*x):
-        line = time.strftime('%H:%M:%S ') + ' '.join(str(v) for v in x)
-        print(line, flush=True)
-        log_f.write(line + '\n')
+        line = ' '.join(str(v) for v in x)
+        print(line, flush=True)                      # print adds the time itself
+        log_f.write(time.strftime('%H:%M:%S ') + line + '\n')
         log_f.flush()
     return log
 
@@ -492,16 +542,20 @@ def sweep(args):
 def watch(args):
     # no DTCs involved: one heartbeat ID at a time is muted or replaced, the times are logged to match by eye
     global CANDIDATES, extra_on, muted
-    how, secs, ranges = 'off', 6.0, []
+    how, secs, ranges, key = 'off', 6.0, [], False
     for a in args:
-        if a in ('off', 'zeros', 'ff'):
+        if a in ('off', 'zeros', 'ff', 'bits'):
             how = a
+        elif a == 'key':
+            key = True
         elif a.startswith('secs='):
             secs = float(a[5:])
         elif '-' in a:
             ranges.append(tuple(int(x, 16) for x in a.split('-')))
         else:
             ranges.append((int(a, 16), int(a, 16)))
+    if how == 'bits':
+        return watch_bits(sorted({i for lo, hi in ranges for i in range(lo, hi + 1)}), secs, key)
     skip = {0x3B3} | ({0x179} if how == 'ff' else set())    # 0x179 byte 5 is the odometer's distance counter
     ids = sorted(i for i in heartbeat_ids - skip
                  if not ranges or any(lo <= i <= hi for lo, hi in ranges))
@@ -517,6 +571,33 @@ def watch(args):
         time.sleep(secs)
         extra_on, CANDIDATES, muted = False, {}, set()
         time.sleep(3.0)
+    log('done')
+
+def watch_bits(ids, secs, key):
+    # one bit of a heartbeat frame flipped at a time, on top of whatever the heartbeat would send right now
+    global CANDIDATES, extra_on
+    log = open_log('dtc_watch')
+    for i in ids:
+        if i not in last_hb:
+            log('0x{:03X} is not a heartbeat ID, skipped'.format(i))
+            continue
+        # 0x3B3 byte 0 is the key state, flipping it turns the cluster off. `key` includes it
+        first = 8 if i == 0x3B3 and not key else 0
+        log('0x{:03X}: heartbeat sends {}, bits {} - 63, each flipped for {:.0f} s, then 3 s back to normal'.format(
+            i, bytes(last_hb[i]).hex(' '), first, secs))
+        for n in range(first, 64):
+            byte, mask = n // 8, 0x80 >> (n % 8)
+            def flipped(i=i, byte=byte, mask=mask):
+                d = list(last_hb[i])
+                d[byte] ^= mask
+                return d
+            log('0x{:03X} byte {} bit {} ({:02X}) {}: {}'.format(
+                i, byte, 7 - n % 8, mask, 'cleared' if last_hb[i][byte] & mask else 'set', bytes(flipped()).hex(' ')))
+            CANDIDATES = {i: (flipped, 0.05)}
+            extra_on = True
+            time.sleep(secs)
+            extra_on, CANDIDATES = False, {}
+            time.sleep(3.0)
     log('done')
 
 # ---- supported / dids ----
@@ -559,12 +640,293 @@ def dids(args):
                 log('{:04X}: {}'.format(d, r[3:].hex(' ')))
     log('done, {} answered'.format(found))
 
+# ---- firmware / strategy read ----
+# The IPC's own software, not a CAN frame. FR33-14C026-xx is the strategy (DID F188); the file we want is its VBF.
+# Tier 1 `ident` reads the F1xx identity DIDs (no security, like the DExx as-built already does). Tier 2 `memread`
+# tries ReadMemoryByAddress. Tier 3 `upload` is the real strategy dump (RequestUpload -> TransferData), gated behind
+# SecurityAccess seed/key - see security() below.
+
+# Standard ISO-14229 / Ford identity DIDs. ASCII where printable, else hex.
+IDENT_DIDS = [
+    (0xF111, 'ECU core assembly PN'),     (0xF113, 'Ford part number (F113)'),
+    (0xF124, 'calibration PN (14C088)'),  (0xF18C, 'ECU serial number'),
+    (0xF180, 'boot software id'),         (0xF181, 'application software id'),
+    (0xF182, 'application data id'),      (0xF186, 'active session'),
+    (0xF187, 'mfr spare part number'),    (0xF188, 'STRATEGY (14C026)'),
+    (0xF189, 'strategy version'),         (0xF18A, 'system supplier id'),
+    (0xF18B, 'ECU manufacturing date'),   (0xF190, 'VIN'),
+    (0xF191, 'ECU hardware number'),      (0xF192, 'supplier hw number'),
+    (0xF193, 'supplier hw version'),      (0xF194, 'supplier sw number'),
+    (0xF195, 'supplier sw version'),      (0xF1A0, 'Ford F1A0'),
+    (0xF110, 'Ford F110'),                (0xF188, 'strategy (repeat ok)'),
+]
+
+def _ascii_or_hex(b):
+    txt = ''.join(chr(x) if 0x20 <= x < 0x7F else '.' for x in b)
+    printable = sum(0x20 <= x < 0x7F for x in b)
+    return '{:28} {}'.format(repr(txt)[1:-1], b.hex(' ')) if printable >= len(b) * 0.6 else b.hex(' ')
+
+def ident(args):
+    # read the identity DIDs and log them. Add bare DIDs (hex) to read more, e.g. `ident F10C DD01`
+    extra = [(int(a, 16), 'extra') for a in args if not a.startswith('session=')]
+    sess = next((a[8:] for a in args if a.startswith('session=')), None)
+    log = open_log('fw_ident')
+    if sess:                                            # 01 default, 03 extended - some DIDs only answer extended
+        r = uds([0x10, int(sess, 16)], timeout=2.0)
+        log('session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else (r.hex(' ') if r else 'no reply'))
+    for did, name in IDENT_DIDS + extra:
+        r = uds([0x22, did >> 8, did & 0xFF], timeout=0.5)
+        if r is None:
+            log('{:04X} {:24} no reply'.format(did, name)); continue
+        if r[0] == 0x62 and (r[1] << 8 | r[2]) == did:
+            log('{:04X} {:24} {}'.format(did, name, _ascii_or_hex(r[3:])))
+        elif r[0] == 0x7F:
+            log('{:04X} {:24} nrc {:02X}'.format(did, name, r[2]))   # 31 out-of-range, 33 security, 7E/7F session
+        else:
+            log('{:04X} {:24} ?? {}'.format(did, name, r.hex(' ')))
+    log('done')
+
+def _alfid(addr, size):
+    # address-and-length-format id: low nibble = address bytes, high nibble = size bytes
+    def nbytes(v): return max(1, (v.bit_length() + 7) // 8)
+    an, sn = nbytes(addr), nbytes(size)
+    return (sn << 4) | an, an, sn
+
+def memread(args):
+    # ReadMemoryByAddress (0x23). `memread <addr_hex> <len_hex> [step=100] [session=03] [sec=03]`
+    # Walks addr.. in `step`-byte reads and writes a .bin. The app region NRCs 33 (security) unless sec= unlocks;
+    # a window that answers 0x63 is readable. addr/len widths are inferred (pad with leading zeros to force).
+    global tp_on
+    if len(args) < 2:
+        print('  memread <start_addr_hex> <total_len_hex> [step=100] [session=03] [sec=03]'); return
+    start = int(args[0], 16); total = int(args[1], 16)
+    step = int(next((a[5:] for a in args if a.startswith('step=')), '100'), 16)
+    sess = next((a[8:] for a in args if a.startswith('session=')), '03')
+    sec = next((a[4:] for a in args if a.startswith('sec=')), None)
+    aw = (len(args[0]) + 1) // 2; sw = (len(args[1]) + 1) // 2   # width from how you wrote it
+    log = open_log('fw_memread')
+    tp_on = True                                        # hold the session while we walk the range
+    r = uds([0x10, int(sess, 16)], timeout=2.0)
+    log('session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else (r.hex(' ') if r else 'no reply'))
+    if sec and not security(int(sec, 16)):
+        log('not unlocked at level {} - protected addresses will NRC 33'.format(sec))
+    out = open(time.strftime('fw_mem_%Y%m%d_%H%M%S.bin'), 'wb')
+    got = 0
+    addr = start
+    while addr < start + total:
+        n = min(step, start + total - addr)
+        alf = (sw << 4) | aw
+        req = [0x23, alf] + list(addr.to_bytes(aw, 'big')) + list(n.to_bytes(sw, 'big'))
+        r = uds(req, timeout=1.0)
+        if r is None:
+            log('{:0{w}X} no reply (stopping)'.format(addr, w=aw * 2)); break
+        if r[0] == 0x63:
+            data = r[1:]
+            out.write(data); out.flush(); got += len(data)
+            if (addr - start) % (step * 16) == 0:
+                log('{:0{w}X} .. {} bytes'.format(addr, got, w=aw * 2))
+            addr += len(data) or n
+        elif r[0] == 0x7F:
+            log('{:0{w}X} nrc {:02X} ({}) - stopping'.format(addr, r[2], _nrc(r[2]), w=aw * 2)); break
+        else:
+            log('{:0{w}X} ?? {} - stopping'.format(addr, r.hex(' '), w=aw * 2)); break
+    log('wrote {} bytes to {}'.format(got, out.name)); out.close()
+    uds([0x10, 0x01], timeout=1.0); tp_on = False        # default session -> re-lock, stop keep-alive
+
+def _nrc(code):
+    return {0x10: 'general reject', 0x11: 'service not supported', 0x12: 'subfn not supported',
+            0x13: 'incorrect length/format', 0x14: 'response too long', 0x22: 'conditions not correct',
+            0x24: 'request sequence error', 0x31: 'request out of range', 0x33: 'security access denied',
+            0x35: 'invalid key', 0x36: 'exceeded attempts', 0x37: 'time delay not expired',
+            0x70: 'upload not accepted', 0x72: 'general programming failure', 0x73: 'wrong block seq counter',
+            0x7E: 'subfn not in session', 0x7F: 'service not in session'}.get(code, 'nrc %02X' % code)
+
+
+
+def security(level=0x01, key_fn=None):
+    # SecurityAccess. 27 <level> -> seed; key_fn(seed_bytes) -> key -> 27 <level+1> key.
+    # Returns the seed either way. No key_fn, or an all-zero seed (already unlocked): seed only, no key sent.
+    # DO NOT loop guesses: 3 bad keys (NRC 36) locks the module for ~10 min (NRC 37). Drop your own algo into key_fn.
+    r = uds([0x27, level], timeout=2.0)
+    if r is None or r[0] != 0x67:
+        print('  seed request nrc', _nrc(r[2]) if r and r[0] == 0x7F else (r.hex(' ') if r else 'no reply'))
+        return None
+    seed = bytes(r[2:])
+    print('  seed (27 {:02X}):'.format(level), seed.hex(' '))
+    if not any(seed):
+        print('  seed all zero -> already unlocked at this level'); return True
+    if key_fn is None:
+        key_fn = KEY_FNS.get(level)                     # fall back to the per-level function in uds_security.py
+    if key_fn is None:
+        print('  no key for level {:02X}: solve it (seedsniff + fw_solvekey.py) and add it to uds_security.KEY_FNS'.format(level))
+        return False
+    key = key_fn(seed)
+    r = uds([0x27, level + 1] + list(key), timeout=2.0)
+    ok = bool(r and r[0] == 0x67)
+    print('  key:', 'accepted' if ok else ('nrc ' + _nrc(r[2]) if r and r[0] == 0x7F else 'no reply'))
+    return ok
+
+def seeds(args):
+    # Request the seed (27 31) repeatedly and log each - safe, seed requests don't touch the bad-key lockout counter.
+    # Tells you if the seed is static (same every time), rotating per-request, or session/time seeded.
+    # This IPC uses level 0x31/0x32 (Ford), not the standard 0x01 - 27 01 just NRCs 7E. `seeds [n=10] [level=31] ...`
+    n = int(next((a[2:] for a in args if a.startswith('n=')), '10'))
+    level = int(next((a[6:] for a in args if a.startswith('level=')), '31'), 16)
+    sess = next((a[8:] for a in args if a.startswith('session=')), '03')
+    delay = float(next((a[6:] for a in args if a.startswith('delay=')), '0.5'))
+    log = open_log('fw_seeds')
+    r = uds([0x10, int(sess, 16)], timeout=2.0)
+    log('session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else _reply(r))
+    seen = []
+    for i in range(n):
+        r = uds([0x27, level], timeout=2.0)
+        if r is None or r[0] != 0x67:
+            log('{:2}  {}'.format(i, _reply(r))); seen.append(None); time.sleep(delay); continue
+        s = bytes(r[2:])
+        log('{:2}  {}'.format(i, s.hex(' ')))
+        seen.append(s)
+        time.sleep(delay)
+    good = [s for s in seen if s]
+    if good:
+        uniq = {s.hex() for s in good}
+        if len(uniq) == 1:
+            verdict = 'STATIC - same seed every request' + (' (all zero = unlocked)' if not any(good[0]) else '')
+        elif len(uniq) == len(good):
+            verdict = 'ROTATING - a new seed every request'
+        else:
+            verdict = '{} distinct seeds across {} requests (seeded by session/time?)'.format(len(uniq), len(good))
+        log('verdict:', verdict)
+        log('length:', len(good[0]), 'bytes')
+    log('done - compare these against Forscan\'s 27 31 on the same module')
+
+def seclevels(args):
+    # Which SecurityAccess level does a given session offer? Enter the session, request a seed (27 <odd level>)
+    # at each candidate, and report seed vs NRC. Safe: seed requests don't touch the lockout counter, and entering
+    # a session is not a write. Use this to learn which level the programming session (02) wants for upload.
+    # `seclevels [session=02]`
+    global tp_on
+    sess = next((a[8:] for a in args if a.startswith('session=')), '02')
+    log = open_log('fw_seclevels')
+    tp_on = True
+    r = uds([0x10, int(sess, 16)], timeout=2.0)
+    log('session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else _reply(r))
+    for lvl in [0x01, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x11, 0x21, 0x31, 0x41, 0x51, 0x61, 0x71]:
+        r = uds([0x27, lvl], timeout=1.0)
+        if r is None:
+            log('27 {:02X}: no reply'.format(lvl))
+        elif r[0] == 0x67:
+            log('27 {:02X}: SEED {}  <- level available here'.format(lvl, bytes(r[2:]).hex(' ')))
+        elif r[0] == 0x7F:
+            log('27 {:02X}: nrc {:02X} ({})'.format(lvl, r[2], _nrc(r[2])))
+        else:
+            log('27 {:02X}: ?? {}'.format(lvl, r.hex(' ')))
+    uds([0x10, 0x01], timeout=1.0); tp_on = False
+    log('done - a SEED line is a usable level for this session; capture its pairs with seedsniff, solve, add to KEY_FNS')
+
+def seedsniff(args):
+    # Passive logger. We can't compute the key, but Forscan can - so let Forscan unlock the IPC and we record every
+    # seed (67 31 <seed>) and key (27 32 <key>) off the bus. Both adapters sit on the cluster's HS3, so we see its
+    # traffic (same as scan reads arbitrary IDs). Run this, then in Forscan open the IPC and do something that needs
+    # security (e.g. a config write or clear) a few times - it re-seeds on each session entry, so you collect several
+    # seed/key pairs. Several pairs is what lets you derive a 3-byte algorithm. `seedsniff [secs=600]`  Ctrl+C to stop.
+    secs = int(next((a[5:] for a in args if a.startswith('secs=')), '600'))
+    log = open_log('fw_seedsniff')
+    log('passive capture for {} s - unlock the IPC in Forscan a few times. watching 0x720/0x728 for 27/67 31/32 ...'.format(secs))
+    pairs, pending = [], None
+    end = time.time() + secs
+    try:
+        while time.time() < end:
+            m = c.bus.recv(0.2)
+            if not m or m.arbitration_id not in (REQ, RSP) or (m.data[0] >> 4) != 0:   # single frames only
+                continue
+            p = bytes(m.data)[1:1 + (m.data[0] & 0x0F)]
+            if m.arbitration_id == REQ and len(p) >= 2 and p[0] == 0x27:
+                if p[1] & 1 == 0:                               # even subfn = send key (32/34...)
+                    key = p[2:]
+                    log('key  (27 {:02X}): {}'.format(p[1], key.hex(' ')))
+                    if pending is not None:
+                        pairs.append((pending, bytes(key)))
+                        log('  -> PAIR  seed {}  ->  key {}'.format(pending.hex(' '), key.hex(' ')))
+                        pending = None
+            elif m.arbitration_id == RSP and len(p) >= 2 and p[0] == 0x67:
+                if p[1] & 1:                                    # odd subfn reply = seed (31/33...)
+                    pending = bytes(p[2:])
+                    log('seed (67 {:02X}): {}'.format(p[1], pending.hex(' ')))
+                else:
+                    log('key accepted (67 {:02X})'.format(p[1]))
+            elif m.arbitration_id == RSP and p[:1] == b'\x7f' and len(p) >= 3 and p[1] == 0x27:
+                log('key REJECTED nrc {:02X} ({})'.format(p[2], _nrc(p[2])))
+    except KeyboardInterrupt:
+        pass
+    log('captured {} seed/key pair(s):'.format(len(pairs)))
+    for s, k in pairs:
+        log('  {}  ->  {}'.format(s.hex(' '), k.hex(' ')))
+
+def unlock(args):
+    # Test the key in isolation before risking anything else. `unlock [level=03] [session=03]`
+    # One key attempt - the key is derived + verified, so it should pass. (3 wrong keys would lock ~10 min.)
+    global tp_on
+    level = int(next((a[6:] for a in args if a.startswith('level=')), '03'), 16)
+    sess = next((a[8:] for a in args if a.startswith('session=')), '03')
+    tp_on = True                                        # hold the session with 3E 80
+    r = uds([0x10, int(sess, 16)], timeout=2.0)
+    print('  session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else _reply(r))
+    print('  unlocked' if security(level) else '  NOT unlocked')
+    uds([0x10, 0x01], timeout=1.0); tp_on = False       # back to default session -> re-locks, stop keep-alive
+
+def upload(args):
+    # RequestUpload (0x35) + TransferData (0x36) - the strategy dump. `upload <addr_hex> <len_hex> [session=02] [sec=01]`
+    # Tries an extended/programming session and a seed request first. Without a valid key the 0x35 will usually NRC 33;
+    # the loop is here so that once security() is satisfied (your key in key_fn) a rerun dumps straight to .bin.
+    global tp_on
+    if len(args) < 2:
+        print('  upload <start_addr_hex> <total_len_hex> [session=02] [sec=01]'); return
+    start = int(args[0], 16); total = int(args[1], 16)
+    sess = next((a[8:] for a in args if a.startswith('session=')), '02')  # 02 programming, 03 extended
+    sec = next((a[4:] for a in args if a.startswith('sec=')), None)
+    aw = (len(args[0]) + 1) // 2; sw = (len(args[1]) + 1) // 2
+    log = open_log('fw_upload')
+    tp_on = True                                        # 3E 80 keep-alive so S3 can't expire mid-dump
+    r = uds([0x10, int(sess, 16)], timeout=2.0)
+    log('session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else _reply(r))
+    if sec:
+        if not security(int(sec, 16)):                  # uses uds_security.KEY_FNS[level]
+            log('not unlocked at level {} - RequestUpload will likely refuse'.format(sec))
+    alf = (sw << 4) | aw
+    req = [0x35, 0x00, alf] + list(start.to_bytes(aw, 'big')) + list(total.to_bytes(sw, 'big'))
+    r = uds(req, timeout=2.0)
+    if r is None or r[0] != 0x75:
+        log('RequestUpload refused:', _reply(r)); return
+    lenfmt = r[1] >> 4                                  # bytes that encode maxNumberOfBlockLength
+    maxblk = int.from_bytes(r[2:2 + lenfmt], 'big')
+    log('upload accepted, max block {} bytes'.format(maxblk))
+    out = open(time.strftime('fw_upload_%Y%m%d_%H%M%S.bin'), 'wb')
+    seq = 1; got = 0
+    while got < total:
+        r = uds([0x36, seq], timeout=2.0)
+        if r is None or r[0] != 0x76:
+            log('TransferData seq {} failed: {}'.format(seq, _reply(r))); break
+        chunk = r[2:]                                   # r[1] echoes the seq
+        out.write(chunk); out.flush(); got += len(chunk)
+        if seq % 64 == 0:
+            log('{} bytes'.format(got))
+        seq = (seq + 1) & 0xFF
+        if not chunk:
+            break
+    uds([0x37], timeout=2.0)                             # RequestTransferExit
+    log('wrote {} / {} bytes to {}'.format(got, total, out.name)); out.close()
+    uds([0x10, 0x01], timeout=1.0); tp_on = False        # default session -> re-lock, stop keep-alive
+
+def _reply(r):
+    return 'nrc ' + _nrc(r[2]) if r and r[0] == 0x7F else (r.hex(' ') if r else 'no reply')
+
 def fmt_codes(codes):
     return ' '.join(sorted(codes)) or '-'
 
 if __name__ == '__main__':
     dummy = 'dummy' in sys.argv
-    sys.argv = [a for a in sys.argv if a != 'dummy']
+    hb_zeros = 'hb' in sys.argv
+    sys.argv = [a for a in sys.argv if a not in ('dummy', 'hb')]
     mode = sys.argv[1] if len(sys.argv) > 1 else 'read'
     if mode == 'probe' and len(sys.argv) > 2:
         CANDIDATES = parse_candidates(sys.argv[2:])
@@ -574,9 +936,10 @@ if __name__ == '__main__':
     c.clusterdata = s550_data.s550_ipc('none')        # defaults, no game
     threading.Thread(target=c._scheduler, daemon=True).start()
     threading.Thread(target=_extra_loop, daemon=True).start()
+    threading.Thread(target=_tp_loop, daemon=True).start()
     c.keys()                                         # arrow keys / enter -> menu nav, same as s550_cluster.py
-    print('* heartbeat running, waiting 3 s for the cluster')
-    time.sleep(3)
+    print('* heartbeat running, waiting {} s for the cluster'.format(BOOT_WAIT))
+    time.sleep(BOOT_WAIT)
 
     if mode == 'read':
         show('DTCs', read_dtcs())
@@ -595,6 +958,20 @@ if __name__ == '__main__':
         supported()
     elif mode == 'dids':
         dids(sys.argv[2:])
+    elif mode == 'ident':
+        ident(sys.argv[2:])
+    elif mode == 'memread':
+        memread(sys.argv[2:])
+    elif mode == 'unlock':
+        unlock(sys.argv[2:])
+    elif mode == 'upload':
+        upload(sys.argv[2:])
+    elif mode == 'seeds':
+        seeds(sys.argv[2:])
+    elif mode == 'seedsniff':
+        seedsniff(sys.argv[2:])
+    elif mode == 'seclevels':
+        seclevels(sys.argv[2:])
     elif mode == 'probe':
         cluster_tx = set()                           # what the cluster transmits itself, as scan
         end = time.time() + 2
@@ -605,11 +982,20 @@ if __name__ == '__main__':
                     cluster_tx.add(m.arbitration_id)
         for i in FILE_IDS & (heartbeat_ids | SCAN_SKIP | cluster_tx):    # a file / range only adds IDs, the heartbeat keeps its own
             del CANDIDATES[i]
+        if hb_zeros:                                 # a set bit in a frame we already send: zero them all at once
+            hb = sorted(heartbeat_ids - MUTE_KEEP - set(CANDIDATES))
+            CANDIDATES.update({i: ([0] * 8, 0.1) for i in hb})
+            print('* heartbeat IDs zeroed:', ' '.join('%03X' % i for i in hb))
         print('* {} candidates, {:.0f} frames/s'.format(len(CANDIDATES), sum(1 / p for _, p in CANDIDATES.values())))
         base = clear_and_read('CONTROL (heartbeat only)')
         extra_on = True
         print('* adding', ', '.join(hex(i) for i in CANDIDATES) if len(CANDIDATES) <= 40 else '{} IDs'.format(len(CANDIDATES)))
-        time.sleep(2)
+        n0, t0 = sum(c.sent_count[i] for i in list(CANDIDATES)), time.time()
+        time.sleep(ADD_WAIT)
+        n1 = sum(c.sent_count[i] for i in list(CANDIDATES))
+        print('* handed to the adapter: {:.0f} candidate frames/s, {} failed'.format(
+            (n1 - n0) / (time.time() - t0), sum(c.fail_count.values())))
+        print('* clearing')
         test = clear_and_read('WITH candidates')
         base, test = set(faults(base)), set(faults(test))
         gone = sorted(base - test)

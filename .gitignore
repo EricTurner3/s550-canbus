@@ -1,3 +1,12 @@
 \venv
 \__pycache__
 docs/data.js
+uds_security.py
+*.vbf
+*_unpacked/
+python-vbf.py
+fw_*
+/vbf
+
+# Vendor chip reference manual (NXP/Freescale copyright)
+other_refs/MPC5645S*MemoryMap.pdf

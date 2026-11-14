@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.6.2] - 13 Nov 2026
+**The service-required frames aren't the wrench.** Sending the three candidate IDs the manual points to
+(`0x168 0x263 0x4A2`) made no difference, and the wrench returns the instant the cluster is power-cycled —
+so it's a default-on state, not a latched fault. Next leads are in TODO.md.
+
+### Wrench / See Manual
+
+- Bench test: the three candidate service-required frames sent together — no change on the cluster
+- TODO.md: recorded the result and the next steps to chase it down
+
+### Housekeeping
+
+- Moved the `dtc_*.txt` working logs out of the repo root into `logs/` (closes the TODO note about them)
+- `.gitignore`: keep local-only material (vendor firmware and other not-for-publish working files) out of the repo
+
 ## [2.6.1] - 12 Nov 2026
 **The wrench has a lead.** Forscan confirms the bench cluster has no DTCs with the 2.6.0 heartbeat, and the wrench /
 See Manual is still on. The workshop manual says it defaults on when the transmission, engine or body service required

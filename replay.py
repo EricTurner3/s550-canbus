@@ -14,6 +14,8 @@
         python replay.py longerdrive --skip 0x81         -> drop IDs from the log
         python replay.py longerdrive --only 0x3B3,0x204  -> only send these IDs
         python replay.py longerdrive --set 0x178:7=0x14  -> force byte 7 of 0x178 to 0x14 (repeatable)
+        python replay.py longerdrive --add 0x46A,0x223   -> also send these every 100 ms (zeros, or 0x3A6=0040020000000000)
+        python replay.py other_refs/2015GTPremium_cantact_log --fill 0.5  -> lossy log: repeat an ID's latest frame after 0.5 s of quiet
         python replay.py "other_refs/v-ivanyshyn_parse_can_logs/log Mustang S550.txt"  -> v-ivanyshyn's 2015 GT log
         python replay.py other_refs/2015GTPremium_cantact_log  -> candump format, this cluster's car (key on, engine off)
 
@@ -159,9 +161,43 @@ def replay(frames, speed, loop):
             lag = max(0.0, -wait)
             position = t
             send_msg(id, data)
+            last_sent[id] = (time.perf_counter(), data)
         if not loop:
             return
         print('* Looping')
+
+def parse_add(text):
+    '''
+        0x46A,0x3A6=0040020000000000 -> {0x46A: zeros, 0x3A6: payload}
+    '''
+    frames = {}
+    for part in (text or '').split(','):
+        if part:
+            id, _, payload = part.partition('=')
+            frames[int(id, 16)] = list(bytes.fromhex(payload.ljust(16, '0')))[:8]
+    return frames
+
+def _add_loop(frames):
+    # frames the log doesn't have (HS1 logs have no 0x46A / 0x223), every 100 ms alongside the replay
+    while True:
+        if not paused.is_set():
+            for id, data in frames.items():
+                send_msg(id, data)
+        time.sleep(0.1)
+
+last_sent = {} # id -> (time, data) of its latest frame from the log
+
+def _fill_loop(max_gap):
+    # a lossy log (2015GTPremium_cantact_log) has gaps of 5 s and more in some IDs, long enough for the cluster's
+    # timeouts. Repeat an ID's latest frame once it has been quiet for max_gap
+    while True:
+        now = time.perf_counter()
+        if not paused.is_set():
+            for id, (t, data) in list(last_sent.items()):
+                if now - t > max_gap:
+                    send_msg(id, data)
+                    last_sent[id] = (now, data)
+        time.sleep(0.05)
 
 def menu_nav(direction):
     buttons = {'up': 0x08, 'down': 0x01, 'left': 0x02, 'right': 0x04, 'enter': 0x10}
@@ -200,10 +236,12 @@ if __name__ == "__main__":
     parser.add_argument('--skip', type=parse_ids, default=set(), help='comma separated IDs to drop')
     parser.add_argument('--include-ipc', action='store_true', help="also send the IDs the cluster transmits itself")
     parser.add_argument('--set', action='append', metavar='ID:BYTE=VALUE', help='override a byte, e.g. 0x178:7=0x14')
+    parser.add_argument('--add', type=parse_add, default={}, metavar='ID[=HEX]', help='comma separated IDs to send every 100 ms on top of the log (zeros unless =payload), e.g. 0x46A,0x223. Dropped from the log')
+    parser.add_argument('--fill', type=float, default=0, metavar='SECONDS', help="repeat an ID's latest frame once it has been quiet this long, for lossy logs, e.g. 0.5")
     args = parser.parse_args()
 
     path = find_log(args.log)
-    skip = args.skip if args.include_ipc else args.skip | CLUSTER_TX_IDS
+    skip = (args.skip if args.include_ipc else args.skip | CLUSTER_TX_IDS) | set(args.add)
     frames = load(path, args.only, skip, parse_set(args.set))
     duration = frames[-1][0]
     print('* Loaded {}: {} frames, {:.1f}s ({:.0f} frames/s at 1x)'.format(path, len(frames), duration, len(frames) / duration))
@@ -213,6 +251,11 @@ if __name__ == "__main__":
     try:
         keyboard.Listener(on_press=on_press).start()
         threading.Thread(target=_status, args=(duration,), daemon=True).start()
+        if args.add:
+            print('* Adding {}'.format(' '.join('0x%03X' % i for i in args.add)))
+            threading.Thread(target=_add_loop, args=(args.add,), daemon=True).start()
+        if args.fill:
+            threading.Thread(target=_fill_loop, args=(args.fill,), daemon=True).start()
         replay(frames, args.speed, args.loop)
         print('* Done')
     except KeyboardInterrupt:
