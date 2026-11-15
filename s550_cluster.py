@@ -28,7 +28,7 @@ start = time.time()
 modifier = 1
 SPEED_ONE = 0.01 * modifier     # 100 Hz - 0x204, 0x167, 0x217, 0x85, 0x91, 0x92 (accelerometer)
 SPEED_TWO = 0.02 * modifier     # 50 Hz  - 0x202, 0x200, 0x415, 0x77, 0x76 (steering / g meter), 0x82, 0x230
-SPEED_THREE = 0.1 * modifier    # 10 Hz  - 0x4C, 0x83, 0x178, 0x416, 0x430
+SPEED_THREE = 0.1 * modifier    # 10 Hz  - 0x4C, 0x83, 0x178, 0x416, 0x430, 0x46A, 0x14C
 SPEED_FOUR = 0.4 * modifier     # 2.5 Hz - 0x3B3, 0x3B2
 SPEED_FIVE = 1.0 * modifier     # 1 Hz   - 0x81, 0x3C3, 0x431, 0x5xx series
 
@@ -94,6 +94,7 @@ BLIND_SPOT_R = 0x3A7
 GPS_NAV = 0x466 # compass + GPS time, the DBC's APIMGPS_Data_Nav_2_FD1 (0x463) layout
 GWM_PRESENT = 0x46A # 11 Nov 2026 - sending it stops the cluster's U0146 (lost comm with the GWM)
 RADIO_PRESENT = 0x223 # 11 Nov 2026 - sending it stops the cluster's U0184 (lost comm with the radio)
+TRANS_SERVICE = 0x14C # 14 Nov 2026 - wrench input (transmission service required), found in the firmware
 
 
 # Stock slcan firmware on Windows
@@ -703,11 +704,21 @@ def send_blind_spot(clusterdata):
 # 11 Nov 2026
 def send_gwm_present(clusterdata):
     '''
-        0x46A, all zeros like a 2018 GWM sends it on HS3 (datechnerd's gwm_hs3_keyon_30s.csv). Keeps U0146 (lost
-        communication with the GWM) away, found with ipc_dtc_test.py scan. On the 2018 digital cluster byte 1 bit 3
-        is a "TCS off" message and byte 2 bit 6 the TCS OFF lamp, untested here
+        0x46A. Keeps U0146 (lost communication with the GWM) away, found with ipc_dtc_test.py scan. On the 2018
+        digital cluster byte 1 bit 3 is a "TCS off" message and byte 2 bit 6 the TCS OFF lamp, untested here
+        14 Nov 2026 - also a wrench input: byte 3 bit 3 (0x08) must be set or the frame doesn't count and the wrench
+        comes on after 5 s (all zeros, as a 2018 GWM sends it alone, isn't enough). Byte 5 bit 4 set turns it on too
     '''
-    return send_msg(GWM_PRESENT, start, [0x00] * 8)
+    return send_msg(GWM_PRESENT, start, [0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00])
+
+# 14 Nov 2026
+def send_trans_service(clusterdata):
+    '''
+        0x14C, transmission service required: one of the three wrench / See Manual inputs (with 0x46A and 0x3B2).
+        Byte 3 bit 0 (0x01) must be set or the frame doesn't count and the wrench comes on after 5 s.
+        Byte 2 bit 0 (0x01) is the service request itself, set turns the wrench on. Found in the firmware (vbf/)
+    '''
+    return send_msg(TRANS_SERVICE, start, [0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00])
 
 # 11 Nov 2026
 def send_radio_present(clusterdata):
@@ -809,7 +820,7 @@ SCHEDULE = [
     (SPEED_THREE, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_launch_control, send_engine_temp,
                    send_climate, send_climate_fan, send_apim_1, send_apim_2, send_apim_3,
                    send_engine_gauges, send_engine_status, send_occupant, send_blind_spot, send_gwm_present,
-                   send_radio_present]),
+                   send_radio_present, send_trans_service]),
     (SPEED_FOUR, [send_door_status, send_track_apps, send_intake_temp]),
     (SPEED_FIVE, [send_misc_1, send_tire_pressure, MENU_NAV, send_0x5__series,
                   send_tpms_status, send_trans_warnings, send_key_messages, send_gps_nav])

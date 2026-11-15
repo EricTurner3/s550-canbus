@@ -14,7 +14,9 @@
         python replay.py longerdrive --skip 0x81         -> drop IDs from the log
         python replay.py longerdrive --only 0x3B3,0x204  -> only send these IDs
         python replay.py longerdrive --set 0x178:7=0x14  -> force byte 7 of 0x178 to 0x14 (repeatable)
-        python replay.py longerdrive --add 0x46A,0x223   -> also send these every 100 ms (zeros, or 0x3A6=0040020000000000)
+        python replay.py longerdrive --add 0x46A=0000000800000000,0x14C=0000000100000000,0x223
+                                                         -> also send these every 100 ms (zeros unless =payload).
+                                                            These three keep U0146, U0184 and the wrench away
         python replay.py other_refs/2015GTPremium_cantact_log --fill 0.5  -> lossy log: repeat an ID's latest frame after 0.5 s of quiet
         python replay.py "other_refs/v-ivanyshyn_parse_can_logs/log Mustang S550.txt"  -> v-ivanyshyn's 2015 GT log
         python replay.py other_refs/2015GTPremium_cantact_log  -> candump format, this cluster's car (key on, engine off)

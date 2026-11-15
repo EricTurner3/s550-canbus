@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.7.0] - 14 Nov 2026
+**The wrench / See Manual is gone.** Read out of the cluster firmware: it wants `0x14C`, `0x46A` and `0x3B2` to keep
+arriving, and `0x14C` / `0x46A` only count when a "valid" bit is set. We never sent `0x14C` and sent `0x46A` as all
+zeros. With both fixed it's off from power up and through a power pull mid-run.
+
+### s550_cluster.py
+
+- New `send_trans_service`: `0x14C` `00 00 00 01 00 00 00 00` at 10 Hz (byte 3 bit 0 = valid, byte 2 bit 0 = transmission
+  service required, kept clear)
+- `send_gwm_present`: `0x46A` byte 3 is now `08` (valid bit), was all zeros
+
+### Firmware (vbf/)
+
+- `vbf_lzss.py`: decompresses VBF `data_format_identifier = 0x10` sections (bit-packed LZSS), so the 2019 analog
+  cluster's firmware (KR3T) is readable
+- `rh850dis.py` / `vledis.py`: small disassemblers for the analog (RH850) and digital (SPC56 VLE) firmware
+- `kr3t_com_extract.py` + `make_can_notes.py`: every CAN ID the analog cluster receives, with DLC, init bytes,
+  message-missing deadline and watched bits → `KR3T-14C026-AC_CAN_Notes.{md,json}`
+- `canscan.py`: auto-detects endianness
+- `FIRMWARE_NOTES.md`: both clusters' receive path and wrench logic
+- `.gitignore`: the `vbf/` tools and notes are tracked, the firmware files still aren't
+
+### database.md
+
+- Wrench / See Manual: solved, one table with a sample message and the bits to keep set / clear for each frame
+- New `0x14C` section; byte notes for the wrench on `0x46A`, `0x3B2` and `0x179`
+
+### replay.py
+
+- `--add` example sends `0x46A` / `0x14C` with their valid bits
+
 ## [2.6.2] - 13 Nov 2026
 **The service-required frames aren't the wrench.** Sending the three candidate IDs the manual points to
 (`0x168 0x263 0x4A2`) made no difference, and the wrench returns the instant the cluster is power-cycled —

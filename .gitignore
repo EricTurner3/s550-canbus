@@ -6,7 +6,8 @@ uds_security.py
 *_unpacked/
 python-vbf.py
 fw_*
-/vbf
+# vbf/ RE tooling + notes are tracked; the firmware blobs (*.vbf, *_unpacked/) and the vendor
+# unpacker (python-vbf.py) stay ignored via the patterns above.
 
 # Vendor chip reference manual (NXP/Freescale copyright)
 other_refs/MPC5645S*MemoryMap.pdf

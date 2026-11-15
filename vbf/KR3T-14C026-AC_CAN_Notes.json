@@ -1,0 +1,10068 @@
+{
+ "meta": {
+  "image": "vbf/KR3T-14C026-AC_unpacked/KR3T-14C026-AC_decompressed_C000.bin",
+  "load_address": "0xC100",
+  "cpu": "Renesas RH850 (little-endian)",
+  "gp": "0xFEDD9334",
+  "tick_ms": 10,
+  "counts": {
+   "rx": 172,
+   "rx_com": 162,
+   "tx": 46,
+   "monitors_g1": 159,
+   "monitors_g2": 138
+  },
+  "unmatched_monitors": [
+   "G1#1",
+   "G2#15"
+  ],
+  "title": "Analog IPC (2019 GT 401A, KR3T-14C026-AC) CAN message notes",
+  "description": "Every CAN ID the analog cluster receives or transmits, from its firmware (kr3t_com_extract.py), with names from database.md / the Ford DBC and real payloads from this car's freeze frame. Edit required_bytes / notes here; everything else is regenerated.",
+  "sources": {
+   "firmware": "KR3T-14C026-AC_com.json (authoritative for this cluster)",
+   "database_md": "names / bench status",
+   "dbc": "other_refs/VehicleCAN.dbcx (2018+ arch, names only)",
+   "freeze_frame": "other_refs/2015GTPremium_FreezeFrame.csv"
+  },
+  "wrench": [
+   {
+    "input": 0,
+    "monitor": "G1#16",
+    "monitor_sources": [
+     {
+      "id": "0x14C",
+      "handle": 149,
+      "gate": {
+       "byte": 3,
+       "bit": 0,
+       "need": 1
+      }
+     }
+    ],
+    "monitor_timeout_ms": 5000,
+    "service_bit": {
+     "id": "0x14C",
+     "byte": 2,
+     "bits": [
+      0,
+      0
+     ]
+    },
+    "requests_when_value": 1,
+    "active_in_modes": [
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "input": 1,
+    "monitor": "G2#30",
+    "monitor_sources": [
+     {
+      "id": "0x179",
+      "handle": 139,
+      "gate": null
+     }
+    ],
+    "monitor_timeout_ms": 5000,
+    "service_bit": {
+     "id": "0x179",
+     "byte": 2,
+     "bits": [
+      3,
+      3
+     ]
+    },
+    "requests_when_value": 1,
+    "active_in_modes": [
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "input": 2,
+    "monitor": "G2#26",
+    "monitor_sources": [
+     {
+      "id": "0x169",
+      "handle": 143,
+      "gate": null
+     }
+    ],
+    "monitor_timeout_ms": 5000,
+    "service_bit": {
+     "id": "0x169",
+     "byte": 2,
+     "bits": [
+      3,
+      3
+     ]
+    },
+    "requests_when_value": 1,
+    "active_in_modes": [
+     false,
+     false,
+     false
+    ]
+   },
+   {
+    "input": 3,
+    "monitor": "G2#25",
+    "monitor_sources": [
+     {
+      "id": "0x168",
+      "handle": 144,
+      "gate": null
+     }
+    ],
+    "monitor_timeout_ms": 5000,
+    "service_bit": {
+     "id": "0x168",
+     "byte": 2,
+     "bits": [
+      7,
+      7
+     ]
+    },
+    "requests_when_value": 1,
+    "active_in_modes": [
+     false,
+     false,
+     false
+    ]
+   },
+   {
+    "input": 4,
+    "monitor": "G2#93",
+    "monitor_sources": [
+     {
+      "id": "0x3B2",
+      "handle": 59,
+      "gate": null
+     }
+    ],
+    "monitor_timeout_ms": 5000,
+    "service_bit": {
+     "id": "0x3B2",
+     "byte": 1,
+     "bits": [
+      2,
+      2
+     ]
+    },
+    "requests_when_value": 1,
+    "active_in_modes": [
+     true,
+     true,
+     true
+    ]
+   },
+   {
+    "input": 5,
+    "monitor": "G2#49",
+    "monitor_sources": [
+     {
+      "id": "0x263",
+      "handle": 111,
+      "gate": null
+     }
+    ],
+    "monitor_timeout_ms": 5000,
+    "service_bit": {
+     "id": "0x263",
+     "byte": 0,
+     "bits": [
+      0,
+      0
+     ]
+    },
+    "requests_when_value": 1,
+    "active_in_modes": [
+     false,
+     false,
+     false
+    ]
+   }
+  ],
+  "generated_by": "vbf/make_can_notes.py"
+ },
+ "messages": [
+  {
+   "id": "0x048",
+   "direction": "rx",
+   "handle": 161,
+   "dlc": 7,
+   "name": "APIM power mode (required to boot the APIM)",
+   "db_status": "Confirmed",
+   "dbc_name": "Global_PATS_Target2_FD1",
+   "node": "SOBDMC_HPCM_FD1",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#13",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "immoTarget2Status",
+     "bit": 7,
+     "len": 3
+    },
+    {
+     "name": "immoTarget2Data",
+     "bit": 15,
+     "len": 40
+    },
+    {
+     "name": "immoTarget2Cmd",
+     "bit": 4,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x04C",
+   "direction": "rx",
+   "handle": 160,
+   "dlc": 5,
+   "name": "Airbag / seatbelt indicators",
+   "db_status": "Confirmed",
+   "dbc_name": "RCMStatusMessage2_FD1",
+   "node": "GWM",
+   "sample_bytes": "10 AF FF 00 00 00 00 00",
+   "init_bytes": "30 FF FF 1E 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#14",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "FirstRowBuckleMid",
+     "bit": 28,
+     "len": 2
+    },
+    {
+     "name": "SecondRowBucklePsngr",
+     "bit": 23,
+     "len": 2
+    },
+    {
+     "name": "SecondRowBuckleMid",
+     "bit": 9,
+     "len": 2
+    },
+    {
+     "name": "SecondRowBuckleDriver",
+     "bit": 11,
+     "len": 2
+    },
+    {
+     "name": "FirstRowBuckleDriver",
+     "bit": 15,
+     "len": 2
+    },
+    {
+     "name": "RILReq",
+     "bit": 7,
+     "len": 2
+    },
+    {
+     "name": "FirstRowBucklePsngr",
+     "bit": 13,
+     "len": 2
+    },
+    {
+     "name": "RstrnImpactEvntStatus",
+     "bit": 3,
+     "len": 3
+    },
+    {
+     "name": "PsngrFrntDetct_D_Actl",
+     "bit": 5,
+     "len": 2
+    },
+    {
+     "name": "EDRTriggerEvntSync",
+     "bit": 29,
+     "len": 1
+    },
+    {
+     "name": "PassRstrnInd_Req",
+     "bit": 31,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x076",
+   "direction": "rx",
+   "handle": 159,
+   "dlc": 7,
+   "name": "Steering angle, Track Apps g meter",
+   "db_status": "Confirmed",
+   "dbc_name": "BrakeSnData_5",
+   "node": "ABS_ESC",
+   "sample_bytes": "3E 83 C0 00 00 00 00 00",
+   "init_bytes": "00 00 00 00 00 00 00",
+   "reset_mask": "80 00 20 00 00 00 00",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#0",
+     "timeout_ms": 5000,
+     "dbc": "StopLamp_B_RqBrk"
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "BrkCtrFnd_B_Stat",
+     "bit": 39,
+     "len": 1
+    },
+    {
+     "name": "AwdLck_Tq_RqMx",
+     "bit": 35,
+     "len": 12
+    },
+    {
+     "name": "AwdLck_Tq_RqMn",
+     "bit": 51,
+     "len": 12
+    },
+    {
+     "name": "DrvSte_D_Stat",
+     "bit": 19,
+     "len": 4
+    },
+    {
+     "name": "DrvSte_Tq_Rq",
+     "bit": 31,
+     "len": 8
+    },
+    {
+     "name": "EmgcyBrkLamp_D_Rq",
+     "bit": 21,
+     "len": 2
+    },
+    {
+     "name": "StopLamp_B_RqBrk",
+     "bit": 7,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x077",
+   "direction": "rx",
+   "handle": 158,
+   "dlc": 8,
+   "name": "Vehicle speed / yaw, steering warning fix",
+   "db_status": "Confirmed",
+   "dbc_name": "BrakeSnData_3",
+   "node": "ABS_ESC",
+   "sample_bytes": "00 00 07 FF 7F F7 E6 02",
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": "70 00 00 00 00 85 41 00",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#2",
+     "timeout_ms": 5000,
+     "dbc": "VehOverGnd_V_Est"
+    },
+    {
+     "byte": 5,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#3",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 0,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#4",
+     "timeout_ms": 5000,
+     "dbc": "VehOverGnd_V_Est"
+    },
+    {
+     "byte": 5,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#5",
+     "timeout_ms": 5000,
+     "dbc": "VehLatComp_A_Actl"
+    },
+    {
+     "byte": 5,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#6",
+     "timeout_ms": 5000,
+     "dbc": "VehLatComp_A_Actl"
+    },
+    {
+     "byte": 0,
+     "bit": 5,
+     "need": 1,
+     "monitor": "G1#7",
+     "timeout_ms": 5000,
+     "dbc": "VehOverGnd_V_Est"
+    },
+    {
+     "byte": 6,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#8",
+     "timeout_ms": 5000,
+     "dbc": "VehLongComp_A_Actl"
+    },
+    {
+     "byte": 6,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#9",
+     "timeout_ms": 5000,
+     "dbc": "VehLatComp_A_Actl"
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "VehTrvlDir_D_Stat",
+     "bit": 23,
+     "len": 3
+    },
+    {
+     "name": "VehOverGnd_V_Est",
+     "bit": 7,
+     "len": 16
+    },
+    {
+     "name": "VehLongComp_A_Actl",
+     "bit": 49,
+     "len": 10
+    },
+    {
+     "name": "VehLatComp_A_Actl",
+     "bit": 43,
+     "len": 10
+    },
+    {
+     "name": "VehYawComp_W_Actl",
+     "bit": 19,
+     "len": 12
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x081",
+   "direction": "rx",
+   "handle": 157,
+   "dlc": 3,
+   "name": "Steering wheel buttons",
+   "db_status": "Confirmed",
+   "dbc_name": "Steering_Wheel_Data2_FD1",
+   "node": "GWM",
+   "sample_bytes": "00 00 00 00 00 00 00 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#16",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SelDrvMdeSwtch_D_Stat4",
+     "bit": 21,
+     "len": 2
+    },
+    {
+     "name": "SteWhlSwtchView_B_Stat",
+     "bit": 23,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchSet_B_Stat",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchPhon_B_Stat",
+     "bit": 9,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchNav_B_Stat",
+     "bit": 10,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchMed_B_Stat",
+     "bit": 11,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchIod_B_Stat",
+     "bit": 12,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchHud_B_Stat",
+     "bit": 13,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchBack_B_Stat",
+     "bit": 14,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchMenu_B_Stat",
+     "bit": 22,
+     "len": 1
+    },
+    {
+     "name": "SteEffortInc_B_RqDrv",
+     "bit": 5,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdeInc_B_RqDrv",
+     "bit": 6,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdeDec_B_RqDrv",
+     "bit": 7,
+     "len": 1
+    },
+    {
+     "name": "SuspDampInc_B_RqDrv",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchUp_B_Stat",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchRght_B_Stat",
+     "bit": 2,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchOk_B_Stat",
+     "bit": 4,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchLeft_B_Stat",
+     "bit": 1,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchDown_B_Stat",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchHome_B_Stat",
+     "bit": 19,
+     "len": 1
+    },
+    {
+     "name": "SteWhlSwtchInfo_B_Stat",
+     "bit": 18,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x082",
+   "direction": "rx",
+   "handle": 156,
+   "dlc": 3,
+   "name": "Steering mode",
+   "db_status": "Confirmed",
+   "dbc_name": "EPAS_INFO",
+   "node": "PSCM",
+   "sample_bytes": "82 00 14 40 7E 00 64 FF",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#17",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TrlrHitchLamp_D_Rqst",
+     "bit": 24,
+     "len": 1
+    },
+    {
+     "name": "VehVTrlrAid_B_Rq",
+     "bit": 25,
+     "len": 1
+    },
+    {
+     "name": "Veh_V_RqMxTrlrAid",
+     "bit": 63,
+     "len": 8
+    },
+    {
+     "name": "DrvSteActv_B_Stat",
+     "bit": 10,
+     "len": 1
+    },
+    {
+     "name": "DrvSte_Tq_Actl",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "SteMdule_D_Stat",
+     "bit": 55,
+     "len": 3
+    },
+    {
+     "name": "SteMdule_U_Meas",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "SteMdule_I_Est",
+     "bit": 21,
+     "len": 12
+    },
+    {
+     "name": "EPAS_Failure",
+     "bit": 9,
+     "len": 2
+    },
+    {
+     "name": "SteeringColumnTorque",
+     "bit": 7,
+     "len": 8
+    },
+    {
+     "name": "SAPPAngleControlStat6",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "SAPPAngleControlStat5",
+     "bit": 14,
+     "len": 1
+    },
+    {
+     "name": "SAPPAngleControlStat4",
+     "bit": 13,
+     "len": 1
+    },
+    {
+     "name": "SAPPAngleControlStat3",
+     "bit": 12,
+     "len": 1
+    },
+    {
+     "name": "SAPPAngleControlStat2",
+     "bit": 11,
+     "len": 1
+    },
+    {
+     "name": "SAPPAngleControlStat1",
+     "bit": 23,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x084",
+   "direction": "rx",
+   "handle": 155,
+   "dlc": 7,
+   "name": "GlobalClock_Data_FD1",
+   "db_status": null,
+   "dbc_name": "GlobalClock_Data_FD1",
+   "node": "GWM",
+   "sample_bytes": "13 00 00 79 01 03 15 00",
+   "init_bytes": "00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#0",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "GlblClkYr_No_Actl",
+     "bit": 7,
+     "len": 8
+    },
+    {
+     "name": "GlblClkScnd_No_Actl",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "GlblClkMnte_No_Actl",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "GlblClkHr_No_Actl",
+     "bit": 55,
+     "len": 8
+    },
+    {
+     "name": "GlblClkDay_No_Actl",
+     "bit": 23,
+     "len": 16
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x086",
+   "direction": "rx",
+   "handle": 154,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#1",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x087",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x08C",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x090",
+   "direction": "rx",
+   "handle": 153,
+   "dlc": 7,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#2",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x091",
+   "direction": "rx",
+   "handle": 152,
+   "dlc": 6,
+   "name": "Yaw rate",
+   "db_status": "From logs",
+   "dbc_name": "Yaw_Data_FD1",
+   "node": "GWM",
+   "sample_bytes": "7E F1 7F 13 9D 5B F0 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#3",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "VehYawWActl_D_Qf",
+     "bit": 53,
+     "len": 2
+    },
+    {
+     "name": "VehRolWActl_D_Qf",
+     "bit": 55,
+     "len": 2
+    },
+    {
+     "name": "VehRollYawW_No_Cs",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "VehRollYaw_No_Cnt",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "VehYaw_W_Actl",
+     "bit": 23,
+     "len": 16
+    },
+    {
+     "name": "VehRol_W_Actl",
+     "bit": 7,
+     "len": 16
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x108",
+   "direction": "rx",
+   "handle": 151,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 40 00 00 FE",
+   "reset_mask": "00 06 0F 00 00 00 00 00",
+   "deadline_ms": 5000,
+   "watchdog": "G2#18",
+   "bit_monitors": [
+    {
+     "byte": 2,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#10",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#11",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#12",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#13",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#14",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x109",
+   "direction": "rx",
+   "handle": 150,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#19",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x123",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x14C",
+   "direction": "rx",
+   "handle": 149,
+   "dlc": 8,
+   "name": "CGEA_Urea_Strategy",
+   "db_status": null,
+   "dbc_name": "CGEA_Urea_Strategy",
+   "node": "ECM_Diesel",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": "18 00 00 03 00 03 40 00",
+   "deadline_ms": 5000,
+   "watchdog": "G2#20",
+   "bit_monitors": [
+    {
+     "byte": 5,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#15",
+     "timeout_ms": 5000,
+     "dbc": "UreaLvl_Pc_Actl"
+    },
+    {
+     "byte": 3,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#16",
+     "timeout_ms": 5000,
+     "dbc": "UreaQltyFlg_B_RqDsply"
+    },
+    {
+     "byte": 5,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#17",
+     "timeout_ms": 5000,
+     "dbc": "UreaLvl_Pc_Actl"
+    },
+    {
+     "byte": 3,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#18",
+     "timeout_ms": 5000,
+     "dbc": "UreaQltySys_D_RqDsply"
+    },
+    {
+     "byte": 0,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#19",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 0,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#20",
+     "timeout_ms": 5000,
+     "dbc": "VehUreaRnge2_L_DsplyMx"
+    },
+    {
+     "byte": 6,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#21",
+     "timeout_ms": 5000,
+     "dbc": "DieslPrtcWarn_D_Rq"
+    }
+   ],
+   "wrench": [
+    {
+     "input": 0,
+     "active": true,
+     "role": "watchdog",
+     "need": "received at least every 5000 ms with byte3 bit0 = 1"
+    },
+    {
+     "input": 0,
+     "active": true,
+     "role": "service bit",
+     "need": "byte2 bit0 != 1",
+     "dbc": null
+    }
+   ],
+   "signals": [
+    {
+     "name": "UreaLvlQlty_D_RqDsply",
+     "bit": 51,
+     "len": 3
+    },
+    {
+     "name": "UreaLvlTxtWarn_D_Rq",
+     "bit": 63,
+     "len": 4
+    },
+    {
+     "name": "UreaQltySysWarn_D_Rq",
+     "bit": 59,
+     "len": 3
+    },
+    {
+     "name": "DieslPrtcWarn_D_Rq",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "UreaQltyFlg_B_RqDsply",
+     "bit": 24,
+     "len": 1
+    },
+    {
+     "name": "UreaLvl_Pc_Actl",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "VehUreaRnge2_L_DsplyMx",
+     "bit": 3,
+     "len": 12
+    },
+    {
+     "name": "UreaQltySys_D_RqDsply",
+     "bit": 27,
+     "len": 3
+    },
+    {
+     "name": "UreaLvlTxt_D_RqDsply",
+     "bit": 31,
+     "len": 4
+    },
+    {
+     "name": "VehUreaWarn_V_DsplyMx",
+     "bit": 23,
+     "len": 7
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x156",
+   "direction": "rx",
+   "handle": 148,
+   "dlc": 8,
+   "name": "Coolant & oil temp",
+   "db_status": "Confirmed",
+   "dbc_name": "EngineData_6",
+   "node": "PCM_HEV",
+   "sample_bytes": "9E 99 00 00 03 00 00 00",
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#21",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngOvrhtMitgActv_D_Ind",
+     "bit": 36,
+     "len": 2
+    },
+    {
+     "name": "EngClntTe_D_Qf",
+     "bit": 33,
+     "len": 2
+    },
+    {
+     "name": "EngGoutLss_Tq_Est",
+     "bit": 31,
+     "len": 8
+    },
+    {
+     "name": "EngOil_Te_Actl",
+     "bit": 15,
+     "len": 8
+    },
+    {
+     "name": "EngClnt_Te_Actl",
+     "bit": 7,
+     "len": 8
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x163",
+   "direction": "rx",
+   "handle": 147,
+   "dlc": 8,
+   "name": "EngineData_10",
+   "db_status": null,
+   "dbc_name": "EngineData_10",
+   "node": "ECM_Diesel",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#22",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "AutoRgenTxt_B_RqDsply",
+     "bit": 48,
+     "len": 1
+    },
+    {
+     "name": "AccFllwMdeActv_B_Actl",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "EngPtoMde_D_Actl",
+     "bit": 60,
+     "len": 3
+    },
+    {
+     "name": "ManRgenTxt_D_RqDsply",
+     "bit": 63,
+     "len": 3
+    },
+    {
+     "name": "ManRgenSoot_Pc_RqDsply",
+     "bit": 39,
+     "len": 7
+    },
+    {
+     "name": "DieslMsgTxt_D_Rq",
+     "bit": 57,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x166",
+   "direction": "rx",
+   "handle": 146,
+   "dlc": 7,
+   "name": "Stop_Start",
+   "db_status": null,
+   "dbc_name": "Stop_Start",
+   "node": "PCM_HEV",
+   "sample_bytes": "00 00 00 01 40 02 00 00",
+   "init_bytes": "00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#23",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "StopStrtStdby_D_Indic",
+     "bit": 55,
+     "len": 3
+    },
+    {
+     "name": "StopStrtIODTxt_D_Rq",
+     "bit": 52,
+     "len": 5
+    },
+    {
+     "name": "StopStrtDrvMde_D_Indic",
+     "bit": 13,
+     "len": 2
+    },
+    {
+     "name": "StopStrtMsgTxt_D_Rq",
+     "bit": 11,
+     "len": 4
+    },
+    {
+     "name": "OdoTripVerify_L_Actl",
+     "bit": 31,
+     "len": 24
+    },
+    {
+     "name": "HiElPwInhbt_B_Stat",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "AutoStopPtDelta_I_Est",
+     "bit": 7,
+     "len": 8
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x167",
+   "direction": "rx",
+   "handle": 145,
+   "dlc": 7,
+   "name": "Engine state / torque / MAP",
+   "db_status": "From logs",
+   "dbc_name": "VehicleOperatingModes",
+   "node": "PCM_HEV",
+   "sample_bytes": "00 80 87 00 00 1A BA 00",
+   "init_bytes": "01 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#24",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PrplWhlRgenMn_Tq_Actl",
+     "bit": 25,
+     "len": 13
+    },
+    {
+     "name": "ElPw_D_StatStrtStop",
+     "bit": 31,
+     "len": 4
+    },
+    {
+     "name": "TrnAin_Tq_Actl",
+     "bit": 42,
+     "len": 11
+    },
+    {
+     "name": "PrplWhlTot2_Tq_Actl",
+     "bit": 15,
+     "len": 16
+    },
+    {
+     "name": "PwPckTq_D_Stat",
+     "bit": 5,
+     "len": 2
+    },
+    {
+     "name": "Eng_D_Stat",
+     "bit": 7,
+     "len": 2
+    },
+    {
+     "name": "PlgActvArb_B_Actl",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "ElPw_D_Stat",
+     "bit": 3,
+     "len": 3
+    },
+    {
+     "name": "TrnAinTq_D_Qf",
+     "bit": 44,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x168",
+   "direction": "rx",
+   "handle": 144,
+   "dlc": 3,
+   "name": "Gear_Shift_by_Wire_2_FD1",
+   "db_status": null,
+   "dbc_name": "Gear_Shift_by_Wire_2_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#25",
+   "bit_monitors": null,
+   "wrench": [
+    {
+     "input": 3,
+     "active": false,
+     "role": "watchdog",
+     "need": "received at least every 5000 ms"
+    },
+    {
+     "input": 3,
+     "active": false,
+     "role": "service bit",
+     "need": "byte2 bit7 != 1",
+     "dbc": "GsmSrvcRqd_B_Rq"
+    }
+   ],
+   "signals": [
+    {
+     "name": "GsmSrvcRqd_B_Rq",
+     "bit": 23,
+     "len": 1
+    },
+    {
+     "name": "TrnGearPwmFalt_B_Actl",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "GearButtnStuck_B_Actl",
+     "bit": 14,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x169",
+   "direction": "rx",
+   "handle": 143,
+   "dlc": 3,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#26",
+   "bit_monitors": null,
+   "wrench": [
+    {
+     "input": 2,
+     "active": false,
+     "role": "watchdog",
+     "need": "received at least every 5000 ms"
+    },
+    {
+     "input": 2,
+     "active": false,
+     "role": "service bit",
+     "need": "byte2 bit3 != 1",
+     "dbc": null
+    }
+   ],
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x171",
+   "direction": "rx",
+   "handle": 142,
+   "dlc": 3,
+   "name": "EngineData_1",
+   "db_status": null,
+   "dbc_name": "EngineData_1",
+   "node": "PCM",
+   "sample_bytes": "F0 E0 00 00 00 00 00 00",
+   "init_bytes": "F0 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#27",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SeatWorkSrfc_B_Falt",
+     "bit": 12,
+     "len": 1
+    },
+    {
+     "name": "TrnIpcDsplyRng2_D_Actl",
+     "bit": 23,
+     "len": 4
+    },
+    {
+     "name": "TrnIpcDsplyRng_D_Stat",
+     "bit": 9,
+     "len": 2
+    },
+    {
+     "name": "TrnIpcDsplyGear_D_Actl",
+     "bit": 7,
+     "len": 4
+    },
+    {
+     "name": "TrnIpcDsplyMde_D_Stat",
+     "bit": 3,
+     "len": 2
+    },
+    {
+     "name": "TrnIpcDsplyMde_D_Actl",
+     "bit": 15,
+     "len": 3
+    },
+    {
+     "name": "TrnIpcDsplyGear_D_Stat",
+     "bit": 1,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x175",
+   "direction": "rx",
+   "handle": 141,
+   "dlc": 8,
+   "name": "EngineData_11",
+   "db_status": null,
+   "dbc_name": "EngineData_11",
+   "node": "ECM_Diesel",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#28",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "DieslPrtc2_D_RqDsply",
+     "bit": 47,
+     "len": 4
+    },
+    {
+     "name": "DieslPrtcRgen_D_Actl",
+     "bit": 38,
+     "len": 2
+    },
+    {
+     "name": "EngTeColdPrtct_D_Stats",
+     "bit": 4,
+     "len": 2
+    },
+    {
+     "name": "EngExhOvrTe_B_RqDsply",
+     "bit": 39,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x178",
+   "direction": "rx",
+   "handle": 140,
+   "dlc": 8,
+   "name": "Launch control / ABS indicators",
+   "db_status": "Confirmed",
+   "dbc_name": "EngineClimateData",
+   "node": "PCM_HEV",
+   "sample_bytes": "00 00 02 00 0E 88 C6 86",
+   "init_bytes": "00 C8 00 00 02 00 02 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#29",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "GasPrtc_D_RqDsply",
+     "bit": 22,
+     "len": 3
+    },
+    {
+     "name": "EngAout_Aa_Actl",
+     "bit": 17,
+     "len": 10
+    },
+    {
+     "name": "DynoMde_B_Cmd",
+     "bit": 4,
+     "len": 1
+    },
+    {
+     "name": "AslIconDsply_D_Rq",
+     "bit": 3,
+     "len": 2
+    },
+    {
+     "name": "AslChime_B_Rq",
+     "bit": 39,
+     "len": 1
+    },
+    {
+     "name": "HvacHtrCore2_Te_Actl",
+     "bit": 1,
+     "len": 10
+    },
+    {
+     "name": "EcssLamp_D_RqDsply",
+     "bit": 19,
+     "len": 2
+    },
+    {
+     "name": "AirAmbTe_D_Qf",
+     "bit": 35,
+     "len": 2
+    },
+    {
+     "name": "AirAmb_Te_ActlFilt",
+     "bit": 49,
+     "len": 10
+    },
+    {
+     "name": "AirAmb_Te_Actl",
+     "bit": 33,
+     "len": 10
+    },
+    {
+     "name": "AirAmb_P_Actl",
+     "bit": 55,
+     "len": 6
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x179",
+   "direction": "rx",
+   "handle": 139,
+   "dlc": 8,
+   "name": "Warning suppression, distance counter",
+   "db_status": "Confirmed",
+   "dbc_name": "EngineData_7",
+   "node": "PCM_HEV",
+   "sample_bytes": "00 00 00 00 96 00 02 C8",
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#30",
+   "bit_monitors": null,
+   "wrench": [
+    {
+     "input": 1,
+     "active": true,
+     "role": "watchdog",
+     "need": "received at least every 5000 ms"
+    },
+    {
+     "input": 1,
+     "active": true,
+     "role": "service bit",
+     "need": "byte2 bit3 != 1",
+     "dbc": "EngSrvcRqd_B_Rq"
+    }
+   ],
+   "signals": [
+    {
+     "name": "HvacAirFullOut_B_Rq",
+     "bit": 23,
+     "len": 1
+    },
+    {
+     "name": "FuelFlw_Vl_Dsply",
+     "bit": 49,
+     "len": 10
+    },
+    {
+     "name": "FuelFillInlet_B_Dsply",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "EngSrvcRqd_B_Rq",
+     "bit": 19,
+     "len": 1
+    },
+    {
+     "name": "OdoCount",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "EngOilLife_Pc_Actl",
+     "bit": 39,
+     "len": 7
+    },
+    {
+     "name": "FuelFilterLamp_B_Dsply",
+     "bit": 50,
+     "len": 1
+    },
+    {
+     "name": "AirCondRec_B_Rq",
+     "bit": 55,
+     "len": 1
+    },
+    {
+     "name": "AirCondClutch_B_Stats",
+     "bit": 51,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x17C",
+   "direction": "rx",
+   "handle": 138,
+   "dlc": 8,
+   "name": "EngineData_16",
+   "db_status": null,
+   "dbc_name": "EngineData_16",
+   "node": "PCM",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#31",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngOilLvlWarn_D_Rq1",
+     "bit": 55,
+     "len": 3
+    },
+    {
+     "name": "EngExhBrkOnLamp_B_Rq",
+     "bit": 27,
+     "len": 1
+    },
+    {
+     "name": "EngExhBrkAutoLamp_B_Rq",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "EngAout_N_MxAllw",
+     "bit": 52,
+     "len": 13
+    },
+    {
+     "name": "EngExhBrkMde_D_Actl",
+     "bit": 31,
+     "len": 4
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x17D",
+   "direction": "rx",
+   "handle": 137,
+   "dlc": 7,
+   "name": "EngineData_17",
+   "db_status": null,
+   "dbc_name": "EngineData_17",
+   "node": "ECM_Diesel",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#32",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngOilLife_T_Actl",
+     "bit": 23,
+     "len": 11
+    },
+    {
+     "name": "EngOilSrvcMsgTxt_D_Rq",
+     "bit": 55,
+     "len": 3
+    },
+    {
+     "name": "DistToNextOilChange",
+     "bit": 7,
+     "len": 16
+    },
+    {
+     "name": "RunDryPrevent_B_Stat",
+     "bit": 28,
+     "len": 1
+    },
+    {
+     "name": "WaterInFuel",
+     "bit": 52,
+     "len": 1
+    },
+    {
+     "name": "GlowIndication",
+     "bit": 51,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x17E",
+   "direction": "rx",
+   "handle": 136,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00",
+   "reset_mask": "01 01",
+   "deadline_ms": 5000,
+   "watchdog": "G1#22",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x188",
+   "direction": "rx",
+   "handle": 135,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 1E 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#33",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x18A",
+   "direction": "rx",
+   "handle": 134,
+   "dlc": 7,
+   "name": "ACCDATA_3",
+   "db_status": null,
+   "dbc_name": "ACCDATA_3",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 13 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#34",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "HaDsply_No_Cs",
+     "bit": 63,
+     "len": 8
+    },
+    {
+     "name": "HaDsply_No_Cnt",
+     "bit": 4,
+     "len": 4
+    },
+    {
+     "name": "AccStopStat_D_Dsply",
+     "bit": 41,
+     "len": 2
+    },
+    {
+     "name": "AccTrgDist2_D_Dsply",
+     "bit": 27,
+     "len": 4
+    },
+    {
+     "name": "AccStopRes_B_Dsply",
+     "bit": 54,
+     "len": 1
+    },
+    {
+     "name": "TjaWarn_D_Rq",
+     "bit": 50,
+     "len": 3
+    },
+    {
+     "name": "Tja_D_Stat",
+     "bit": 44,
+     "len": 3
+    },
+    {
+     "name": "TjaMsgTxt_D_Dsply",
+     "bit": 53,
+     "len": 3
+    },
+    {
+     "name": "IaccLamp_D_Rq",
+     "bit": 46,
+     "len": 2
+    },
+    {
+     "name": "AccMsgTxt_D2_Rq",
+     "bit": 31,
+     "len": 4
+    },
+    {
+     "name": "FcwDeny_B_Dsply",
+     "bit": 10,
+     "len": 1
+    },
+    {
+     "name": "FcwMemStat_B_Actl",
+     "bit": 13,
+     "len": 1
+    },
+    {
+     "name": "AccTGap_B_Dsply",
+     "bit": 35,
+     "len": 1
+    },
+    {
+     "name": "CadsAlignIncplt_B_Actl",
+     "bit": 11,
+     "len": 1
+    },
+    {
+     "name": "AccFllwMde_B_Dsply",
+     "bit": 17,
+     "len": 1
+    },
+    {
+     "name": "CadsRadrBlck_B_Actl",
+     "bit": 22,
+     "len": 1
+    },
+    {
+     "name": "CmbbPostEvnt_B_Dsply",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "AccStopMde_B_Dsply",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "FcwMemSens_D_Actl",
+     "bit": 20,
+     "len": 2
+    },
+    {
+     "name": "FcwMsgTxt_D_Rq",
+     "bit": 7,
+     "len": 3
+    },
+    {
+     "name": "AccWarn_D_Dsply",
+     "bit": 39,
+     "len": 2
+    },
+    {
+     "name": "FcwVisblWarn_B_Rq",
+     "bit": 47,
+     "len": 1
+    },
+    {
+     "name": "FcwAudioWarn_B_Rq",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "AccTGap_D_Dsply",
+     "bit": 34,
+     "len": 3
+    },
+    {
+     "name": "AccMemEnbl_B_RqDrv",
+     "bit": 36,
+     "len": 1
+    },
+    {
+     "name": "FdaMem_B_Stat",
+     "bit": 37,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x18B",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "HeadUpDisplayReq_FD1",
+   "db_status": null,
+   "dbc_name": "HeadUpDisplayReq_FD1",
+   "node": "GWM",
+   "sample_bytes": "00 00 00 1E 00 00 00 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SelDrvMdeCnfm_D_Stat",
+     "bit": 35,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x190",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x191",
+   "direction": "rx",
+   "handle": 133,
+   "dlc": 3,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "3C 00 00",
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#4",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x192",
+   "direction": "rx",
+   "handle": 132,
+   "dlc": 2,
+   "name": "Dsp_Request_Signals11_FD1",
+   "db_status": null,
+   "dbc_name": "Dsp_Request_Signals11_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#35",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PrkAidSwtch_D_RqMnu",
+     "bit": 11,
+     "len": 1
+    },
+    {
+     "name": "ApaSwtch_D_RqMnu",
+     "bit": 10,
+     "len": 2
+    },
+    {
+     "name": "ApaMdeStat_D_RqDrv",
+     "bit": 2,
+     "len": 3
+    },
+    {
+     "name": "CamraViewSplit_B_Rq",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "CamraZoomMan_D_Rq",
+     "bit": 15,
+     "len": 3
+    },
+    {
+     "name": "CamraOvrlStat_D_Rq",
+     "bit": 4,
+     "len": 1
+    },
+    {
+     "name": "CamraOvrlDyn_D_Rq",
+     "bit": 7,
+     "len": 1
+    },
+    {
+     "name": "CamAutoTowbarZoom",
+     "bit": 6,
+     "len": 1
+    },
+    {
+     "name": "DistanceBarSetting",
+     "bit": 5,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x193",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x194",
+   "direction": "rx",
+   "handle": 131,
+   "dlc": 1,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#5",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x195",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x19A",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x19B",
+   "direction": "rx",
+   "handle": 130,
+   "dlc": 1,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#6",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1D6",
+   "direction": "rx",
+   "handle": 129,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#7",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1E2",
+   "direction": "rx",
+   "handle": 128,
+   "dlc": 3,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#36",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1E6",
+   "direction": "rx",
+   "handle": 127,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#8",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1E9",
+   "direction": "rx",
+   "handle": 126,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1EE",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1F2",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1F8",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1F9",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1FA",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1FB",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x1FC",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x202",
+   "direction": "rx",
+   "handle": 125,
+   "dlc": 8,
+   "name": "Speed gauge",
+   "db_status": "Confirmed",
+   "dbc_name": "EngVehicleSpThrottle2",
+   "node": "PCM_HEV",
+   "sample_bytes": "00 FA 10 00 60 00 00 00",
+   "init_bytes": "1C 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#37",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "StrtrMtrDlyStrt_B_Stat",
+     "bit": 39,
+     "len": 1
+    },
+    {
+     "name": "VehVTrlrAid_B_Avail",
+     "bit": 23,
+     "len": 1
+    },
+    {
+     "name": "StrtrMtrCtlMsgTxt_D_Rq",
+     "bit": 7,
+     "len": 3
+    },
+    {
+     "name": "VehVActlEng_No_Cs",
+     "bit": 15,
+     "len": 8
+    },
+    {
+     "name": "VehVActlEng_No_Cnt",
+     "bit": 22,
+     "len": 4
+    },
+    {
+     "name": "Veh_V_RqCcSet",
+     "bit": 32,
+     "len": 9
+    },
+    {
+     "name": "VehVActlEng_D_Qf",
+     "bit": 38,
+     "len": 2
+    },
+    {
+     "name": "Veh_V_ActlEng",
+     "bit": 55,
+     "len": 16
+    },
+    {
+     "name": "GearRvrse_D_Actl",
+     "bit": 4,
+     "len": 3
+    },
+    {
+     "name": "StrtrMtrCtlMsgTxt_D2_Rq",
+     "bit": 1,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x204",
+   "direction": "rx",
+   "handle": 124,
+   "dlc": 5,
+   "name": "RPM gauge, pedal",
+   "db_status": "Confirmed",
+   "dbc_name": "EngVehicleSpThrottle",
+   "node": "PCM_HEV",
+   "sample_bytes": "C0 00 7D 01 4B 00 00 00",
+   "init_bytes": "00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#38",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngAoutNActl_D_QF",
+     "bit": 31,
+     "len": 2
+    },
+    {
+     "name": "EngAout3_N_Actl",
+     "bit": 55,
+     "len": 16
+    },
+    {
+     "name": "ApedPos_PcRate_ActlArb",
+     "bit": 23,
+     "len": 8
+    },
+    {
+     "name": "ApedPos_Pc_ActlArb",
+     "bit": 1,
+     "len": 10
+    },
+    {
+     "name": "ApedPosPcActl_D_Qf",
+     "bit": 7,
+     "len": 2
+    },
+    {
+     "name": "EngAout_N_Actl",
+     "bit": 28,
+     "len": 13
+    },
+    {
+     "name": "ApedPosPcActl_No_Cnt",
+     "bit": 5,
+     "len": 4
+    },
+    {
+     "name": "ApedPosPcActl_No_Cs",
+     "bit": 47,
+     "len": 8
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x20A",
+   "direction": "rx",
+   "handle": 123,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 FF F8",
+   "reset_mask": "01 04 00 00 00 00 00 02",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#24",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#25",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#26",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x20B",
+   "direction": "rx",
+   "handle": 122,
+   "dlc": 5,
+   "name": "Engine_Data_18",
+   "db_status": null,
+   "dbc_name": "Engine_Data_18",
+   "node": "ECM_Diesel",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00",
+   "reset_mask": "00 00 00 D0 04",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 3,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#27",
+     "timeout_ms": 5000,
+     "dbc": "VehUreaRnge3_L_DsplyMx"
+    },
+    {
+     "byte": 3,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#28",
+     "timeout_ms": 5000,
+     "dbc": "VehUreaRnge3_L_DsplyMx"
+    },
+    {
+     "byte": 3,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#29",
+     "timeout_ms": 5000,
+     "dbc": "VehUreaRnge3_L_DsplyMx"
+    },
+    {
+     "byte": 4,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#30",
+     "timeout_ms": 5000,
+     "dbc": "VehUreaRnge3_L_DsplyMx"
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngAirFiltMsgTxt_D_Rq",
+     "bit": 2,
+     "len": 3
+    },
+    {
+     "name": "WaterInFuel_B_Falt",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "UreaMnAdd_L2_Actl",
+     "bit": 23,
+     "len": 8
+    },
+    {
+     "name": "VehUreaRnge3_L_DsplyMx",
+     "bit": 31,
+     "len": 16
+    },
+    {
+     "name": "UreaMxAdd_L2_Actl",
+     "bit": 47,
+     "len": 9
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x213",
+   "direction": "rx",
+   "handle": 121,
+   "dlc": 5,
+   "name": "DesiredTorqBrk",
+   "db_status": null,
+   "dbc_name": "DesiredTorqBrk",
+   "node": "ABS_ESC",
+   "sample_bytes": "FF FF 00 00 80 11 FF 41",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#39",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "VehStop_D_Stat",
+     "bit": 28,
+     "len": 2
+    },
+    {
+     "name": "TracCtlPtActv_B_Actl",
+     "bit": 31,
+     "len": 1
+    },
+    {
+     "name": "LscmbbMntr_B_Err",
+     "bit": 17,
+     "len": 1
+    },
+    {
+     "name": "LscmbbBrkDis_B_Actl",
+     "bit": 19,
+     "len": 1
+    },
+    {
+     "name": "LscmbbDeny_B_ActlBrk",
+     "bit": 18,
+     "len": 1
+    },
+    {
+     "name": "PrkBrkYwLamp_D_Rq",
+     "bit": 38,
+     "len": 2
+    },
+    {
+     "name": "PrkBrkRedLamp_D_Rq",
+     "bit": 30,
+     "len": 2
+    },
+    {
+     "name": "LscmbbBrkDecel_B_Actl",
+     "bit": 20,
+     "len": 1
+    },
+    {
+     "name": "AbsActv_B_Actl",
+     "bit": 45,
+     "len": 1
+    },
+    {
+     "name": "StabCtlBrkActv_B_Actl",
+     "bit": 23,
+     "len": 1
+    },
+    {
+     "name": "CmbbBrkPrchg_B_Actl",
+     "bit": 59,
+     "len": 1
+    },
+    {
+     "name": "CmbbBrkDecel_B_Actl",
+     "bit": 58,
+     "len": 1
+    },
+    {
+     "name": "CmbbBaSensInc_B_Actl",
+     "bit": 57,
+     "len": 1
+    },
+    {
+     "name": "AccBrkWarm_B_Actl",
+     "bit": 63,
+     "len": 1
+    },
+    {
+     "name": "AccBrkTotTqMn_B_Actl",
+     "bit": 62,
+     "len": 1
+    },
+    {
+     "name": "AccBrkPrchgActv_B_Actl",
+     "bit": 61,
+     "len": 1
+    },
+    {
+     "name": "AccBrkDis_B_Actl",
+     "bit": 44,
+     "len": 1
+    },
+    {
+     "name": "AccBrkDeny_B_Actl",
+     "bit": 42,
+     "len": 1
+    },
+    {
+     "name": "AccBrkActv_B_Actl",
+     "bit": 43,
+     "len": 1
+    },
+    {
+     "name": "PrplDrgCtlActv_B_Actl",
+     "bit": 46,
+     "len": 1
+    },
+    {
+     "name": "PrplWhlTot_Tq_RqMx",
+     "bit": 7,
+     "len": 16
+    },
+    {
+     "name": "LscmbbBaSensInc_B_Actl",
+     "bit": 21,
+     "len": 1
+    },
+    {
+     "name": "CmbbBrkDis_B_Actl",
+     "bit": 56,
+     "len": 1
+    },
+    {
+     "name": "CmbbDeny_B_ActlBrk",
+     "bit": 60,
+     "len": 1
+    },
+    {
+     "name": "CcDis_B_Cmd",
+     "bit": 47,
+     "len": 1
+    },
+    {
+     "name": "VehLongOvrGnd_A_Est",
+     "bit": 41,
+     "len": 10
+    },
+    {
+     "name": "LscmbBrkPrchg_B_Actl",
+     "bit": 16,
+     "len": 1
+    },
+    {
+     "name": "AccStopActv_B_ActlBrk",
+     "bit": 22,
+     "len": 1
+    },
+    {
+     "name": "AccDis_B_ActlEpb",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "PrkBrkMsgTxt_D_Rq",
+     "bit": 36,
+     "len": 4
+    },
+    {
+     "name": "PrkBrkStatus",
+     "bit": 26,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x219",
+   "direction": "rx",
+   "handle": 120,
+   "dlc": 1,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#40",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x220",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x221",
+   "direction": "rx",
+   "handle": 119,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#41",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x223",
+   "direction": "rx",
+   "handle": 118,
+   "dlc": 7,
+   "name": "Radio present (stops U0184)",
+   "db_status": "Confirmed",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#42",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x224",
+   "direction": "rx",
+   "handle": 117,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#43",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x225",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "IPC_Infotainment_FD1",
+   "db_status": null,
+   "dbc_name": "IPC_Infotainment_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "Veh_V2_Dsply",
+     "bit": 39,
+     "len": 9
+    },
+    {
+     "name": "IPC_MyKeyVolLimit_St",
+     "bit": 9,
+     "len": 2
+    },
+    {
+     "name": "HdcOn_B_Rq",
+     "bit": 19,
+     "len": 1
+    },
+    {
+     "name": "IPC_Attn_Info_Audio",
+     "bit": 4,
+     "len": 3
+    },
+    {
+     "name": "BeltminderAudioMute",
+     "bit": 6,
+     "len": 2
+    },
+    {
+     "name": "Power_Up_Chime_Modules",
+     "bit": 23,
+     "len": 1
+    },
+    {
+     "name": "Chime_Source",
+     "bit": 15,
+     "len": 2
+    },
+    {
+     "name": "IPC_New_Attn_Event",
+     "bit": 0,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x227",
+   "direction": "rx",
+   "handle": 116,
+   "dlc": 8,
+   "name": "APIM_Request_Signals_1_FD1",
+   "db_status": null,
+   "dbc_name": "APIM_Request_Signals_1_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#44",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PmCabnLvl_D_Stat",
+     "bit": 36,
+     "len": 3
+    },
+    {
+     "name": "PmCabn_D_Stat",
+     "bit": 38,
+     "len": 2
+    },
+    {
+     "name": "Cntr_Plg_Mode_Cmd",
+     "bit": 39,
+     "len": 1
+    },
+    {
+     "name": "ChrgCrdLckEnbl_B_Stat",
+     "bit": 47,
+     "len": 1
+    },
+    {
+     "name": "PwRnngBoardT_D_Rq",
+     "bit": 25,
+     "len": 2
+    },
+    {
+     "name": "PwRnngBoardSwtch_D_Rq",
+     "bit": 27,
+     "len": 2
+    },
+    {
+     "name": "PwRnngBoardMde_D_Rq",
+     "bit": 29,
+     "len": 2
+    },
+    {
+     "name": "Btt_L_Actl2",
+     "bit": 55,
+     "len": 7
+    },
+    {
+     "name": "Rba_D_Rq",
+     "bit": 31,
+     "len": 2
+    },
+    {
+     "name": "EmPrflNo_D_Rq",
+     "bit": 61,
+     "len": 3
+    },
+    {
+     "name": "EmPrflButtnAssoc_D_Rq",
+     "bit": 33,
+     "len": 2
+    },
+    {
+     "name": "EmPrflKeyAssoc_D_Rq",
+     "bit": 46,
+     "len": 3
+    },
+    {
+     "name": "Em_D_Stat",
+     "bit": 63,
+     "len": 2
+    },
+    {
+     "name": "ChrgOvrdExitScrn_D_Rq",
+     "bit": 58,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x229",
+   "direction": "rx",
+   "handle": 115,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#45",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x22A",
+   "direction": "rx",
+   "handle": 114,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#46",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x261",
+   "direction": "rx",
+   "handle": 113,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#47",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x262",
+   "direction": "rx",
+   "handle": 112,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#48",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x263",
+   "direction": "rx",
+   "handle": 111,
+   "dlc": 8,
+   "name": "Driveline_Data_1",
+   "db_status": null,
+   "dbc_name": "Driveline_Data_1",
+   "node": "TCCM",
+   "sample_bytes": null,
+   "init_bytes": "E0 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#49",
+   "bit_monitors": null,
+   "wrench": [
+    {
+     "input": 5,
+     "active": false,
+     "role": "watchdog",
+     "need": "received at least every 5000 ms"
+    },
+    {
+     "input": 5,
+     "active": false,
+     "role": "service bit",
+     "need": "byte0 bit0 != 1",
+     "dbc": "AwdSrvcRqd_B_Rq"
+    }
+   ],
+   "signals": [
+    {
+     "name": "AwdSys_D_Stat",
+     "bit": 27,
+     "len": 2
+    },
+    {
+     "name": "AwdStat_D_RqDsply",
+     "bit": 63,
+     "len": 5
+    },
+    {
+     "name": "AwdLck_D_Stat",
+     "bit": 31,
+     "len": 4
+    },
+    {
+     "name": "AwdSrvcRqd_B_Rq",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "NtrlTowAvail_B_Stat",
+     "bit": 4,
+     "len": 1
+    },
+    {
+     "name": "AwdLck_Tq_Rq",
+     "bit": 15,
+     "len": 12
+    },
+    {
+     "name": "TrnAout_Tq_RqMx",
+     "bit": 47,
+     "len": 13
+    },
+    {
+     "name": "AwdOffRoadMode_D_Stats",
+     "bit": 25,
+     "len": 2
+    },
+    {
+     "name": "AwdLoLamp_D_RqDsply",
+     "bit": 35,
+     "len": 2
+    },
+    {
+     "name": "AwdHiLamp_D_RqDsply",
+     "bit": 19,
+     "len": 2
+    },
+    {
+     "name": "AwdAutoLamp_D_RqDsply",
+     "bit": 17,
+     "len": 2
+    },
+    {
+     "name": "Awd2wdLamp_D_RqDsply",
+     "bit": 2,
+     "len": 2
+    },
+    {
+     "name": "AwdRnge_D_Actl",
+     "bit": 7,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x274",
+   "direction": "rx",
+   "handle": 110,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00",
+   "reset_mask": "00 00 00 05 08 80",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 3,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#31",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#32",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 4,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#33",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#34",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x277",
+   "direction": "rx",
+   "handle": 109,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00",
+   "reset_mask": "08 00 00 00 04",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#35",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 4,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#36",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x279",
+   "direction": "rx",
+   "handle": 108,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": "00 00 00 00 00 00 40 82",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 6,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#37",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#38",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#39",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x27A",
+   "direction": "rx",
+   "handle": 107,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00",
+   "reset_mask": "51 00 00 25",
+   "deadline_ms": 5000,
+   "watchdog": "G1#40",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x27E",
+   "direction": "rx",
+   "handle": 106,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#50",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x281",
+   "direction": "rx",
+   "handle": 105,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00",
+   "reset_mask": "03 0D 0F 00 00 80",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#46",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 0,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#47",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#48",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#49",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#50",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#51",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#52",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#53",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#54",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#55",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x282",
+   "direction": "rx",
+   "handle": 104,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": "11 11 0A 87 00 00 01 00",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#56",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 0,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#57",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#58",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#59",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#60",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#61",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#62",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#63",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#64",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#65",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 6,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#66",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x287",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2A1",
+   "direction": "rx",
+   "handle": 103,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "FF FF FF FF 00 00 00 00",
+   "init_bytes": "FF FF FF FF 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#51",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2A4",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2A7",
+   "direction": "rx",
+   "handle": 171,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2AC",
+   "direction": "rx",
+   "handle": 170,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2AF",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2B1",
+   "direction": "rx",
+   "handle": 169,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2B6",
+   "direction": "rx",
+   "handle": 168,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2B7",
+   "direction": "rx",
+   "handle": 167,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2B9",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2BE",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2C0",
+   "direction": "rx",
+   "handle": 166,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2C2",
+   "direction": "rx",
+   "handle": 165,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2C7",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2CF",
+   "direction": "rx",
+   "handle": 164,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2D0",
+   "direction": "rx",
+   "handle": 102,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#52",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2D1",
+   "direction": "rx",
+   "handle": 101,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#53",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2D2",
+   "direction": "rx",
+   "handle": 100,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#54",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2D5",
+   "direction": "rx",
+   "handle": 99,
+   "dlc": 7,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#55",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2D8",
+   "direction": "rx",
+   "handle": 98,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#56",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2D9",
+   "direction": "rx",
+   "handle": 97,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#57",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2DA",
+   "direction": "rx",
+   "handle": 96,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#58",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2DB",
+   "direction": "rx",
+   "handle": 95,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#59",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2DC",
+   "direction": "rx",
+   "handle": 94,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#60",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2DE",
+   "direction": "rx",
+   "handle": 93,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#61",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2E0",
+   "direction": "rx",
+   "handle": 92,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#62",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2E3",
+   "direction": "rx",
+   "handle": 91,
+   "dlc": 1,
+   "name": "APIM status, clears the digital cluster's U0253",
+   "db_status": "APIM sends",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#63",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2E6",
+   "direction": "rx",
+   "handle": 90,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#64",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2EE",
+   "direction": "rx",
+   "handle": 89,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#65",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2F4",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2F5",
+   "direction": "rx",
+   "handle": 88,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#66",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2F6",
+   "direction": "rx",
+   "handle": 87,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#67",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2F7",
+   "direction": "rx",
+   "handle": 86,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#68",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2F8",
+   "direction": "rx",
+   "handle": 85,
+   "dlc": 7,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#69",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2F9",
+   "direction": "rx",
+   "handle": 84,
+   "dlc": 3,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#70",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2FC",
+   "direction": "rx",
+   "handle": 83,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 FF 80 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#71",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x2FD",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "Mc_Send_Signals_2_FD1",
+   "db_status": null,
+   "dbc_name": "Mc_Send_Signals_2_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "Mc_VehTimeFrmtUsrSel_St",
+     "bit": 1,
+     "len": 2
+    },
+    {
+     "name": "Running_Board_Cmd",
+     "bit": 21,
+     "len": 2
+    },
+    {
+     "name": "EngExhMdeQuiet_D2_Rq",
+     "bit": 55,
+     "len": 3
+    },
+    {
+     "name": "EdmSailMde_B_RqDrv",
+     "bit": 48,
+     "len": 1
+    },
+    {
+     "name": "DrvInputRequired_B_Rq",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "AwdRnge_D_ActlIpc",
+     "bit": 29,
+     "len": 3
+    },
+    {
+     "name": "BalrSwtch_D_Stat",
+     "bit": 57,
+     "len": 2
+    },
+    {
+     "name": "BalrMde_D_Rq",
+     "bit": 59,
+     "len": 2
+    },
+    {
+     "name": "WaitToStartLamp_D_Falt",
+     "bit": 50,
+     "len": 2
+    },
+    {
+     "name": "EsaOn_B_Rq",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "BttOn_B_Rq",
+     "bit": 26,
+     "len": 1
+    },
+    {
+     "name": "Btt_L_Actl",
+     "bit": 39,
+     "len": 7
+    },
+    {
+     "name": "SelDrvMdeTxtReset_B_Rq",
+     "bit": 40,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdeDsply_B_Avail",
+     "bit": 41,
+     "len": 1
+    },
+    {
+     "name": "Mc_VehUntTrpCoUsrSel_St",
+     "bit": 23,
+     "len": 1
+    },
+    {
+     "name": "Mc_VehUnitTempUsrSel_St",
+     "bit": 22,
+     "len": 1
+    },
+    {
+     "name": "Mc_VehLangUsrSel_St",
+     "bit": 7,
+     "len": 6
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x303",
+   "direction": "rx",
+   "handle": 82,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#72",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x30A",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "ParkAid_Aud_Warn_CmdM_FD1",
+   "db_status": null,
+   "dbc_name": "ParkAid_Aud_Warn_CmdM_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PrkAidFront_D_RqDrv",
+     "bit": 5,
+     "len": 2
+    },
+    {
+     "name": "PrkAidAcsyRear_D_RqDrv",
+     "bit": 13,
+     "len": 2
+    },
+    {
+     "name": "PrkAidAcsyFront_D_RqDrv",
+     "bit": 15,
+     "len": 2
+    },
+    {
+     "name": "Cta_D_Rq",
+     "bit": 1,
+     "len": 2
+    },
+    {
+     "name": "PrkAidRear_D_RqDrv",
+     "bit": 3,
+     "len": 2
+    },
+    {
+     "name": "SteEffort_D_Rq",
+     "bit": 10,
+     "len": 3
+    },
+    {
+     "name": "Sod_D_Rq",
+     "bit": 7,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x30B",
+   "direction": "rx",
+   "handle": 81,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "FF FD FF FD FF FD 00 00",
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#9",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x30C",
+   "direction": "rx",
+   "handle": 80,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "FF FD FF FD FF FD 00 00",
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#10",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x30F",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x312",
+   "direction": "rx",
+   "handle": 79,
+   "dlc": 8,
+   "name": "Cluster_HEV_Data1_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data1_FD1",
+   "node": "SOBDMC_HPCM_FD1",
+   "sample_bytes": null,
+   "init_bytes": "00 00 0F FE 00 00 FF FF",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#73",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "RgenTrip_Pc_Dsply",
+     "bit": 33,
+     "len": 10
+    },
+    {
+     "name": "RgenTrip_L_Dsply",
+     "bit": 55,
+     "len": 16
+    },
+    {
+     "name": "ChrgStat_D_Dsply",
+     "bit": 36,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x313",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "Power_Liftgate_Stat_FD1",
+   "db_status": null,
+   "dbc_name": "Power_Liftgate_Stat_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "DrLckCnt_No_ActlTgate",
+     "bit": 12,
+     "len": 4
+    },
+    {
+     "name": "DrTgateChime2_D_Rq",
+     "bit": 15,
+     "len": 3
+    },
+    {
+     "name": "DrTGate_D_Rq",
+     "bit": 2,
+     "len": 2
+    },
+    {
+     "name": "PwLftgtIntSw_B_Stat",
+     "bit": 5,
+     "len": 1
+    },
+    {
+     "name": "Power_Liftgate_Mode_Stt",
+     "bit": 4,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x315",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x316",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x317",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "Cluster_HEV_Data8_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data8_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngAirFilt_B_RqReset",
+     "bit": 48,
+     "len": 1
+    },
+    {
+     "name": "GpsElMdeSel_B_Rq",
+     "bit": 50,
+     "len": 1
+    },
+    {
+     "name": "LongTermReset_B_Rq",
+     "bit": 49,
+     "len": 1
+    },
+    {
+     "name": "DrvEffLvl_No_Stat",
+     "bit": 61,
+     "len": 6
+    },
+    {
+     "name": "ConsAvgTrip_Fe_Dsply",
+     "bit": 31,
+     "len": 24
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x318",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "IPC_Send_Signals_2_FD1",
+   "db_status": null,
+   "dbc_name": "IPC_Send_Signals_2_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "FuelRange_L_Dsply",
+     "bit": 45,
+     "len": 14
+    },
+    {
+     "name": "ElTrip_L_Dsply",
+     "bit": 31,
+     "len": 16
+    },
+    {
+     "name": "ElLongTerm_L_Dsply",
+     "bit": 7,
+     "len": 24
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x320",
+   "direction": "rx",
+   "handle": 78,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 0F FE 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#74",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x331",
+   "direction": "rx",
+   "handle": 77,
+   "dlc": 5,
+   "name": "Climate / outside temp?",
+   "db_status": "From logs",
+   "dbc_name": "Locking_Systems_2_FD1",
+   "node": "GWM",
+   "sample_bytes": "C0 0B 95 94 02 94 18 04",
+   "init_bytes": "00 00 00 00 02",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#75",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "ChildLckMde_B_Stat",
+     "bit": 56,
+     "len": 1
+    },
+    {
+     "name": "VehLckInd_D_Rq",
+     "bit": 58,
+     "len": 2
+    },
+    {
+     "name": "DrTgateOpen_B_Rq",
+     "bit": 59,
+     "len": 1
+    },
+    {
+     "name": "DrTgateExtSwMde_B_Stat",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "Remote_Device_Feedback",
+     "bit": 50,
+     "len": 3
+    },
+    {
+     "name": "Veh_Lock_Requestor",
+     "bit": 55,
+     "len": 5
+    },
+    {
+     "name": "R_Pwr_Sliding_Dr_Rqst",
+     "bit": 36,
+     "len": 1
+    },
+    {
+     "name": "Power_Liftgate_Rqst",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "Veh_Lock_EvNum",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "Power_Decklid_Rqst",
+     "bit": 1,
+     "len": 1
+    },
+    {
+     "name": "L_Pwr_Sliding_Dr_Rqst",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "Keyfob_Pad_Msg_Count",
+     "bit": 15,
+     "len": 8
+    },
+    {
+     "name": "Veh_Lock_Sub_Id",
+     "bit": 63,
+     "len": 4
+    },
+    {
+     "name": "Veh_Lock_Status",
+     "bit": 34,
+     "len": 2
+    },
+    {
+     "name": "ChildLck_D_Dsply",
+     "bit": 7,
+     "len": 2
+    },
+    {
+     "name": "WindowLockout_B_Stat",
+     "bit": 35,
+     "len": 1
+    },
+    {
+     "name": "RollCodeUnlock",
+     "bit": 23,
+     "len": 16
+    },
+    {
+     "name": "Lockmsgtxt_D_Rq",
+     "bit": 39,
+     "len": 3
+    },
+    {
+     "name": "FobComm_D_Stat",
+     "bit": 5,
+     "len": 2
+    },
+    {
+     "name": "LockInhibit",
+     "bit": 2,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x346",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x347",
+   "direction": "rx",
+   "handle": 76,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 03 00 03 00 03 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#76",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x348",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x349",
+   "direction": "rx",
+   "handle": 75,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#77",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x350",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "00 00 00 00 00 00 00 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x353",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x360",
+   "direction": "rx",
+   "handle": 74,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "AA 00 AA AA AA AA A8 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#78",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x361",
+   "direction": "rx",
+   "handle": 73,
+   "dlc": 7,
+   "name": "BattRgenLo_1_FD1",
+   "db_status": null,
+   "dbc_name": "BattRgenLo_1_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": "00 3C 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#79",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "BattRgenLo_U_Actl",
+     "bit": 23,
+     "len": 11
+    },
+    {
+     "name": "BattRgenLo_I_Actl",
+     "bit": 7,
+     "len": 16
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x363",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "BattRgenLo_3_FD1",
+   "db_status": null,
+   "dbc_name": "BattRgenLo_3_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "BattRgenLoBalnc_B_Rq",
+     "bit": 16,
+     "len": 1
+    },
+    {
+     "name": "BattRgenLo_Te_Hi",
+     "bit": 55,
+     "len": 8
+    },
+    {
+     "name": "BattRgenLo_Te_Actl",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "BattRgenLo_R_Actl",
+     "bit": 31,
+     "len": 9
+    },
+    {
+     "name": "BattRgenLo_AhRide_Actl",
+     "bit": 15,
+     "len": 15
+    },
+    {
+     "name": "BattRgenLo_Ah_Actl",
+     "bit": 7,
+     "len": 8
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x365",
+   "direction": "rx",
+   "handle": 72,
+   "dlc": 8,
+   "name": "Cluster_HEV_Data2",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data2",
+   "node": "PCM_HEV",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#80",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PwrFlowTxt_D_Dsply",
+     "bit": 21,
+     "len": 4
+    },
+    {
+     "name": "EngOnMsg2_D_Dsply",
+     "bit": 54,
+     "len": 5
+    },
+    {
+     "name": "EngOnMsg1_D_Dsply",
+     "bit": 38,
+     "len": 5
+    },
+    {
+     "name": "FuelMaintMde_D_Dsply",
+     "bit": 23,
+     "len": 2
+    },
+    {
+     "name": "EffWhlLvl2_Pc_Dsply",
+     "bit": 17,
+     "len": 10
+    },
+    {
+     "name": "EffWhlThres_Pc_Dsply",
+     "bit": 49,
+     "len": 10
+    },
+    {
+     "name": "EngPwLvl_Pc_Dsply",
+     "bit": 1,
+     "len": 10
+    },
+    {
+     "name": "EngActv_B_Dsply",
+     "bit": 2,
+     "len": 1
+    },
+    {
+     "name": "EffWhlThresOn_B_Dsply",
+     "bit": 3,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x366",
+   "direction": "rx",
+   "handle": 71,
+   "dlc": 8,
+   "name": "Cluster_HEV_Data3_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data3_FD1",
+   "node": "PCM_HEV",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 3F F8 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#81",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngMdeMsgTxt_D_Rq",
+     "bit": 12,
+     "len": 3
+    },
+    {
+     "name": "EffRgenThres_Pc_Dsply",
+     "bit": 9,
+     "len": 10
+    },
+    {
+     "name": "RngPerChrgInst_L_Dsply",
+     "bit": 45,
+     "len": 12
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x367",
+   "direction": "rx",
+   "handle": 70,
+   "dlc": 7,
+   "name": "Cluster_HEV_Data4_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data4_FD1",
+   "node": "SOBDMC_HPCM_FD1",
+   "sample_bytes": null,
+   "init_bytes": "07 FE 07 FE 07 FE 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#82",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "BattElecPerf_D_Actl",
+     "bit": 55,
+     "len": 3
+    },
+    {
+     "name": "BattChrgTrgtLPt_T_Est",
+     "bit": 2,
+     "len": 11
+    },
+    {
+     "name": "BattChrgTrgSocPt_T_Est",
+     "bit": 18,
+     "len": 11
+    },
+    {
+     "name": "BattChrgCmpltPt_T_Est",
+     "bit": 34,
+     "len": 11
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x368",
+   "direction": "rx",
+   "handle": 69,
+   "dlc": 8,
+   "name": "Cluster_HEV_Data5",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data5",
+   "node": "PCM_HEV",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#83",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PlgActvArb_B_Dsply",
+     "bit": 51,
+     "len": 1
+    },
+    {
+     "name": "HybMdeStat_D_Dsply",
+     "bit": 39,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x369",
+   "direction": "rx",
+   "handle": 68,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#84",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x38A",
+   "direction": "rx",
+   "handle": 67,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "0F 00 00 00 00 00 00 00",
+   "reset_mask": "40 10 F0 07 08 C7 00 00",
+   "deadline_ms": 5000,
+   "watchdog": "G2#85",
+   "bit_monitors": [
+    {
+     "byte": 2,
+     "bit": 5,
+     "need": 1,
+     "monitor": "G1#67",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#68",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 0,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#69",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#70",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#71",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#72",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#73",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#74",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#75",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 4,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#76",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#77",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#78",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#79",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#80",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#81",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x38D",
+   "direction": "rx",
+   "handle": 66,
+   "dlc": 7,
+   "name": "Key / start messages, Track Apps",
+   "db_status": "Confirmed",
+   "dbc_name": "Body_Info_6_FD1",
+   "node": "GWM",
+   "sample_bytes": "20 00 00 00 60 00 00 00",
+   "init_bytes": "00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#86",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "IgnPsswrdDsply_B_Rq",
+     "bit": 57,
+     "len": 1
+    },
+    {
+     "name": "ElPwPoint_D_Rq",
+     "bit": 59,
+     "len": 2
+    },
+    {
+     "name": "PoliceIdlMde_D_Stat",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "DrLatchMsgTxt_D_Rq",
+     "bit": 43,
+     "len": 3
+    },
+    {
+     "name": "SecurityMsgTxt_D_Rq",
+     "bit": 47,
+     "len": 2
+    },
+    {
+     "name": "PrmtrAlrmEvnt_D_Stat",
+     "bit": 35,
+     "len": 4
+    },
+    {
+     "name": "HeadLghtHiPrmsn_D_Stat",
+     "bit": 51,
+     "len": 2
+    },
+    {
+     "name": "SteWhlLckMsgTxt_D_Rq",
+     "bit": 25,
+     "len": 2
+    },
+    {
+     "name": "immoMsgTxt_D_Rq",
+     "bit": 39,
+     "len": 4
+    },
+    {
+     "name": "PrsnlDevcChrgEnbl_B_Rq",
+     "bit": 40,
+     "len": 1
+    },
+    {
+     "name": "TracKeyMde_D_Stat",
+     "bit": 45,
+     "len": 2
+    },
+    {
+     "name": "PEBackupSlot_Stats",
+     "bit": 27,
+     "len": 2
+    },
+    {
+     "name": "KeyMykeyTot_No_Cnt",
+     "bit": 3,
+     "len": 4
+    },
+    {
+     "name": "Keycode_Status",
+     "bit": 15,
+     "len": 20
+    },
+    {
+     "name": "KeyAdmnTot_No_Cnt",
+     "bit": 7,
+     "len": 4
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x394",
+   "direction": "rx",
+   "handle": 65,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#87",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3A6",
+   "direction": "rx",
+   "handle": 64,
+   "dlc": 7,
+   "name": "Side_Detect_L_Stat",
+   "db_status": null,
+   "dbc_name": "Side_Detect_L_Stat",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 40 00 00 64 00 00",
+   "reset_mask": null,
+   "deadline_ms": 1600,
+   "watchdog": "G2#88",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "CtaAlrtLeft2_D_Stat",
+     "bit": 30,
+     "len": 3
+    },
+    {
+     "name": "CtaBrkLeftMsgTxt_B_Rq",
+     "bit": 42,
+     "len": 1
+    },
+    {
+     "name": "CtaLeftBrkDecel_B_Rq",
+     "bit": 7,
+     "len": 1
+    },
+    {
+     "name": "CtaLeftBrkEnbl_B_Rq",
+     "bit": 31,
+     "len": 1
+    },
+    {
+     "name": "Side_Detect_L_Illum",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "BttLeft_D_Stat",
+     "bit": 45,
+     "len": 3
+    },
+    {
+     "name": "BttLeft_D_RqDrv",
+     "bit": 47,
+     "len": 2
+    },
+    {
+     "name": "CtaSnsLeft_D_Stat",
+     "bit": 25,
+     "len": 2
+    },
+    {
+     "name": "SodDetctLeft_D_Stat",
+     "bit": 23,
+     "len": 3
+    },
+    {
+     "name": "CtaLeft_D_Stat",
+     "bit": 18,
+     "len": 3
+    },
+    {
+     "name": "CtaAlrtLeft_D_Stat",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "SodLeft_D_Stat",
+     "bit": 15,
+     "len": 3
+    },
+    {
+     "name": "SodSnsLeft_D_Stat",
+     "bit": 12,
+     "len": 2
+    },
+    {
+     "name": "SodAlrtLeft_D_Stat",
+     "bit": 10,
+     "len": 2
+    },
+    {
+     "name": "SodWarnLeft_Prd_Rq",
+     "bit": 6,
+     "len": 7
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3A7",
+   "direction": "rx",
+   "handle": 63,
+   "dlc": 7,
+   "name": "Side_Detect_R_Stat",
+   "db_status": null,
+   "dbc_name": "Side_Detect_R_Stat",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 40 00 00 64 00 00",
+   "reset_mask": null,
+   "deadline_ms": 1600,
+   "watchdog": "G2#89",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SodRight_D_Stat",
+     "bit": 15,
+     "len": 3
+    },
+    {
+     "name": "CtaAlrtRight2_D_Stat",
+     "bit": 30,
+     "len": 3
+    },
+    {
+     "name": "BttRight_D_Stat",
+     "bit": 45,
+     "len": 3
+    },
+    {
+     "name": "BttRight_D_RqDrv",
+     "bit": 47,
+     "len": 2
+    },
+    {
+     "name": "CtaBrkRightMsgTxt_B_Rq",
+     "bit": 42,
+     "len": 1
+    },
+    {
+     "name": "CtaRightBrkEnbl_B_Rq",
+     "bit": 31,
+     "len": 1
+    },
+    {
+     "name": "CtaRightBrkDecel_B_Rq",
+     "bit": 7,
+     "len": 1
+    },
+    {
+     "name": "Side_Detect_R_Illum",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "CtaSnsRight_D_Stat",
+     "bit": 25,
+     "len": 2
+    },
+    {
+     "name": "CtaAlrtRight_D_Stat",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "CtaRight_D_Stat",
+     "bit": 18,
+     "len": 3
+    },
+    {
+     "name": "SodSnsRight_D_Stat",
+     "bit": 12,
+     "len": 2
+    },
+    {
+     "name": "SodAlrtRight_D_Stat",
+     "bit": 10,
+     "len": 2
+    },
+    {
+     "name": "SodDetctRight_D_Stat",
+     "bit": 23,
+     "len": 3
+    },
+    {
+     "name": "SodWarnRight_Prd_Rq",
+     "bit": 6,
+     "len": 7
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3AA",
+   "direction": "rx",
+   "handle": 62,
+   "dlc": 8,
+   "name": "ParkAid_Aud_Warn_Stat",
+   "db_status": null,
+   "dbc_name": "ParkAid_Aud_Warn_Stat",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 20 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#90",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SidePrkSnsR2_D_Stat",
+     "bit": 59,
+     "len": 4
+    },
+    {
+     "name": "SidePrkSnsR1_D_Stat",
+     "bit": 63,
+     "len": 4
+    },
+    {
+     "name": "SidePrkSnsL2_D_Stat",
+     "bit": 51,
+     "len": 4
+    },
+    {
+     "name": "ApaMde_D_Stat",
+     "bit": 23,
+     "len": 3
+    },
+    {
+     "name": "ApaActvSd_D_Actl",
+     "bit": 14,
+     "len": 2
+    },
+    {
+     "name": "PrkAidSwtch_B_Stat",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "ApaMde_D_Avail",
+     "bit": 12,
+     "len": 4
+    },
+    {
+     "name": "PrkAidSnsFrCrnr_D_Stat",
+     "bit": 47,
+     "len": 4
+    },
+    {
+     "name": "PrkAidSnsFrCntr_D_Stat",
+     "bit": 35,
+     "len": 4
+    },
+    {
+     "name": "PrkAidSnsFlCrnr_D_Stat",
+     "bit": 27,
+     "len": 4
+    },
+    {
+     "name": "PrkAidSnsFlCntr_D_Stat",
+     "bit": 31,
+     "len": 4
+    },
+    {
+     "name": "PrkBrkEl_B_RqFap",
+     "bit": 20,
+     "len": 1
+    },
+    {
+     "name": "RpaChime_D_Rq",
+     "bit": 7,
+     "len": 4
+    },
+    {
+     "name": "FpaChime_D_Rq",
+     "bit": 3,
+     "len": 4
+    },
+    {
+     "name": "PrkAidMsgTxt_D_Rq",
+     "bit": 19,
+     "len": 4
+    },
+    {
+     "name": "SidePrkSnsL1_D_Stat",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "PrkAidAudioMute_B_Rq",
+     "bit": 15,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3AB",
+   "direction": "rx",
+   "handle": 61,
+   "dlc": 7,
+   "name": "ParkAid_Aud_Warn_Stat2",
+   "db_status": null,
+   "dbc_name": "ParkAid_Aud_Warn_Stat2",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#91",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "ApaBrk_D_Rq",
+     "bit": 51,
+     "len": 2
+    },
+    {
+     "name": "SidePrkSnsR4_D_Stat",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "SidePrkSnsR3_D_Stat",
+     "bit": 47,
+     "len": 4
+    },
+    {
+     "name": "SidePrkSnsL4_D_Stat",
+     "bit": 43,
+     "len": 4
+    },
+    {
+     "name": "SidePrkSnsL3_D_Stat",
+     "bit": 37,
+     "len": 4
+    },
+    {
+     "name": "PrkAidChime_D_Stat",
+     "bit": 4,
+     "len": 2
+    },
+    {
+     "name": "PrkAidSnsRlCntr_D_Stat",
+     "bit": 15,
+     "len": 4
+    },
+    {
+     "name": "PrkAidSnsRrCrnr_D_Stat",
+     "bit": 31,
+     "len": 4
+    },
+    {
+     "name": "PrkAidSnsRrCntr_D_Stat",
+     "bit": 19,
+     "len": 4
+    },
+    {
+     "name": "PrkAidSnsRlCrnr_D_Stat",
+     "bit": 11,
+     "len": 4
+    },
+    {
+     "name": "PrkAidRear_D_Stat",
+     "bit": 39,
+     "len": 2
+    },
+    {
+     "name": "PrkAidFront_D_Stat",
+     "bit": 2,
+     "len": 2
+    },
+    {
+     "name": "PrkAid_D_Falt",
+     "bit": 7,
+     "len": 3
+    },
+    {
+     "name": "ApaLongCtrlEnbl_D_Rq",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "ApaBrk_A_Rq",
+     "bit": 63,
+     "len": 8
+    },
+    {
+     "name": "PrkAidLamp_D_Rq",
+     "bit": 33,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3B1",
+   "direction": "rx",
+   "handle": 60,
+   "dlc": 1,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#92",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3B2",
+   "direction": "rx",
+   "handle": 59,
+   "dlc": 8,
+   "name": "Track Apps, turn signals",
+   "db_status": "Confirmed",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "04 00 00 0C E0 04 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#93",
+   "bit_monitors": null,
+   "wrench": [
+    {
+     "input": 4,
+     "active": true,
+     "role": "watchdog",
+     "need": "received at least every 5000 ms"
+    },
+    {
+     "input": 4,
+     "active": true,
+     "role": "service bit",
+     "need": "byte1 bit2 != 1",
+     "dbc": null
+    }
+   ],
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3B3",
+   "direction": "rx",
+   "handle": 58,
+   "dlc": 7,
+   "name": "Cluster on (required, send first), doors, lights, parking brake",
+   "db_status": "Confirmed",
+   "dbc_name": "BodyInfo_3_FD1",
+   "node": "GWM",
+   "sample_bytes": "40 88 00 12 10 00 80 02",
+   "init_bytes": "04 00 00 0C FE 04 00",
+   "reset_mask": "00 00 00 00 00 00 01",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 6,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#82",
+     "timeout_ms": 5000,
+     "dbc": "DrStatRl_B_Actl"
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "ValetMode_D_Mem",
+     "bit": 16,
+     "len": 1
+    },
+    {
+     "name": "DimmingLvlEvnt_No_Actl",
+     "bit": 18,
+     "len": 2
+    },
+    {
+     "name": "DrStatDrvErrCnt_B_Stat",
+     "bit": 19,
+     "len": 1
+    },
+    {
+     "name": "TurnLghtRight_D_Rq",
+     "bit": 63,
+     "len": 2
+    },
+    {
+     "name": "TurnLghtRightOn_B_Stat",
+     "bit": 35,
+     "len": 1
+    },
+    {
+     "name": "TurnLghtLeftOn_B_Stat",
+     "bit": 54,
+     "len": 1
+    },
+    {
+     "name": "FogLghtRearOn_B_Stat",
+     "bit": 1,
+     "len": 1
+    },
+    {
+     "name": "Backlit_LED_Status",
+     "bit": 23,
+     "len": 4
+    },
+    {
+     "name": "TurnLghtLeft_D_Rq",
+     "bit": 9,
+     "len": 2
+    },
+    {
+     "name": "FogLghtFrontOn_B_Stat",
+     "bit": 56,
+     "len": 1
+    },
+    {
+     "name": "IgnKeyType_D_Actl",
+     "bit": 39,
+     "len": 4
+    },
+    {
+     "name": "Parklamp_Status",
+     "bit": 3,
+     "len": 2
+    },
+    {
+     "name": "Litval",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "Key_In_Ignition_Stat",
+     "bit": 11,
+     "len": 1
+    },
+    {
+     "name": "Ignition_Status",
+     "bit": 7,
+     "len": 4
+    },
+    {
+     "name": "Dimming_Lvl",
+     "bit": 31,
+     "len": 8
+    },
+    {
+     "name": "Day_Night_Status",
+     "bit": 15,
+     "len": 2
+    },
+    {
+     "name": "Remote_Start_Status",
+     "bit": 13,
+     "len": 2
+    },
+    {
+     "name": "DrStatTgate_B_Actl",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "DrStatRr_B_Actl",
+     "bit": 49,
+     "len": 1
+    },
+    {
+     "name": "DrStatRl_B_Actl",
+     "bit": 48,
+     "len": 1
+    },
+    {
+     "name": "DrStatPsngr_B_Actl",
+     "bit": 60,
+     "len": 1
+    },
+    {
+     "name": "DrStatInnrTgate_B_Actl",
+     "bit": 58,
+     "len": 1
+    },
+    {
+     "name": "DrStatHood_B_Actl",
+     "bit": 59,
+     "len": 1
+    },
+    {
+     "name": "DrStatDrv_B_Actl",
+     "bit": 61,
+     "len": 1
+    },
+    {
+     "name": "PrkBrkActv_B_Actl",
+     "bit": 55,
+     "len": 1
+    },
+    {
+     "name": "LifeCycMde_D_Actl",
+     "bit": 53,
+     "len": 4
+    },
+    {
+     "name": "Delay_Accy",
+     "bit": 57,
+     "len": 1
+    },
+    {
+     "name": "CrashEvnt_D_Stat",
+     "bit": 34,
+     "len": 2
+    },
+    {
+     "name": "FuelPmpInhbt_B_Stat",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "BodySrvcRqd_B_Rq",
+     "bit": 10,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3B4",
+   "direction": "rx",
+   "handle": 57,
+   "dlc": 6,
+   "name": "TPMS lamp, system status, per-tire status",
+   "db_status": "Confirmed",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "40 11 11 FF 20 20 00 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#94",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3B5",
+   "direction": "rx",
+   "handle": 56,
+   "dlc": 8,
+   "name": "Tire pressure",
+   "db_status": "Confirmed",
+   "dbc_name": "Tire_Pressure_Data_FD1",
+   "node": "GWM",
+   "sample_bytes": "00 FE 01 01 00 F2 00 EE",
+   "init_bytes": "FF FD FF FD FF FD FF FD",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#95",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "Tire_Press_RR_ORR_Data",
+     "bit": 39,
+     "len": 16
+    },
+    {
+     "name": "Tire_Press_LR_OLR_Data",
+     "bit": 55,
+     "len": 16
+    },
+    {
+     "name": "Tire_Press_LF_Data",
+     "bit": 7,
+     "len": 16
+    },
+    {
+     "name": "Tire_Press_RF_Data",
+     "bit": 23,
+     "len": 16
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3B8",
+   "direction": "rx",
+   "handle": 55,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "FF FF FF FF 00 00 00 00",
+   "init_bytes": "FF FD FF FD",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#96",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3BB",
+   "direction": "rx",
+   "handle": 54,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#97",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3C3",
+   "direction": "rx",
+   "handle": 53,
+   "dlc": 8,
+   "name": "High beams, parking brake",
+   "db_status": "Confirmed",
+   "dbc_name": "BCM_Lamp_Stat_FD1",
+   "node": "GWM",
+   "sample_bytes": "40 00 10 00 00 00 80 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#98",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "Illuminated_Entry_Stat",
+     "bit": 63,
+     "len": 2
+    },
+    {
+     "name": "Dr_Courtesy_Light_Stat",
+     "bit": 49,
+     "len": 2
+    },
+    {
+     "name": "Courtesy_Delay_Status",
+     "bit": 51,
+     "len": 2
+    },
+    {
+     "name": "ImpactEvntFdbck_D_Stat",
+     "bit": 53,
+     "len": 2
+    },
+    {
+     "name": "WrlssAcsyChrgInhbt_B_Rq",
+     "bit": 40,
+     "len": 1
+    },
+    {
+     "name": "PudLampPsngr_D_Rq",
+     "bit": 57,
+     "len": 2
+    },
+    {
+     "name": "HeadLampLoOut_B_Stat",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "CrnrLghtRight_Pc_Rq",
+     "bit": 47,
+     "len": 7
+    },
+    {
+     "name": "CrnrLghtLeft_Pc_Rq",
+     "bit": 39,
+     "len": 7
+    },
+    {
+     "name": "HeadLghtHiFdbck_D_Stat",
+     "bit": 55,
+     "len": 2
+    },
+    {
+     "name": "PudLampDrv_D_Rq",
+     "bit": 59,
+     "len": 2
+    },
+    {
+     "name": "TrnNotInPrkChime_B_Rq",
+     "bit": 24,
+     "len": 1
+    },
+    {
+     "name": "PrkLightChime_B_Rq",
+     "bit": 25,
+     "len": 1
+    },
+    {
+     "name": "KeyInIgnWarn_B_Cmd",
+     "bit": 27,
+     "len": 1
+    },
+    {
+     "name": "HomeSafeLtChime_B_Rq",
+     "bit": 28,
+     "len": 1
+    },
+    {
+     "name": "StopLghtOn_B_Stat",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "RvrseLghtOn_B_Stat",
+     "bit": 9,
+     "len": 1
+    },
+    {
+     "name": "PrkLght_D_Stat",
+     "bit": 13,
+     "len": 2
+    },
+    {
+     "name": "HeadLghtSwtch_D_Stat",
+     "bit": 15,
+     "len": 2
+    },
+    {
+     "name": "HeadLampLoFrOn_B_Stat",
+     "bit": 2,
+     "len": 1
+    },
+    {
+     "name": "HeadLampLoFlOn_B_Stat",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "HeadLampLoActv_B_Stat",
+     "bit": 4,
+     "len": 1
+    },
+    {
+     "name": "Headlamp_On_Wrning_Cmd",
+     "bit": 29,
+     "len": 1
+    },
+    {
+     "name": "Park_Brake_Chime_Rqst",
+     "bit": 26,
+     "len": 1
+    },
+    {
+     "name": "HeadLghtHiOn_B_Stat",
+     "bit": 1,
+     "len": 1
+    },
+    {
+     "name": "BrkWarnInd_B_Rq",
+     "bit": 20,
+     "len": 1
+    },
+    {
+     "name": "Brk_Fluid_Lvl_Low",
+     "bit": 31,
+     "len": 2
+    },
+    {
+     "name": "ReducedGuard_D_Stat",
+     "bit": 19,
+     "len": 2
+    },
+    {
+     "name": "Perimeter_Alarm_Status",
+     "bit": 17,
+     "len": 2
+    },
+    {
+     "name": "Courtesy_BSave_Stat",
+     "bit": 7,
+     "len": 2
+    },
+    {
+     "name": "DrTgateLck_D_Stat",
+     "bit": 61,
+     "len": 2
+    },
+    {
+     "name": "WndwGlbl_D_Cmd",
+     "bit": 23,
+     "len": 3
+    },
+    {
+     "name": "PudLamp_D_Rq",
+     "bit": 11,
+     "len": 2
+    },
+    {
+     "name": "DayRnngLampOn_B_Stat",
+     "bit": 5,
+     "len": 1
+    },
+    {
+     "name": "PerimeterAlarmChimeRq",
+     "bit": 0,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3C8",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "Drive mode, MyColor",
+   "db_status": "Cluster sends",
+   "dbc_name": "Cluster_Lighting_Rq_FD1",
+   "node": "GWM",
+   "sample_bytes": "05 11 70 00 11 17 3C 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SlMde_D_Rq",
+     "bit": 27,
+     "len": 2
+    },
+    {
+     "name": "IsaOffst_D_Rq",
+     "bit": 31,
+     "len": 4
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3C9",
+   "direction": "rx",
+   "handle": 52,
+   "dlc": 3,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#99",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3CA",
+   "direction": "rx",
+   "handle": 51,
+   "dlc": 5,
+   "name": "Lane_Assist_Data1",
+   "db_status": null,
+   "dbc_name": "Lane_Assist_Data1",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "04 00 00 00 00",
+   "reset_mask": "2B 01 15 00 C0",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 5,
+     "need": 1,
+     "monitor": "G1#83",
+     "timeout_ms": 5000,
+     "dbc": "LkaActvStats_D2_Req"
+    },
+    {
+     "byte": 0,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#84",
+     "timeout_ms": 5000,
+     "dbc": "LdwActvStats_D_Req"
+    },
+    {
+     "byte": 0,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#85",
+     "timeout_ms": 5000,
+     "dbc": "LdwActvIntns_D_Req"
+    },
+    {
+     "byte": 0,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#86",
+     "timeout_ms": 5000,
+     "dbc": "LdwActvIntns_D_Req"
+    },
+    {
+     "byte": 1,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#87",
+     "timeout_ms": 5000,
+     "dbc": "LaCurvature_No_Calc"
+    },
+    {
+     "byte": 4,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#88",
+     "timeout_ms": 5000,
+     "dbc": "LkaDrvOvrrd_D_Rq"
+    },
+    {
+     "byte": 2,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#89",
+     "timeout_ms": 5000,
+     "dbc": "LaCurvature_No_Calc"
+    },
+    {
+     "byte": 2,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#90",
+     "timeout_ms": 5000,
+     "dbc": "LaRefAng_No_Req"
+    },
+    {
+     "byte": 2,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#91",
+     "timeout_ms": 5000,
+     "dbc": "LaRefAng_No_Req"
+    },
+    {
+     "byte": 4,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#92",
+     "timeout_ms": 5000,
+     "dbc": "LaRampType_B_Req"
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "LkaDrvOvrrd_D_Rq",
+     "bit": 38,
+     "len": 2
+    },
+    {
+     "name": "LkaActvStats_D2_Req",
+     "bit": 7,
+     "len": 3
+    },
+    {
+     "name": "LaRefAng_No_Req",
+     "bit": 19,
+     "len": 12
+    },
+    {
+     "name": "LaRampType_B_Req",
+     "bit": 39,
+     "len": 1
+    },
+    {
+     "name": "LaCurvature_No_Calc",
+     "bit": 15,
+     "len": 12
+    },
+    {
+     "name": "LdwActvStats_D_Req",
+     "bit": 4,
+     "len": 3
+    },
+    {
+     "name": "LdwActvIntns_D_Req",
+     "bit": 1,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3CD",
+   "direction": "rx",
+   "handle": 50,
+   "dlc": 8,
+   "name": "Traffic_RecognitnData",
+   "db_status": null,
+   "dbc_name": "Traffic_RecognitnData",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "14 20 00 FF FF 08 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#100",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TsrVl2PrmntMsgTxt_D_Rq",
+     "bit": 60,
+     "len": 2
+    },
+    {
+     "name": "TsrVl1PrmntMsgTxt_D_Rq",
+     "bit": 41,
+     "len": 2
+    },
+    {
+     "name": "TsrVl2RstrcMsgTxt2_D_Rq",
+     "bit": 63,
+     "len": 3
+    },
+    {
+     "name": "TsrVl1RstrcMsgTxt2_D_Rq",
+     "bit": 51,
+     "len": 3
+    },
+    {
+     "name": "TsrOvtkMsgTxt2_D_Rq",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "WwaWarn_B_Rq",
+     "bit": 48,
+     "len": 1
+    },
+    {
+     "name": "TsrVlUnitMsgTxt_D_Rq",
+     "bit": 43,
+     "len": 2
+    },
+    {
+     "name": "TsrVLim2MsgTxt_D_Rq",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "TsrVLim1MsgTxt_D_Rq",
+     "bit": 31,
+     "len": 8
+    },
+    {
+     "name": "TsrVl2StatMsgTxt_D_Rq",
+     "bit": 47,
+     "len": 2
+    },
+    {
+     "name": "TsrVl2RstrcMsgTxt_D_Rq",
+     "bit": 17,
+     "len": 2
+    },
+    {
+     "name": "TsrVl1StatMsgTxt_D_Rq",
+     "bit": 21,
+     "len": 2
+    },
+    {
+     "name": "TsrVl1RstrcMsgTxt_D_Rq",
+     "bit": 23,
+     "len": 2
+    },
+    {
+     "name": "TsrStatMsgTxt_D_Rq",
+     "bit": 10,
+     "len": 3
+    },
+    {
+     "name": "TsrOvtkStatMsgTxt_D_Rq",
+     "bit": 1,
+     "len": 2
+    },
+    {
+     "name": "TsrOvtkMsgTxt_D_Rq",
+     "bit": 15,
+     "len": 3
+    },
+    {
+     "name": "TsrOswWarnMsgTxt_D_Rq",
+     "bit": 3,
+     "len": 2
+    },
+    {
+     "name": "TsrMsgTxt_D_Rq",
+     "bit": 7,
+     "len": 4
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3D0",
+   "direction": "rx",
+   "handle": 49,
+   "dlc": 5,
+   "name": "SuspensionRoad_Data",
+   "db_status": null,
+   "dbc_name": "SuspensionRoad_Data",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00",
+   "reset_mask": "01 0F 00 00 80",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#93",
+     "timeout_ms": 5000,
+     "dbc": "SrpDistLeft_L_Actl"
+    },
+    {
+     "byte": 1,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#94",
+     "timeout_ms": 5000,
+     "dbc": "SrpDistRight_L_Actl"
+    },
+    {
+     "byte": 1,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#95",
+     "timeout_ms": 5000,
+     "dbc": "SrpDistRight_L_Actl"
+    },
+    {
+     "byte": 1,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#96",
+     "timeout_ms": 5000,
+     "dbc": "SrpDistRight_L_Actl"
+    },
+    {
+     "byte": 1,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#97",
+     "timeout_ms": 5000,
+     "dbc": "SrpDistRight_L_Actl"
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SuspClkSync_No_Actl",
+     "bit": 55,
+     "len": 8
+    },
+    {
+     "name": "SrpSigValid_B_Stat",
+     "bit": 47,
+     "len": 1
+    },
+    {
+     "name": "SrpHghtRight_L_Actl",
+     "bit": 24,
+     "len": 9
+    },
+    {
+     "name": "SrpHghtLeft_L_Actl",
+     "bit": 17,
+     "len": 9
+    },
+    {
+     "name": "SrpEventRight_D_Stat",
+     "bit": 19,
+     "len": 2
+    },
+    {
+     "name": "SrpEventLeft_D_Stat",
+     "bit": 21,
+     "len": 2
+    },
+    {
+     "name": "SrpDistRight_L_Actl",
+     "bit": 14,
+     "len": 9
+    },
+    {
+     "name": "SrpDistLeft_L_Actl",
+     "bit": 7,
+     "len": 9
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3D8",
+   "direction": "rx",
+   "handle": 48,
+   "dlc": 7,
+   "name": "IPMA_Data",
+   "db_status": null,
+   "dbc_name": "IPMA_Data",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 80 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#101",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "FeatConfigIpmaActl",
+     "bit": 7,
+     "len": 16
+    },
+    {
+     "name": "FeatNoIpmaActl",
+     "bit": 23,
+     "len": 16
+    },
+    {
+     "name": "PersIndexIpma_D_Actl",
+     "bit": 39,
+     "len": 3
+    },
+    {
+     "name": "AhbcRampingV_D_Rq",
+     "bit": 57,
+     "len": 2
+    },
+    {
+     "name": "LaActvStats_D_Dsply",
+     "bit": 55,
+     "len": 5
+    },
+    {
+     "name": "LaDenyStats_B_Dsply",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "LaHandsOff_D_Dsply",
+     "bit": 50,
+     "len": 2
+    },
+    {
+     "name": "CamraDefog_B_Req",
+     "bit": 36,
+     "len": 1
+    },
+    {
+     "name": "CamraStats_D_Dsply",
+     "bit": 35,
+     "len": 2
+    },
+    {
+     "name": "DasAlrtLvl_D_Dsply",
+     "bit": 42,
+     "len": 3
+    },
+    {
+     "name": "DasStats_D_Dsply",
+     "bit": 47,
+     "len": 2
+    },
+    {
+     "name": "DasWarn_D_Dsply",
+     "bit": 44,
+     "len": 2
+    },
+    {
+     "name": "AhbHiBeam_D_Rq",
+     "bit": 59,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3DD",
+   "direction": "rx",
+   "handle": 47,
+   "dlc": 4,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#102",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3DE",
+   "direction": "rx",
+   "handle": 46,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#103",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3DF",
+   "direction": "rx",
+   "handle": 45,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 80",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#104",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E0",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "Personality_Data_FD1",
+   "db_status": null,
+   "dbc_name": "Personality_Data_FD1",
+   "node": "GWM",
+   "sample_bytes": "00 00 00 00 80 00 00 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "MsgCntrDsplyOp_D_Rq",
+     "bit": 36,
+     "len": 3
+    },
+    {
+     "name": "MsgCntrFeatNoRq",
+     "bit": 7,
+     "len": 16
+    },
+    {
+     "name": "MsgCntrFeatConfigRq",
+     "bit": 23,
+     "len": 16
+    },
+    {
+     "name": "MsgCntrPersIndex_D_Rq",
+     "bit": 39,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E1",
+   "direction": "rx",
+   "handle": 44,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "80 00 00 07 01 80 00 00",
+   "init_bytes": "00 00 00 00 00 80",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#105",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E2",
+   "direction": "rx",
+   "handle": 43,
+   "dlc": 6,
+   "name": "Personality_APIM_Data_FD1",
+   "db_status": null,
+   "dbc_name": "Personality_APIM_Data_FD1",
+   "node": "GWM",
+   "sample_bytes": "00 00 00 00 80 00 00 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#106",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PersStore_D_Rq",
+     "bit": 36,
+     "len": 3
+    },
+    {
+     "name": "Pers4OptIn_B_Stats",
+     "bit": 43,
+     "len": 1
+    },
+    {
+     "name": "Pers3OptIn_B_Stats",
+     "bit": 33,
+     "len": 1
+    },
+    {
+     "name": "Pers2OptIn_B_Stats",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "Pers1OptIn_B_Stats",
+     "bit": 44,
+     "len": 1
+    },
+    {
+     "name": "CtrStkPersIndex_D_Actl",
+     "bit": 39,
+     "len": 3
+    },
+    {
+     "name": "CtrStkFeatNoActl",
+     "bit": 23,
+     "len": 16
+    },
+    {
+     "name": "CtrStkFeatConfigActl",
+     "bit": 7,
+     "len": 16
+    },
+    {
+     "name": "CtrStkDsplyOp_D_Rq",
+     "bit": 47,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E3",
+   "direction": "rx",
+   "handle": 42,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "00 01 04 11 80 01 64 00",
+   "init_bytes": "00 00 00 00 80",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#107",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E5",
+   "direction": "rx",
+   "handle": 41,
+   "dlc": 5,
+   "name": "Personality_CCM_Data",
+   "db_status": null,
+   "dbc_name": "Personality_CCM_Data",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 80",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#108",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "PersIndexCcm_D_Actl",
+     "bit": 39,
+     "len": 3
+    },
+    {
+     "name": "FeatNoCcmActl",
+     "bit": 23,
+     "len": 16
+    },
+    {
+     "name": "FeatConfigCcmActl",
+     "bit": 7,
+     "len": 16
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E6",
+   "direction": "rx",
+   "handle": 40,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "00 01 04 07 80 00 00 00",
+   "init_bytes": "00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#109",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E7",
+   "direction": "rx",
+   "handle": 39,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#110",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3E9",
+   "direction": "rx",
+   "handle": 38,
+   "dlc": 5,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#111",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3EA",
+   "direction": "rx",
+   "handle": 37,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "00 00 00 00 00 00 60 00",
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#112",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3EC",
+   "direction": "rx",
+   "handle": 36,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 04 04 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#113",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3F0",
+   "direction": "rx",
+   "handle": 35,
+   "dlc": 6,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#114",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3F1",
+   "direction": "rx",
+   "handle": 34,
+   "dlc": 7,
+   "name": "APIM_Send_Signals1_FD1",
+   "db_status": null,
+   "dbc_name": "APIM_Send_Signals1_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#115",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "ChrgCordUnlock_B_Rq",
+     "bit": 60,
+     "len": 1
+    },
+    {
+     "name": "AutoHoldSwtch_D_Stat3",
+     "bit": 50,
+     "len": 2
+    },
+    {
+     "name": "TrlrTrgtAcquire_D_Rq",
+     "bit": 63,
+     "len": 3
+    },
+    {
+     "name": "TrlrAidCancl_B_Rq",
+     "bit": 48,
+     "len": 1
+    },
+    {
+     "name": "CenterStackRing_D_Actl",
+     "bit": 59,
+     "len": 2
+    },
+    {
+     "name": "APIM_NumberofTracks_St",
+     "bit": 39,
+     "len": 16
+    },
+    {
+     "name": "APIM_ActiveTrackNum_St",
+     "bit": 7,
+     "len": 32
+    },
+    {
+     "name": "ValetMode_D_Stat",
+     "bit": 57,
+     "len": 2
+    },
+    {
+     "name": "TrlrAidSetup_D_Stat",
+     "bit": 55,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x3FB",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x40A",
+   "direction": "rx",
+   "handle": 33,
+   "dlc": 8,
+   "name": "VIN / vehicle config",
+   "db_status": "From logs",
+   "dbc_name": "GGCC_Config_Mgmt_ID_1_FD1",
+   "node": "GWM",
+   "sample_bytes": "C1 10 40 88 20 24 80 00",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "VehicleGGCCData",
+     "bit": 7,
+     "len": 64
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x412",
+   "direction": "rx",
+   "handle": 32,
+   "dlc": 8,
+   "name": "TrailerBrakeData",
+   "db_status": null,
+   "dbc_name": "TrailerBrakeData",
+   "node": "ABS_ESC",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": "00 00 01 01 02 08 00 40",
+   "deadline_ms": 5000,
+   "watchdog": "G2#116",
+   "bit_monitors": [
+    {
+     "byte": 4,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#98",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#99",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#100",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#101",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#102",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "VehRol_An_Dsply",
+     "bit": 31,
+     "len": 7
+    },
+    {
+     "name": "VehPtch_An_Dsply",
+     "bit": 23,
+     "len": 7
+    },
+    {
+     "name": "TrlrBrk_Pc_Rq",
+     "bit": 14,
+     "len": 7
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x416",
+   "direction": "rx",
+   "handle": 31,
+   "dlc": 7,
+   "name": "ABS / traction control icons",
+   "db_status": "Confirmed",
+   "dbc_name": "BrakeSysFeatures_2",
+   "node": "ABS_ESC",
+   "sample_bytes": "50 00 FE 00 01 00 00 00",
+   "init_bytes": "00 00 00 00 01 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#117",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "HsaMde_D_Mem",
+     "bit": 33,
+     "len": 2
+    },
+    {
+     "name": "BrkBstrVac_B_Rq",
+     "bit": 27,
+     "len": 1
+    },
+    {
+     "name": "HdcMde_D_Actl",
+     "bit": 31,
+     "len": 3
+    },
+    {
+     "name": "RearDiffLck_Tq2_RqMx",
+     "bit": 51,
+     "len": 12
+    },
+    {
+     "name": "TRLR_SWAY_EVNT_IN_PROG",
+     "bit": 25,
+     "len": 1
+    },
+    {
+     "name": "TRLR_SWAY_CONFIG_STAT",
+     "bit": 26,
+     "len": 1
+    },
+    {
+     "name": "TCMode",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "DrvSlipCtlLamp_D_Rq",
+     "bit": 42,
+     "len": 2
+    },
+    {
+     "name": "Abs_B_Falt",
+     "bit": 5,
+     "len": 1
+    },
+    {
+     "name": "DrvSlipCtlMde_D_Ind",
+     "bit": 44,
+     "len": 2
+    },
+    {
+     "name": "DrvAntiLckLamp_D_Rq",
+     "bit": 55,
+     "len": 2
+    },
+    {
+     "name": "BpedMove_No_Cnt",
+     "bit": 3,
+     "len": 4
+    },
+    {
+     "name": "StabCtlBrk_B_Avail",
+     "bit": 4,
+     "len": 1
+    },
+    {
+     "name": "DrvHdcWarnInfo_D_Rq",
+     "bit": 35,
+     "len": 2
+    },
+    {
+     "name": "DrvHdcMsg_D_Rq",
+     "bit": 10,
+     "len": 3
+    },
+    {
+     "name": "DrvHdcLampInfo_D_Rq",
+     "bit": 12,
+     "len": 2
+    },
+    {
+     "name": "BpedMove_D_Actl",
+     "bit": 7,
+     "len": 2
+    },
+    {
+     "name": "ChimeBrk_B_Rq",
+     "bit": 14,
+     "len": 1
+    },
+    {
+     "name": "BrkLamp_B_Rq",
+     "bit": 13,
+     "len": 1
+    },
+    {
+     "name": "HILL_DESC_MC",
+     "bit": 47,
+     "len": 3
+    },
+    {
+     "name": "RearDiffElckrOpen_B_Rq",
+     "bit": 40,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x41F",
+   "direction": "rx",
+   "handle": 30,
+   "dlc": 8,
+   "name": "PowertrainData_7",
+   "db_status": null,
+   "dbc_name": "PowertrainData_7",
+   "node": "PCM_HEV",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#118",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EcoCochInstNeg_B_Dsply",
+     "bit": 53,
+     "len": 1
+    },
+    {
+     "name": "EcoCochShif_Pc_Dsply",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "EcoCochInst_Pc_Dsply",
+     "bit": 47,
+     "len": 10
+    },
+    {
+     "name": "EcoCochIdlFuel_Pc_Dsply",
+     "bit": 31,
+     "len": 8
+    },
+    {
+     "name": "EcoCochDecel_Pc_Dsply",
+     "bit": 23,
+     "len": 8
+    },
+    {
+     "name": "EcoCochCrus_Pc_Dsply",
+     "bit": 15,
+     "len": 8
+    },
+    {
+     "name": "EcoCochA_Pc_Dsply",
+     "bit": 7,
+     "len": 8
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x420",
+   "direction": "rx",
+   "handle": 29,
+   "dlc": 8,
+   "name": "SelectDriveModeData",
+   "db_status": null,
+   "dbc_name": "SelectDriveModeData",
+   "node": "ABS_ESC",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#119",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "AutoEpbMsgTxt_D_Rq",
+     "bit": 58,
+     "len": 3
+    },
+    {
+     "name": "AutoEpbDsply_D_Stat",
+     "bit": 37,
+     "len": 2
+    },
+    {
+     "name": "AutoEpbButtnOn_B_Stat",
+     "bit": 48,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos12_B_Avail",
+     "bit": 54,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos11_B_Avail",
+     "bit": 55,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos10_B_Avail",
+     "bit": 40,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos09_B_Avail",
+     "bit": 41,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos08_B_Avail",
+     "bit": 42,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos07_B_Avail",
+     "bit": 43,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos06_B_Avail",
+     "bit": 44,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos05_B_Avail",
+     "bit": 45,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos04_B_Avail",
+     "bit": 46,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos03_B_Avail",
+     "bit": 47,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos02_B_Avail",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "SelDrvMdePos01_B_Avail",
+     "bit": 24,
+     "len": 1
+    },
+    {
+     "name": "ActvDrvMde_D2_Stat",
+     "bit": 53,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMde_D2_Rq",
+     "bit": 63,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePt_D_Rq",
+     "bit": 31,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdeMsgTxt_D_Rq",
+     "bit": 19,
+     "len": 4
+    },
+    {
+     "name": "SelDrvMde_D_Stat",
+     "bit": 26,
+     "len": 2
+    },
+    {
+     "name": "AwdMde_D_RqBrk",
+     "bit": 35,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x421",
+   "direction": "rx",
+   "handle": 28,
+   "dlc": 8,
+   "name": "Oil pressure status, check engine",
+   "db_status": "Confirmed",
+   "dbc_name": "PowertrainData_1",
+   "node": "PCM_HEV",
+   "sample_bytes": "04 00 14 00 00 00 58 00",
+   "init_bytes": "02 00 00 00 00 00 00 FF",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#120",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "FohEng_D_Rq",
+     "bit": 1,
+     "len": 2
+    },
+    {
+     "name": "EngIdlShutDwnTxt_D_Rq",
+     "bit": 17,
+     "len": 2
+    },
+    {
+     "name": "EngIdlShutDown_D_Stat",
+     "bit": 9,
+     "len": 2
+    },
+    {
+     "name": "FUEL_ALCOHOL_PERCNT",
+     "bit": 63,
+     "len": 8
+    },
+    {
+     "name": "TrnTotTq_Rt_Est",
+     "bit": 39,
+     "len": 16
+    },
+    {
+     "name": "TrnTotLss_Tq_Est",
+     "bit": 31,
+     "len": 8
+    },
+    {
+     "name": "ECMMILRequest",
+     "bit": 3,
+     "len": 2
+    },
+    {
+     "name": "AirCondFluidHi_P_Actl",
+     "bit": 55,
+     "len": 8
+    },
+    {
+     "name": "OilPressureWarning",
+     "bit": 18,
+     "len": 1
+    },
+    {
+     "name": "VehVLimStat_D_Actl",
+     "bit": 6,
+     "len": 3
+    },
+    {
+     "name": "VehVLimActv_B_Actl",
+     "bit": 7,
+     "len": 1
+    },
+    {
+     "name": "CoolantFanStepAct",
+     "bit": 23,
+     "len": 5
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x422",
+   "direction": "rx",
+   "handle": 27,
+   "dlc": 7,
+   "name": "Coolant temp",
+   "db_status": "From logs",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "00 00 00 9D 38 40 FE 00",
+   "init_bytes": "00 00 00 00 00 00 00",
+   "reset_mask": "00 00 00 00 00 00 90",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 6,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#103",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 6,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#104",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x424",
+   "direction": "rx",
+   "handle": 26,
+   "dlc": 7,
+   "name": "Powertrain_Data_4",
+   "db_status": null,
+   "dbc_name": "Powertrain_Data_4",
+   "node": "PCM_HEV",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 30",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#121",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "RearDiffOilTeWarn_B_Rq",
+     "bit": 20,
+     "len": 1
+    },
+    {
+     "name": "RearDiffOil_Te_Actl",
+     "bit": 15,
+     "len": 9
+    },
+    {
+     "name": "BpedDrvMsgTxt_B_Dsply",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "FuelLvl_Pc_DsplyEng",
+     "bit": 41,
+     "len": 10
+    },
+    {
+     "name": "FuelLvlWarn_D_ActlEng",
+     "bit": 19,
+     "len": 3
+    },
+    {
+     "name": "FuelRange_L_DsplyEng",
+     "bit": 39,
+     "len": 14
+    },
+    {
+     "name": "SelDrvMdePt_D_Stat",
+     "bit": 25,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x42C",
+   "direction": "rx",
+   "handle": 25,
+   "dlc": 7,
+   "name": "Occupant sensor blocked, battery icon, U0401-82, PCM present",
+   "db_status": "Confirmed",
+   "dbc_name": "Battery_Mgmt_2_FD1",
+   "node": "GWM",
+   "sample_bytes": "8C 00 00 00 68 A0 00 00",
+   "init_bytes": "00 00 00 00 FE 00 00",
+   "reset_mask": "14 B0 84 30 00 00 15",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#105",
+     "timeout_ms": 5000,
+     "dbc": "Batt_Crit_SoC_B"
+    },
+    {
+     "byte": 0,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#106",
+     "timeout_ms": 5000,
+     "dbc": "EngStrtInhbt_B_RqBatt"
+    },
+    {
+     "byte": 2,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#107",
+     "timeout_ms": 5000,
+     "dbc": "Shed_Level_Req"
+    },
+    {
+     "byte": 3,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#108",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 5,
+     "need": 1,
+     "monitor": "G1#109",
+     "timeout_ms": 5000,
+     "dbc": "ChargeMode"
+    },
+    {
+     "byte": 1,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#110",
+     "timeout_ms": 5000,
+     "dbc": "PwSysULoFalt_D_Stat"
+    },
+    {
+     "byte": 6,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#111",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#112",
+     "timeout_ms": 5000,
+     "dbc": "Shed_Feature_Group_ID"
+    },
+    {
+     "byte": 6,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#113",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngStrtInhbt_B_RqBatt",
+     "bit": 2,
+     "len": 1
+    },
+    {
+     "name": "BattULoChrg_D_Rq",
+     "bit": 7,
+     "len": 2
+    },
+    {
+     "name": "PwSysULoFalt_D_Stat",
+     "bit": 12,
+     "len": 4
+    },
+    {
+     "name": "Shed_T_Eng_Off_B",
+     "bit": 8,
+     "len": 1
+    },
+    {
+     "name": "Shed_Feature_Group_ID",
+     "bit": 20,
+     "len": 5
+    },
+    {
+     "name": "Shed_Drain_Eng_Off_B",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "Shed_Level_Req",
+     "bit": 23,
+     "len": 3
+    },
+    {
+     "name": "BattULoSrvc_T_Actl",
+     "bit": 39,
+     "len": 12
+    },
+    {
+     "name": "ULoRgenTestMde_B_Rq",
+     "bit": 31,
+     "len": 1
+    },
+    {
+     "name": "ChargeMode",
+     "bit": 15,
+     "len": 3
+    },
+    {
+     "name": "IdleSpeedIncrease_El",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "Batt_Lo_SoC_B",
+     "bit": 5,
+     "len": 1
+    },
+    {
+     "name": "PeriodicElLoad_B_Stat",
+     "bit": 1,
+     "len": 1
+    },
+    {
+     "name": "Batt_Crit_SoC_B",
+     "bit": 4,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x42D",
+   "direction": "rx",
+   "handle": 24,
+   "dlc": 8,
+   "name": "Inlet air temp",
+   "db_status": "Confirmed",
+   "dbc_name": "PowertrainData_2",
+   "node": "PCM_HEV",
+   "sample_bytes": "00 02 CB 00 00 00 F0 00",
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#122",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SlMde_D_Stat",
+     "bit": 57,
+     "len": 2
+    },
+    {
+     "name": "SlMde_D_RqDsply",
+     "bit": 59,
+     "len": 2
+    },
+    {
+     "name": "IsaOffst_D_Stat",
+     "bit": 63,
+     "len": 4
+    },
+    {
+     "name": "GrllShtrPos_D_Cmd",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "GrllShtrPos_B_Falt",
+     "bit": 51,
+     "len": 1
+    },
+    {
+     "name": "ObdWarmUp_B_Complt",
+     "bit": 12,
+     "len": 1
+    },
+    {
+     "name": "EngMsgTxt_D_Rq",
+     "bit": 11,
+     "len": 2
+    },
+    {
+     "name": "EngClnt_Te_ActlDiag",
+     "bit": 39,
+     "len": 8
+    },
+    {
+     "name": "EngLoad_Pc_CalcDiag",
+     "bit": 47,
+     "len": 8
+    },
+    {
+     "name": "EngAirIn_Te_Actl",
+     "bit": 9,
+     "len": 10
+    },
+    {
+     "name": "ApedPos_Pc_ActlDiag",
+     "bit": 31,
+     "len": 8
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x42F",
+   "direction": "rx",
+   "handle": 23,
+   "dlc": 8,
+   "name": "Engine_Clutch_Data",
+   "db_status": null,
+   "dbc_name": "Engine_Clutch_Data",
+   "node": "PCM_HEV",
+   "sample_bytes": "7D 0C 00 32 06 44 00 00",
+   "init_bytes": "00 04 00 00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#123",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngAout_N_Dsply",
+     "bit": 52,
+     "len": 13
+    },
+    {
+     "name": "CluPdl_PcRate_Actl",
+     "bit": 7,
+     "len": 8
+    },
+    {
+     "name": "CluPdlPosPcMeas_D_Qf",
+     "bit": 11,
+     "len": 2
+    },
+    {
+     "name": "CluPdlPos_Pc_Meas",
+     "bit": 9,
+     "len": 10
+    },
+    {
+     "name": "EngAoutIdl_N_Ntrl",
+     "bit": 31,
+     "len": 11
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x430",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "Odometer",
+   "db_status": "Cluster sends",
+   "dbc_name": "Cluster_Info1_FD1",
+   "node": "GWM",
+   "sample_bytes": "37 01 B9 AA C0 5E 37 5C",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "LscmbbStat_B_Actl",
+     "bit": 2,
+     "len": 1
+    },
+    {
+     "name": "HaDsplyCpblty_B_Stat",
+     "bit": 42,
+     "len": 1
+    },
+    {
+     "name": "AccDeny_B_RqIpc",
+     "bit": 7,
+     "len": 1
+    },
+    {
+     "name": "DrvSlipCtlMde_D_Rq",
+     "bit": 33,
+     "len": 2
+    },
+    {
+     "name": "EngIdlShutDown_B_RqDrv",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "HsaMde_D_Rq",
+     "bit": 54,
+     "len": 2
+    },
+    {
+     "name": "NtrlTowMdeEnbl_B_RqDrv",
+     "bit": 1,
+     "len": 1
+    },
+    {
+     "name": "BulbChkActv_B_Stat",
+     "bit": 55,
+     "len": 1
+    },
+    {
+     "name": "ParkDetect_Stat",
+     "bit": 52,
+     "len": 1
+    },
+    {
+     "name": "ReducedGuard_D_Rq",
+     "bit": 51,
+     "len": 2
+    },
+    {
+     "name": "TrlrBrkMde_D_Rq",
+     "bit": 57,
+     "len": 1
+    },
+    {
+     "name": "TRLR_SWAY_CONFIG_CMD",
+     "bit": 56,
+     "len": 1
+    },
+    {
+     "name": "TRAILER_BRAKE_CONFIG",
+     "bit": 37,
+     "len": 1
+    },
+    {
+     "name": "Power_Liftgate_Mode_Cmd",
+     "bit": 39,
+     "len": 1
+    },
+    {
+     "name": "AccEnbl_B_RqDrv",
+     "bit": 35,
+     "len": 1
+    },
+    {
+     "name": "OdometerMasterValue",
+     "bit": 15,
+     "len": 24
+    },
+    {
+     "name": "EngOilLife_B_RqReset",
+     "bit": 43,
+     "len": 1
+    },
+    {
+     "name": "ePRNDL_MODE",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "DrvSlipCtlMde_B_Rq2",
+     "bit": 34,
+     "len": 1
+    },
+    {
+     "name": "MetricActv_B_Actl",
+     "bit": 6,
+     "len": 1
+    },
+    {
+     "name": "KeyTypeChngMykey_D_Rq",
+     "bit": 41,
+     "len": 2
+    },
+    {
+     "name": "ManRgen_D_Rq",
+     "bit": 5,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x431",
+   "direction": "rx",
+   "handle": 22,
+   "dlc": 8,
+   "name": "Transmission warnings",
+   "db_status": "Confirmed",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": "05 1D 40 EB B7 83 46 00",
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": "00 00 A0 87 08 C8 00 86",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 2,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#114",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 5,
+     "need": 1,
+     "monitor": "G1#115",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#116",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#117",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#118",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 4,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#119",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#120",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#121",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#122",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#123",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#124",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x432",
+   "direction": "rx",
+   "handle": 21,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "26 80 00 00 00 00 00 00",
+   "reset_mask": "00 51 11 14 18 37 00 01",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 1,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#125",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#126",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#127",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#128",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#129",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#130",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#131",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#132",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#133",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#134",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#135",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x434",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "Cluster_Info_3_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_Info_3_FD1",
+   "node": "GWM",
+   "sample_bytes": "27 E9 16 15 0F FF 00 33",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "HILL_DESC_SW",
+     "bit": 32,
+     "len": 1
+    },
+    {
+     "name": "AutoRgen_D_Rq",
+     "bit": 34,
+     "len": 2
+    },
+    {
+     "name": "W2S_LAMP_OK",
+     "bit": 37,
+     "len": 1
+    },
+    {
+     "name": "OdoTripRx_B_Actl",
+     "bit": 2,
+     "len": 1
+    },
+    {
+     "name": "Veh_V_CompLimMx",
+     "bit": 47,
+     "len": 12
+    },
+    {
+     "name": "DrvSlipCtlMde_B_RqMyKey",
+     "bit": 38,
+     "len": 1
+    },
+    {
+     "name": "FuelLvlWarn_D_Actl",
+     "bit": 51,
+     "len": 2
+    },
+    {
+     "name": "FuelSecndActv_B_Actl",
+     "bit": 39,
+     "len": 1
+    },
+    {
+     "name": "FuelLvlPssvSide_No_Raw",
+     "bit": 17,
+     "len": 10
+    },
+    {
+     "name": "FUEL_SENSOR_NUM",
+     "bit": 35,
+     "len": 1
+    },
+    {
+     "name": "FuelLvlActvSide_No_Raw",
+     "bit": 49,
+     "len": 10
+    },
+    {
+     "name": "FuelLvl_Pc_Dsply",
+     "bit": 1,
+     "len": 10
+    },
+    {
+     "name": "DISPLAY_SPEED_SCALING",
+     "bit": 23,
+     "len": 4
+    },
+    {
+     "name": "DISPLAY_SPEED_OFFSET",
+     "bit": 7,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x43E",
+   "direction": "rx",
+   "handle": 20,
+   "dlc": 8,
+   "name": "AFR, cylinder head temp, boost / vacuum",
+   "db_status": "Confirmed",
+   "dbc_name": "PowertrainData_3",
+   "node": "PCM_HEV",
+   "sample_bytes": "00 37 10 8C 9E 41 50 0A",
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#124",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EngMnfld_P_Actl",
+     "bit": 47,
+     "len": 13
+    },
+    {
+     "name": "FuelPumpPwr_B_Rq",
+     "bit": 20,
+     "len": 1
+    },
+    {
+     "name": "BattULoChrg_U_Cmd",
+     "bit": 15,
+     "len": 8
+    },
+    {
+     "name": "ElLoadCtl_D_Rq",
+     "bit": 23,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x440",
+   "direction": "rx",
+   "handle": 19,
+   "dlc": 5,
+   "name": "PreCond_Hev_Data1_FD1",
+   "db_status": null,
+   "dbc_name": "PreCond_Hev_Data1_FD1",
+   "node": "SOBDMC_HPCM_FD1",
+   "sample_bytes": null,
+   "init_bytes": "FF BF EF FB FE",
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#11",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "ChrgTMatch_B_Stat",
+     "bit": 55,
+     "len": 1
+    },
+    {
+     "name": "ChrgStat_D2_Dsply",
+     "bit": 7,
+     "len": 4
+    },
+    {
+     "name": "HvacPrecondRecirc_D_Rq",
+     "bit": 63,
+     "len": 2
+    },
+    {
+     "name": "HvacPrecondMode2_D_Rq",
+     "bit": 51,
+     "len": 4
+    },
+    {
+     "name": "HvacPrecondBlwr2_D_Rq",
+     "bit": 61,
+     "len": 4
+    },
+    {
+     "name": "HvacPrecondAC_D_Rq",
+     "bit": 57,
+     "len": 2
+    },
+    {
+     "name": "HvacPrecond_Te_Rq",
+     "bit": 44,
+     "len": 5
+    },
+    {
+     "name": "BattChrgInhbt_D_Rq",
+     "bit": 53,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x443",
+   "direction": "rx",
+   "handle": 18,
+   "dlc": 3,
+   "name": "TrailerInfo_FD1",
+   "db_status": null,
+   "dbc_name": "TrailerInfo_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#125",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "ParkLampTrlrOut_B_Stat",
+     "bit": 15,
+     "len": 1
+    },
+    {
+     "name": "TrlrLampCtl_D_Stat",
+     "bit": 4,
+     "len": 2
+    },
+    {
+     "name": "TrlrBattChrg_D_Stat",
+     "bit": 2,
+     "len": 2
+    },
+    {
+     "name": "StopLampTrlrOut_B_Stat",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "TurnLampTrlrRr_B_Stat",
+     "bit": 5,
+     "len": 1
+    },
+    {
+     "name": "TurnLampTrlrRl_B_Stat",
+     "bit": 6,
+     "len": 1
+    },
+    {
+     "name": "TrlrLampCnnct_B_Actl",
+     "bit": 7,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x444",
+   "direction": "rx",
+   "handle": 17,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#126",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x445",
+   "direction": "rx",
+   "handle": 16,
+   "dlc": 3,
+   "name": "TrailerBrakeInfo_FD1",
+   "db_status": null,
+   "dbc_name": "TrailerBrakeInfo_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#127",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TrlBrkInitOut_D_Stat",
+     "bit": 10,
+     "len": 2
+    },
+    {
+     "name": "TrlrBrkOut_No_Dsply",
+     "bit": 23,
+     "len": 4
+    },
+    {
+     "name": "TrlrBrkMde_D_Actl",
+     "bit": 2,
+     "len": 1
+    },
+    {
+     "name": "TrlrBrkGain_No_Actl",
+     "bit": 15,
+     "len": 5
+    },
+    {
+     "name": "TrlrBrkDsply_B_Rq",
+     "bit": 3,
+     "len": 1
+    },
+    {
+     "name": "TrlrBrkDcnnt_B_Actl",
+     "bit": 5,
+     "len": 1
+    },
+    {
+     "name": "TrlrBrkActCnnct_B_Actl",
+     "bit": 6,
+     "len": 1
+    },
+    {
+     "name": "StopLamp_B_RqTrlrBrk",
+     "bit": 7,
+     "len": 1
+    },
+    {
+     "name": "TrlrBrkCtl_B_Falt",
+     "bit": 4,
+     "len": 1
+    },
+    {
+     "name": "TrlrBrkActCirct_B_Falt",
+     "bit": 1,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x44A",
+   "direction": "rx",
+   "handle": 15,
+   "dlc": 4,
+   "name": "EffDrvModeData",
+   "db_status": null,
+   "dbc_name": "EffDrvModeData",
+   "node": "ECM_Diesel",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#128",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "EdmVeh_V_Dsply",
+     "bit": 31,
+     "len": 5
+    },
+    {
+     "name": "EdmSailMdeOn_B_Stat",
+     "bit": 25,
+     "len": 1
+    },
+    {
+     "name": "EdmPrev_Fe_Dsply",
+     "bit": 23,
+     "len": 8
+    },
+    {
+     "name": "EdmMsgTxt_D_Rq",
+     "bit": 11,
+     "len": 4
+    },
+    {
+     "name": "EdmLamp_D_Dsply",
+     "bit": 15,
+     "len": 4
+    },
+    {
+     "name": "EdmCurrent_Fe_Dsply",
+     "bit": 7,
+     "len": 8
+    },
+    {
+     "name": "EdmCmplnc_B_Dsply",
+     "bit": 26,
+     "len": 1
+    },
+    {
+     "name": "EdmCmplnc_Pc_Dsply",
+     "bit": 24,
+     "len": 8
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x44E",
+   "direction": "rx",
+   "handle": 14,
+   "dlc": 8,
+   "name": "SelectDriveModeData2",
+   "db_status": null,
+   "dbc_name": "SelectDriveModeData2",
+   "node": "ABS_ESC",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#129",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SelDrvMdePos12_D_Stat",
+     "bit": 34,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos11_D_Stat",
+     "bit": 45,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos10_D_Stat",
+     "bit": 55,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos09_D_Stat",
+     "bit": 50,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos08_D_Stat",
+     "bit": 61,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos07_D_Stat",
+     "bit": 39,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos06_D_Stat",
+     "bit": 29,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos05_D_Stat",
+     "bit": 18,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos04_D_Stat",
+     "bit": 23,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos03_D_Stat",
+     "bit": 13,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos02_D_Stat",
+     "bit": 2,
+     "len": 5
+    },
+    {
+     "name": "SelDrvMdePos01_D_Stat",
+     "bit": 7,
+     "len": 5
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x452",
+   "direction": "rx",
+   "handle": 13,
+   "dlc": 6,
+   "name": "TrailerAid_Stat1_FD1",
+   "db_status": null,
+   "dbc_name": "TrailerAid_Stat1_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TrlrSnsId_No_Actl",
+     "bit": 7,
+     "len": 48
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x459",
+   "direction": "rx",
+   "handle": 12,
+   "dlc": 3,
+   "name": "TrailerAid_Stat3",
+   "db_status": null,
+   "dbc_name": "TrailerAid_Stat3",
+   "node": "IPMA_ADAS",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00",
+   "reset_mask": "00 00 78",
+   "deadline_ms": 5000,
+   "watchdog": "G1#136",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TrlrTrgtAcquire_D_Stat",
+     "bit": 51,
+     "len": 3
+    },
+    {
+     "name": "TrlrAnOffst_An_Calc",
+     "bit": 48,
+     "len": 9
+    },
+    {
+     "name": "TrlrAnOffstDir_D_Calc",
+     "bit": 33,
+     "len": 2
+    },
+    {
+     "name": "TrlrAnCalib_B_Complt",
+     "bit": 40,
+     "len": 1
+    },
+    {
+     "name": "TrlrRvrse_D_Stat",
+     "bit": 42,
+     "len": 2
+    },
+    {
+     "name": "TrlrAid_D2_Stat",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "TrlrAidTrgtId_No_Actl",
+     "bit": 47,
+     "len": 5
+    },
+    {
+     "name": "TrlrAid_An3_Actl",
+     "bit": 28,
+     "len": 11
+    },
+    {
+     "name": "TrlrAid_AnRate2_Actl",
+     "bit": 22,
+     "len": 10
+    },
+    {
+     "name": "HitchToVehAxle_L_Calc",
+     "bit": 7,
+     "len": 8
+    },
+    {
+     "name": "HitchToTrlrAxle_L_Calc2",
+     "bit": 15,
+     "len": 9
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x45A",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "TrailerAid_Data_FD1",
+   "db_status": null,
+   "dbc_name": "TrailerAid_Data_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TrailCtlSwtch_B_Stat2",
+     "bit": 16,
+     "len": 1
+    },
+    {
+     "name": "TrlBrkInitOut_D_Rq",
+     "bit": 60,
+     "len": 2
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x45C",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": "TrailerAid_Data3_FD1",
+   "db_status": null,
+   "dbc_name": "TrailerAid_Data3_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TrlrAidSetup_D2_Rq",
+     "bit": 4,
+     "len": 4
+    },
+    {
+     "name": "TrlrAidEnbl_D2_Rq",
+     "bit": 7,
+     "len": 3
+    },
+    {
+     "name": "TrlrTrgtToBmpr_L_Actl",
+     "bit": 38,
+     "len": 7
+    },
+    {
+     "name": "TrlrTrgtPtrnId_No_Mem",
+     "bit": 45,
+     "len": 6
+    },
+    {
+     "name": "TrlrRvrseCancl_B_Rq",
+     "bit": 0,
+     "len": 1
+    },
+    {
+     "name": "TrlrIdType_D_Stat",
+     "bit": 51,
+     "len": 2
+    },
+    {
+     "name": "TrlrId_No_Actl",
+     "bit": 55,
+     "len": 4
+    },
+    {
+     "name": "TrlrBallToBmpr_L_Actl",
+     "bit": 22,
+     "len": 7
+    },
+    {
+     "name": "TrlrAxleToBmpr_L_Actl",
+     "bit": 31,
+     "len": 9
+    },
+    {
+     "name": "TrlrAnOffstDir_D_Mem",
+     "bit": 47,
+     "len": 2
+    },
+    {
+     "name": "TrlrAnOffst_An_Mem",
+     "bit": 15,
+     "len": 9
+    },
+    {
+     "name": "TrlrTrgtOffst_L_Actl",
+     "bit": 63,
+     "len": 7
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x463",
+   "direction": "rx",
+   "handle": 11,
+   "dlc": 5,
+   "name": "APIMGPS_Data_Nav_2_FD1",
+   "db_status": null,
+   "dbc_name": "APIMGPS_Data_Nav_2_FD1",
+   "node": "GWM",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "GpsUtcYr_No_Actl",
+     "bit": 55,
+     "len": 5
+    },
+    {
+     "name": "GpsUtcMnth_No_Actl",
+     "bit": 47,
+     "len": 4
+    },
+    {
+     "name": "GpsUtcDay_No_Actl",
+     "bit": 37,
+     "len": 5
+    },
+    {
+     "name": "GPS_UTC_seconds",
+     "bit": 23,
+     "len": 6
+    },
+    {
+     "name": "GPS_UTC_minutes",
+     "bit": 15,
+     "len": 6
+    },
+    {
+     "name": "GPS_UTC_hours",
+     "bit": 7,
+     "len": 5
+    },
+    {
+     "name": "GPS_Pdop",
+     "bit": 31,
+     "len": 5
+    },
+    {
+     "name": "GPS_Compass_direction",
+     "bit": 26,
+     "len": 4
+    },
+    {
+     "name": "GPS_Actual_vs_Infer_pos",
+     "bit": 38,
+     "len": 1
+    },
+    {
+     "name": "Gps_B_Falt",
+     "bit": 2,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x466",
+   "direction": "rx",
+   "handle": 10,
+   "dlc": 5,
+   "name": "GPS compass / time (APIM)",
+   "db_status": "Confirmed (compass)",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 0,
+   "watchdog": "G2#12",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x46A",
+   "direction": "rx",
+   "handle": 9,
+   "dlc": 6,
+   "name": "GWM present (stops U0146)",
+   "db_status": "Confirmed",
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00",
+   "reset_mask": "19 04 22 09 80 00",
+   "deadline_ms": 5000,
+   "watchdog": "G2#130",
+   "bit_monitors": [
+    {
+     "byte": 0,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#138",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 0,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#139",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 1,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#140",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 0,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#141",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 5,
+     "need": 1,
+     "monitor": "G1#142",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#143",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 4,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#144",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 3,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#145",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x46B",
+   "direction": "rx",
+   "handle": 8,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 00 00 00",
+   "reset_mask": "00 00 00 00 00 00 00 53",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 7,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#146",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#147",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#148",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 7,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#149",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x470",
+   "direction": "rx",
+   "handle": 7,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 FE 00 00 00 00",
+   "reset_mask": "00 00 C6 00 01 19 20 00",
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": [
+    {
+     "byte": 2,
+     "bit": 7,
+     "need": 1,
+     "monitor": "G1#150",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 2,
+     "need": 1,
+     "monitor": "G1#151",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 4,
+     "need": 1,
+     "monitor": "G1#152",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 6,
+     "need": 1,
+     "monitor": "G1#153",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 4,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#154",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 2,
+     "bit": 1,
+     "need": 1,
+     "monitor": "G1#155",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 3,
+     "need": 1,
+     "monitor": "G1#156",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 5,
+     "bit": 0,
+     "need": 1,
+     "monitor": "G1#157",
+     "timeout_ms": 5000,
+     "dbc": null
+    },
+    {
+     "byte": 6,
+     "bit": 5,
+     "need": 1,
+     "monitor": "G1#158",
+     "timeout_ms": 5000,
+     "dbc": null
+    }
+   ],
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x471",
+   "direction": "rx",
+   "handle": 6,
+   "dlc": 8,
+   "name": "Cluster_HEV_Data10_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data10_FD1",
+   "node": "PCM_HEV",
+   "sample_bytes": null,
+   "init_bytes": "FF EF FE FF FF FF FF FF",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#131",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "RngPerChrgAvg_L_Dsply",
+     "bit": 7,
+     "len": 12
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x474",
+   "direction": "rx",
+   "handle": 5,
+   "dlc": 8,
+   "name": "Cluster_HEV_Data7_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data7_FD1",
+   "node": "SOBDMC_HPCM_FD1",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#132",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "RgenEvntLvl_Pc_Dsply",
+     "bit": 9,
+     "len": 10
+    },
+    {
+     "name": "BrkEvntComplt_B_Dsply",
+     "bit": 31,
+     "len": 1
+    },
+    {
+     "name": "PreCondStat_D_Dsply",
+     "bit": 12,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x475",
+   "direction": "rx",
+   "handle": 4,
+   "dlc": 8,
+   "name": "Cluster_HEV_Data9_FD1",
+   "db_status": null,
+   "dbc_name": "Cluster_HEV_Data9_FD1",
+   "node": "SOBDMC_HPCM_FD1",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00 01 00 10",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#133",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "OfbChrgSetSync_D_Stat",
+     "bit": 31,
+     "len": 2
+    },
+    {
+     "name": "PtRmtRprt_D_Rq",
+     "bit": 59,
+     "len": 4
+    },
+    {
+     "name": "MtrTrac2_Tq_Actl",
+     "bit": 29,
+     "len": 12
+    },
+    {
+     "name": "NtfctnConflict1_D_Rq",
+     "bit": 53,
+     "len": 3
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x476",
+   "direction": "rx",
+   "handle": 3,
+   "dlc": 8,
+   "name": "ConsTip_Data_FD1",
+   "db_status": null,
+   "dbc_name": "ConsTip_Data_FD1",
+   "node": "SOBDMC_HPCM_FD1",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#134",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "ConsTipV_No_Dsply",
+     "bit": 49,
+     "len": 10
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x477",
+   "direction": "rx",
+   "handle": 2,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#135",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x4A2",
+   "direction": "rx",
+   "handle": 1,
+   "dlc": 5,
+   "name": "Driveline_Data_2",
+   "db_status": null,
+   "dbc_name": "Driveline_Data_2",
+   "node": "TCCM",
+   "sample_bytes": null,
+   "init_bytes": "00 00 00 00 00",
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#136",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "SelDrvMdeAwd2_D_Stat",
+     "bit": 31,
+     "len": 5
+    },
+    {
+     "name": "RearDiffLckMsg_D_Rq",
+     "bit": 20,
+     "len": 3
+    },
+    {
+     "name": "RearDiffLckLamp_D_Rq",
+     "bit": 11,
+     "len": 2
+    },
+    {
+     "name": "RearDiffLck_Tq_Actl",
+     "bit": 7,
+     "len": 12
+    },
+    {
+     "name": "RearDiffFalt_D_Stat",
+     "bit": 23,
+     "len": 2
+    },
+    {
+     "name": "LsdSrvcRqd_B_Rq",
+     "bit": 21,
+     "len": 1
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x4D0",
+   "direction": "rx",
+   "handle": 0,
+   "dlc": 2,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": 5000,
+   "watchdog": "G2#137",
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x591",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x720",
+   "direction": "rx",
+   "handle": 163,
+   "dlc": 8,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x728",
+   "direction": "tx",
+   "handle": null,
+   "dlc": null,
+   "name": null,
+   "db_status": null,
+   "dbc_name": null,
+   "node": null,
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": null,
+   "required_bytes": null,
+   "notes": ""
+  },
+  {
+   "id": "0x7DF",
+   "direction": "rx",
+   "handle": 162,
+   "dlc": 8,
+   "name": "TesterFunctionalReq_FD1",
+   "db_status": null,
+   "dbc_name": "TesterFunctionalReq_FD1",
+   "node": "TSTR",
+   "sample_bytes": null,
+   "init_bytes": null,
+   "reset_mask": null,
+   "deadline_ms": null,
+   "watchdog": null,
+   "bit_monitors": null,
+   "wrench": null,
+   "signals": [
+    {
+     "name": "TesterFunctionalReq",
+     "bit": 7,
+     "len": 64
+    }
+   ],
+   "required_bytes": null,
+   "notes": ""
+  }
+ ]
+}

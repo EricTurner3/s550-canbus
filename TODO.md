@@ -19,31 +19,33 @@ sequence).
       ```
       python ipc_dtc_test.py probe dummy 168 263 4A2
       ```
-- [ ] **2. Every unsent ID at once**, zeros once a second (~1,700 frames/s, every other warning lights up, only the
-      wrench matters). `@2000` if the gauges drop out, still inside the 5 s timeout.
+- [x] **2. Every unsent ID at once**, zeros (`probe dummy 000-6FF@1000`): no change
+- [x] **3. `0x14C` with byte 3 bit 0 set** (analog firmware): wrench still back ~5 s after power up (14 Nov 2026)
+- [x] **4. `0x14C` + `0x46A` with byte 3 bit 3 set: wrench OFF, stays off through a power pull (14 Nov 2026). SOLVED.**
       ```
-      python ipc_dtc_test.py probe dummy 000-6FF@1000
+      python ipc_dtc_test.py probe 14C=0000000100000000@100 46A=0000000800000000@100
       ```
-      If the wrench goes out: halve the range (`000-37F@1000`, `380-6FF@1000` ...) until the frames are found. It may
-      need two of them together, so when neither half does it, keep one half and split the other.
-- [ ] **3. If it stays on with everything present** a bit is set in a frame we send. Step 2 again with `0x179` and
-      `0x230` as zeros on top (`... 000-6FF@1000 179 230`), then `0x3B3` byte 1 bit by bit.
+- [x] Both in the `s550_cluster.py` heartbeat (14 Nov 2026): `send_trans_service` (`0x14C`, `00 00 00 01 ...`) and
+      `send_gwm_present` (`0x46A` byte 3 `08`), 10 Hz.
+- [ ] Run the plain heartbeat (no probe): wrench off from power up, U0146 still away (`ipc_dtc_test.py read`), nothing
+      new on the display.
 - [ ] Ask the two builders with the same wrench which frames they send, and anyone with a BCM on a bench for its HS3
       / HS1 frames (body service required, and the `07 01` request on `0x3E0`)
 
-## Firmware RE (next steps for the wrench)
+## Firmware RE
 
-Now that bench step 1 failed, go to the firmware. Full state in `vbf/FIRMWARE_NOTES.md`; scanner `vbf/canscan.py`.
+Full state in `vbf/FIRMWARE_NOTES.md`.
 
-- [ ] **Bench step 2 still untried** — every unsent ID at once (`probe dummy 000-6FF@1000`), then bisect. Cheapest
-      thing left that doesn't need more RE; worth running before the firmware dig.
-- [ ] **COM timeout table in the digital image** (`KL3T...section_001_00008000...bin`). The wrench is "service-
-      required message missing 5 s → default on", so find the COM per-message RX timeout table: a parallel array,
-      same hash index as the RX ID table at ~0x117A00, holding each PDU's timeout value (look for `0x1F4`=500ms /
-      `0x5`=5 units near the service IDs 0x179/0x431/0x3B3) and a timeout-action/callback. That's the mechanism.
-- [ ] **Decompress the analog KR3T VBF** (`KR3T-14C026-AC`, closest to our FR33). Section is Volvo-compressed
-      (`data_format_identifier 0x10`); the unpacker doesn't decode it. Canonical Okumura LZSS desyncs → likely
-      chunked. Next: find the chunk framing in the raw bytes, decode per chunk, then `canscan.py <bin> C000`.
+- [x] **Decompress the analog KR3T VBF**: bit-packed Okumura LZSS (`vbf/vbf_lzss.py`), image loads at 0xC100.
+- [x] **Analog receive path + wrench (14 Nov 2026).** RH850 code, read with `vbf/rh850dis.py`, pulled out by
+      `vbf/kr3t_com_extract.py`: 172 RX IDs with handle, DLC, init bytes, message-missing deadline (5 s, `0x3A6`
+      `0x3A7` 1.6 s, 13 unmonitored) and the frame bits each watches, plus the wrench inputs (`0x14C` / `0x179` /
+      `0x3B2`). Notes: `vbf/KR3T-14C026-AC_CAN_Notes.{md,json}` via `vbf/make_can_notes.py`.
+- [x] **Digital wrench mapped (14 Nov 2026)** with `vbf/vledis.py`: routine `0x0A8A86`, inputs `0x14C` / `0x46A` /
+      `0x3B2` always, `0x263` / `0x4A2` / `0x46B` by config. See FIRMWARE_NOTES.md.
+- [ ] What config params 13 / 205 / 245 are (`0x4E836`), and their values on the FR33 (as-built?).
+- [ ] Richer `sample_bytes` in the notes from `/can/*.csv` (`build_web.py` already takes the first sample per ID);
+      only the freeze frame is used now.
 - [ ] **(Optional) UDS strategy dump of our own cluster** — blocked: `RequestUpload` needs programming session
       (0x10 02) + L1 security (`0x01`, a different generator than the solved 0x03). Capturing L1 pairs safely is
       the hard part (the Forscan op that unlocks L1 is a reflash = brick risk). See `uds_security.py` (gitignored)
