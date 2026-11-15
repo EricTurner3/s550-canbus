@@ -1,5 +1,63 @@
 # Changelog
 
+## [2.8.0] - 14 Nov 2026
+**SimHub drives the cluster, and cruise shows its set speed.** `python s550_cluster.py simhub` reads any game SimHub
+supports through SimHub's web API, with `s550_cluster.py` still sending every heartbeat, so no warnings. The cruise
+set speed above the icon was found in the cluster firmware: `0x77` byte 4, which the steering warning fix had been
+sending as `FF`.
+
+### games/simhub.py
+
+- New game adapter: polls `http://localhost:8888/api/getgamedata` at 50 Hz (SimHub's Web Server setting enabled), and
+  sends the defaults (parked, warm engine) with no game running or paused
+- Maps speed, rpm / max rpm, ignition / engine on (check engine on with the key on and engine off), parking brake, high
+  and low beams, cruise icon and set speed, ABS / TC, turn signals, coolant / CHT / oil / air temps, compass, g meter
+  and tire pressures with the low tire warnings
+- Temperatures and tire pressures are converted back from SimHub's display units
+- Turn signals are held between the game lamp's flashes and sent as flashing, so the cluster flashes them evenly
+- Boost / vacuum and AFR are estimated from throttle and rpm for games that don't send them (`SIM_VACUUM_PSI`,
+  `SIM_BOOST_PSI`, `SIM_AFR_WOT`). Real turbo data is used when the game has it
+- Settings at the top for the g meter signs / scale, compass offset, low tire threshold and cruise unit
+  (`CruiseControlSpeedMph` / `Kmh`). The g meter and compass directions aren't checked on a drive yet
+- Replaces `simhub_customserial.shsds`, the Custom Serial device didn't keep the cluster awake
+
+### s550_data.py
+
+- New `icon_low_beams`: headlamps on
+- New `value_cruise_speed`: the set speed above the cruise icon, in the cluster's unit, 0 none
+- `icon_cruise_control` 2 is grey standby (set speed grey too)
+
+### s550_cluster.py
+
+- `simhub` game option
+- `send_door_status`: `0x3B3` byte 0 bit `0x04` with `icon_low_beams`
+- `send_vehicle_speed_77`: byte 4 is the cruise set speed (1 - 253) with the cruise icon on, byte 5 bit 1 clear (white
+  text) when active, set (grey) on standby. Frames without cruise are unchanged
+
+### live_test.py
+
+- `icon_low_beams` switch and `value_cruise_speed` slider
+
+### interactive_brute_force.py
+
+- Presets can set clusterdata (the cruise icon for the cruise sweeps)
+- `cruise`, `cruise165`, `cruise165stat`: `0x202` / `0x165` candidates from Ford's DBC, no set speed on the cluster
+- `cruise77` (set speed found) and `cruise77b5` (white / grey)
+
+### Firmware (vbf/)
+
+- `FIRMWARE_NOTES.md`: KR3T cruise set speed, from the `0x77` getters through the telltale and display path, with
+  the bench result
+- `KR3T-14C026-AC_CAN_Notes.{json,md}`: `0x077` / `0x42C` cruise notes, and `0x14C` / `0x46A` names from database.md
+
+### database.md
+
+- `0x77`: byte 4 cruise set speed (`FE` / `FF` none), byte 5 bit 1 white / grey; `0x42C` points to it
+
+### README.md
+
+- `python s550_cluster.py simhub`
+
 ## [2.7.0] - 14 Nov 2026
 **The wrench / See Manual is gone.** Read out of the cluster firmware: it wants `0x14C`, `0x46A` and `0x3B2` to keep
 arriving, and `0x14C` / `0x46A` only count when a "valid" bit is set. We never sent `0x14C` and sent `0x46A` as all

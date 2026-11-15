@@ -40,6 +40,9 @@
         python interactive_brute_force.py trackapps3b2
         python interactive_brute_force.py config04 --vin 1FA6P8...
         python interactive_brute_force.py config10 --vin 1FA6P8...
+        python interactive_brute_force.py cruise
+        python interactive_brute_force.py cruise165 / cruise165stat
+        python interactive_brute_force.py cruise77 / cruise77b5
 
     --gt also sends every ID from v-ivanyshyn's GT log that s550_cluster.py doesn't, looping through the recorded frames
     so rolling counters / checksums stay valid. Use it to find which ID a gauge needs, then narrow it down with
@@ -143,6 +146,7 @@ def tpms_test(byte, lo, hi, step, what, b0=0x40):
 #   send_period  - how often the test frame is sent, match the ID's real rate
 #   sample_data  - frame to start with, the bytes under test are replaced
 #   describe     - how the value under test is printed
+#   clusterdata  - optional, s550_data fields set for the run (e.g. an icon the signal shows next to)
 TESTS = {
     # 0x43E byte 3, raw / 10. 0x6E - 0xC8 is 11.0 - 20.0
     'afr': dict(can_ids=(0x43E,), test_bytes=(3,), mode='sequential', value_range=(0x6E, 0xC8), step_size=2,
@@ -283,6 +287,39 @@ TESTS = {
                 describe=lambda v: '{:#04x} -> {:.1f}c / {:.0f}f if outside temp'.format(v, v * 0.5 - 40, (v * 0.5 - 40) * 9 / 5 + 32)),
     # 0x048 byte 4 every value 00 - 1F. apim048 found 07 / 06 on, 03 / 17 off, 05 no change, 27 on: looks like Ford's
     # power mode (names below are a guess). Booting takes up to ~25 s (0x290 01 -> 7F), so each value is held 30 s
+    # 14 Nov 2026 - cruise set speed, shown above the green cruise icon (80 km/h on a car set to km/h). The firmware's
+    # 0x202 has Veh_V_RqCcSet (Ford DBC EngVehicleSpThrottle2): byte 4 bit 0 + byte 5, 9 bits, 0.5 km/h per bit.
+    # Byte 4 keeps 0x60 (the speed gauge needs it), bytes 6 & 7 are the --speed. 0 - 200 km/h, 8 km/h a step.
+    # The cruise icon is held green (0x42C 90), byte 5 = D1 would be 65 mph
+    'cruise': dict(can_ids=(0x202,), test_bytes=(4, 5), mode='incremental', value_range=(0x6000, 0x6190), step_size=0x10,
+                step_period=2.0, send_period=cluster.SPEED_TWO, sample_data=[0x00, 0x00, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00],
+                clusterdata=dict(icon_cruise_control=1),
+                describe=lambda v: '{:02X} {:02X} -> {:.1f} km/h / {:.1f} mph'.format(v >> 8, v & 0xFF, (v & 0x1FF) * 0.5,
+                                                                                    (v & 0x1FF) * 0.5 / 1.609)),
+    # 0x202 showed nothing. 0x165 EngBrakeData (Ford DBC), the GT350 logs send 20 40 00 00 00 00 00 00 (byte 0 brake
+    # pedal released). Byte 2 Veh_V_DsplyCcSet, the set speed as displayed (no scale, so mph here). Byte 1 bits 2 - 0
+    # CcStat_D_Actl, the status 0x42C's icon is repacked from: 4 active (green, 0x42C 90), 2 standby (grey, 0x42C 50)
+    #   cruise165     - set speed 0 - 250, 5 a step, status active
+    #   cruise165stat - every status 0 - 7 with the set speed at 65 (0x41)
+    'cruise165': dict(can_ids=(0x165,), test_bytes=(2,), mode='sequential', value_range=(0x00, 0xFA), step_size=5,
+                step_period=2.0, send_period=cluster.SPEED_TWO, sample_data=[0x20, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+                clusterdata=dict(icon_cruise_control=1),
+                describe=lambda v: '{:#04x} -> set speed {}'.format(v, v)),
+    'cruise165stat': dict(can_ids=(0x165,), test_bytes=(1,), mode='sequential', value_range=(0x40, 0x47), step_size=1,
+                step_period=4.0, send_period=cluster.SPEED_TWO, sample_data=[0x20, 0x44, 0x41, 0x00, 0x00, 0x00, 0x00, 0x00],
+                clusterdata=dict(icon_cruise_control=1),
+                describe=lambda v: '{:#04x} -> CcStat {}, set speed 65'.format(v, v & 0x07)),
+    # 0x165 showed nothing either. Firmware (KR3T 0x1BF5A): the set speed is 0x77 byte 4, the GWM's copy of
+    # Veh_V_DsplyCcSet. 1 - 253 shown, FE / FF invalid (the steering warning fix frame has FF there, so it never showed).
+    # Rest of the frame is the fix frame. Byte 5 bit 1 is a cruise flag too (0x1BF2A), cruise77b5 flips it at 65
+    'cruise77': dict(can_ids=(0x77,), test_bytes=(4,), mode='sequential', value_range=(0x00, 0xFD), step_size=5,
+                step_period=2.0, send_period=cluster.SPEED_TWO, sample_data=[0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0xFC],
+                clusterdata=dict(icon_cruise_control=1),
+                describe=lambda v: '{:#04x} -> set speed {}'.format(v, v)),
+    'cruise77b5': dict(can_ids=(0x77,), test_bytes=(5,), mode='sequential', value_range=(0xFD, 0xFF), step_size=2,
+                step_period=4.0, send_period=cluster.SPEED_TWO, sample_data=[0xFF, 0xFF, 0xFF, 0xFF, 0x41, 0xFF, 0x00, 0xFC],
+                clusterdata=dict(icon_cruise_control=1),
+                describe=lambda v: '{:#04x} -> byte 5 bit 1 = {}, set speed 65'.format(v, v >> 1 & 1)),
     'apimpower': dict(can_ids=(0x048,), test_bytes=(4,), mode='sequential', value_range=(0x00, 0x1F), step_size=1,
                 step_period=30.0, send_period=cluster.SPEED_THREE, sample_data=[0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0xE0, 0x00],
                 describe=lambda v: '{:#04x} -> {}'.format(v, POWER_MODES.get(v, '?'))),
@@ -676,6 +713,12 @@ def main():
     cluster.clusterdata.intake_temp = 36
     cluster.clusterdata.value_afr = 13.9
     cluster.clusterdata.value_boost = -7.2 # 14.6 inHg vacuum
+    for name, v in cfg.get('clusterdata', {}).items():
+        setattr(cluster.clusterdata, name, v)
+    if 0x202 in can_ids:
+        # the speed gauge is in the frame under test, keep it at --speed like send_speed
+        speed = int(cluster_speed) * 175
+        sample_data[6:8] = [speed >> 8 & 0xFF, speed & 0xFF]
 
     cluster_ids() # before this script adds to the schedule
     log_frames = []

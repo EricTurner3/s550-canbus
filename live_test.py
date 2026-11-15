@@ -50,6 +50,7 @@ import sys
 import types
 sys.modules['games.fh5'] = types.ModuleType('games.fh5')
 sys.modules['games.ats'] = types.ModuleType('games.ats')
+sys.modules['games.simhub'] = types.ModuleType('games.simhub')
 
 import s550_cluster as cluster
 import s550_data
@@ -71,10 +72,12 @@ FIELDS = {
     'icon_left_signal':       dict(group='Icons', kind='tri'),
     'icon_right_signal':      dict(group='Icons', kind='tri'),
     'icon_high_beams':        dict(group='Icons', kind='tri', states=[0, 1]),
+    'icon_low_beams':         dict(group='Icons', kind='tri', states=[0, 1]),
     'icon_check_engine':      dict(group='Icons', kind='tri'),
     'icon_cruise_control':    dict(group='Icons', kind='tri'),
 
     'value_speed':            dict(group='Gauges', kind='range', min=0, max=200, step=1, unit='mph'),
+    'value_cruise_speed':     dict(group='Gauges', kind='range', min=0, max=253, step=1, unit='mph'),
     'value_rpm':              dict(group='Gauges', kind='range', min=0, max=10000, step=50, unit='rpm'),
     'value_rpm_max':          dict(group='Gauges', kind='range', min=1000, max=12000, step=100, unit='rpm'),
     'value_odometer':         dict(group='Gauges', kind='number', min=0, max=0xFFFFFF, step=1, unit='km'),

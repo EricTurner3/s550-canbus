@@ -475,7 +475,7 @@
     }
    ],
    "required_bytes": null,
-   "notes": ""
+   "notes": "**Cruise set speed: byte 4** (GWM copy of Veh_V_DsplyCcSet), 1 - 253 shown as sent, FE / FF invalid (getter 0x053C02, telltale 0x01BF5A). Byte 5 bit 1 is a cruise flag (0x01BF2A). See FIRMWARE_NOTES.md"
   },
   {
    "id": "0x081",
@@ -987,8 +987,8 @@
    "direction": "rx",
    "handle": 149,
    "dlc": 8,
-   "name": "CGEA_Urea_Strategy",
-   "db_status": null,
+   "name": "Transmission service required (wrench)",
+   "db_status": "Confirmed",
    "dbc_name": "CGEA_Urea_Strategy",
    "node": "ECM_Diesel",
    "sample_bytes": null,
@@ -8267,7 +8267,7 @@
     }
    ],
    "required_bytes": null,
-   "notes": ""
+   "notes": "Byte 0 bits 7 - 5 cruise status / icon (getter 0x054A92). No set speed here, that is 0x077 byte 4"
   },
   {
    "id": "0x42D",
@@ -9532,7 +9532,7 @@
    "direction": "rx",
    "handle": 9,
    "dlc": 6,
-   "name": "GWM present (stops U0146)",
+   "name": "GWM present (stops U0146), wrench input: byte 3 must be `08`",
    "db_status": "Confirmed",
    "dbc_name": null,
    "node": null,

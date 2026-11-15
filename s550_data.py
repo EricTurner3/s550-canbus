@@ -26,17 +26,19 @@ class s550_ipc:
         self.icon_left_signal = 0           # either 0 or 2
         self.icon_right_signal = 0          # either 0 or 2
         self.icon_high_beams = 0            # no flashing
+        self.icon_low_beams = 0             # headlamps on (0x3B3 byte 0 bit 0x04), no flashing
         self.icon_check_engine = 0          # 0 off, 1 solid, 2 flashing
-        self.icon_cruise_control = 0        # 0 off, 1 green (active), 2 grey with SET (standby)
+        self.icon_cruise_control = 0        # 0 off, 1 green (active), 2 grey with SET (standby, set speed grey too)
 
         # raw values, typically numbers used in gauges
         self.value_speed = 0.0              # miles per hour
+        self.value_cruise_speed = 0         # cruise set speed above the icon (0x77 byte 4), in the cluster's unit. 0 none
         self.value_rpm = 0.0
         self.value_rpm_max = 8000           # modify if game car has higher/lower RPM than cluster
         self.value_odometer = 0             # kilometers
         self.value_boost = 0.0              # psi, negative is vacuum. Gauge is 30 inHg (-14.7 psi) to 20 psi
         self.value_afr = 14.7               # air fuel ratio
-        self.value_fuel = 0.0               # currently unmapped
+        self.value_fuel = 0.0               # unmapped; fuel is not sent over CAN. This would need a custom device (like arduino) to take the data and send it to different pins
         # warm engine defaults, for games that don't send these (Forza). ATS sends oil and coolant
         self.oil_temp = 100.0               # celsius (212f), gauge 36c - 158c
         self.engine_temp = 110.0            # celsius (230f), the needle sits mid gauge from 106c - 132c

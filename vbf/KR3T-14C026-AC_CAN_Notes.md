@@ -24,7 +24,7 @@ Requested when any **active** input's watchdog times out (missing 5 s) or its se
 | `0x048` | rx | 7 | APIM power mode (required to boot the APIM) | 5000 |  |  |  |  |
 | `0x04C` | rx | 5 | Airbag / seatbelt indicators | 5000 |  | `30 FF FF 1E 00` | `10 AF FF 00 00 00 00 00` |  |
 | `0x076` | rx | 7 | Steering angle, Track Apps g meter |  | b0.7=1 StopLamp_B_RqBrk | `00 00 00 00 00 00 00` | `3E 83 C0 00 00 00 00 00` |  |
-| `0x077` | rx | 8 | Vehicle speed / yaw, steering warning fix |  | b0.6=1 VehOverGnd_V_Est; b5.7=1 ; b0.4=1 VehOverGnd_V_Est; b5.2=1 VehLatComp_A_Actl; b5.0=1 VehLatComp_A_Actl; b0.5=1 VehOverGnd_V_Est; b6.0=1 VehLongComp_A_Actl; b6.6=1 VehLatComp_A_Actl | `00 00 00 00 00 00 00 00` | `00 00 07 FF 7F F7 E6 02` |  |
+| `0x077` | rx | 8 | Vehicle speed / yaw, steering warning fix |  | b0.6=1 VehOverGnd_V_Est; b5.7=1 ; b0.4=1 VehOverGnd_V_Est; b5.2=1 VehLatComp_A_Actl; b5.0=1 VehLatComp_A_Actl; b0.5=1 VehOverGnd_V_Est; b6.0=1 VehLongComp_A_Actl; b6.6=1 VehLatComp_A_Actl | `00 00 00 00 00 00 00 00` | `00 00 07 FF 7F F7 E6 02` | **Cruise set speed: byte 4** (GWM copy of Veh_V_DsplyCcSet), 1 - 253 shown as sent, FE / FF invalid (getter 0x053C02, telltale 0x01BF5A). Byte 5 bit 1 is a cruise flag (0x01BF2A). See FIRMWARE_NOTES.md |
 | `0x081` | rx | 3 | Steering wheel buttons | 5000 |  |  | `00 00 00 00 00 00 00 00` |  |
 | `0x082` | rx | 3 | Steering mode | 5000 |  |  | `82 00 14 40 7E 00 64 FF` |  |
 | `0x084` | rx | 7 | GlobalClock_Data_FD1 | 0 |  | `00 00 00 00 00 00 00` | `13 00 00 79 01 03 15 00` |  |
@@ -36,7 +36,7 @@ Requested when any **active** input's watchdog times out (missing 5 s) or its se
 | `0x108` | rx | 8 |  | 5000 | b2.0=1 ; b2.1=1 ; b2.3=1 ; b1.2=1 ; b1.1=1 | `00 00 00 00 40 00 00 FE` |  |  |
 | `0x109` | rx | 4 |  | 5000 |  | `00 00 00 00` |  |  |
 | `0x123` | tx |  |  |  |  |  |  |  |
-| `0x14C` | rx | 8 | CGEA_Urea_Strategy | 5000 | b5.1=1 UreaLvl_Pc_Actl; b3.0=1 UreaQltyFlg_B_RqDsply; b5.0=1 UreaLvl_Pc_Actl; b3.1=1 UreaQltySys_D_RqDsply; b0.4=1 ; b0.3=1 VehUreaRnge2_L_DsplyMx; b6.6=1 DieslPrtcWarn_D_Rq | `00 00 00 00 00 00 00 00` |  | **wrench input 0**  |
+| `0x14C` | rx | 8 | Transmission service required (wrench) | 5000 | b5.1=1 UreaLvl_Pc_Actl; b3.0=1 UreaQltyFlg_B_RqDsply; b5.0=1 UreaLvl_Pc_Actl; b3.1=1 UreaQltySys_D_RqDsply; b0.4=1 ; b0.3=1 VehUreaRnge2_L_DsplyMx; b6.6=1 DieslPrtcWarn_D_Rq | `00 00 00 00 00 00 00 00` |  | **wrench input 0**  |
 | `0x156` | rx | 8 | Coolant & oil temp | 5000 |  | `00 00 00 00 00 00 00 00` | `9E 99 00 00 03 00 00 00` |  |
 | `0x163` | rx | 8 | EngineData_10 | 5000 |  |  |  |  |
 | `0x166` | rx | 7 | Stop_Start | 5000 |  | `00 00 00 00 00 00 00` | `00 00 00 01 40 02 00 00` |  |
@@ -205,7 +205,7 @@ Requested when any **active** input's watchdog times out (missing 5 s) or its se
 | `0x421` | rx | 8 | Oil pressure status, check engine | 5000 |  | `02 00 00 00 00 00 00 FF` | `04 00 14 00 00 00 58 00` |  |
 | `0x422` | rx | 7 | Coolant temp |  | b6.7=1 ; b6.4=1 | `00 00 00 00 00 00 00` | `00 00 00 9D 38 40 FE 00` |  |
 | `0x424` | rx | 7 | Powertrain_Data_4 | 5000 |  | `00 00 00 00 00 00 30` |  |  |
-| `0x42C` | rx | 7 | Occupant sensor blocked, battery icon, U0401-82, PCM present |  | b0.4=1 Batt_Crit_SoC_B; b0.2=1 EngStrtInhbt_B_RqBatt; b2.7=1 Shed_Level_Req; b3.4=1 ; b1.5=1 ChargeMode; b1.4=1 PwSysULoFalt_D_Stat; b6.0=1 ; b2.2=1 Shed_Feature_Group_ID; b6.2=1 | `00 00 00 00 FE 00 00` | `8C 00 00 00 68 A0 00 00` |  |
+| `0x42C` | rx | 7 | Occupant sensor blocked, battery icon, U0401-82, PCM present |  | b0.4=1 Batt_Crit_SoC_B; b0.2=1 EngStrtInhbt_B_RqBatt; b2.7=1 Shed_Level_Req; b3.4=1 ; b1.5=1 ChargeMode; b1.4=1 PwSysULoFalt_D_Stat; b6.0=1 ; b2.2=1 Shed_Feature_Group_ID; b6.2=1 | `00 00 00 00 FE 00 00` | `8C 00 00 00 68 A0 00 00` | Byte 0 bits 7 - 5 cruise status / icon (getter 0x054A92). No set speed here, that is 0x077 byte 4 |
 | `0x42D` | rx | 8 | Inlet air temp | 5000 |  | `00 00 00 00 00 00 00 00` | `00 02 CB 00 00 00 F0 00` |  |
 | `0x42F` | rx | 8 | Engine_Clutch_Data | 5000 |  | `00 04 00 00 00 00 00 00` | `7D 0C 00 32 06 44 00 00` |  |
 | `0x430` | tx |  | Odometer |  |  |  | `37 01 B9 AA C0 5E 37 5C` |  |
@@ -225,7 +225,7 @@ Requested when any **active** input's watchdog times out (missing 5 s) or its se
 | `0x45C` | tx |  | TrailerAid_Data3_FD1 |  |  |  |  |  |
 | `0x463` | rx | 5 | APIMGPS_Data_Nav_2_FD1 |  |  |  |  |  |
 | `0x466` | rx | 5 | GPS compass / time (APIM) | 0 |  |  |  |  |
-| `0x46A` | rx | 6 | GWM present (stops U0146) | 5000 | b0.4=1 ; b0.0=1 ; b1.2=1 ; b0.3=1 ; b2.5=1 ; b2.1=1 ; b4.7=1 ; b3.0=1 | `00 00 00 00 00 00` |  |  |
+| `0x46A` | rx | 6 | GWM present (stops U0146), wrench input: byte 3 must be `08` | 5000 | b0.4=1 ; b0.0=1 ; b1.2=1 ; b0.3=1 ; b2.5=1 ; b2.1=1 ; b4.7=1 ; b3.0=1 | `00 00 00 00 00 00` |  |  |
 | `0x46B` | rx | 8 |  |  | b7.6=1 ; b7.4=1 ; b7.0=1 ; b7.1=1 | `00 00 00 00 00 00 00 00` |  |  |
 | `0x470` | rx | 8 |  |  | b2.7=1 ; b2.2=1 ; b5.4=1 ; b2.6=1 ; b4.0=1 ; b2.1=1 ; b5.3=1 ; b5.0=1 ; b6.5=1 | `00 00 00 FE 00 00 00 00` |  |  |
 | `0x471` | rx | 8 | Cluster_HEV_Data10_FD1 | 5000 |  | `FF EF FE FF FF FF FF FF` |  |  |

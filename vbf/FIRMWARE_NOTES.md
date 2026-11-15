@@ -158,6 +158,39 @@ send 0x14C at all. Test: `python ipc_dtc_test.py probe 14C=0000000100000000@100`
 Also found on the way: a UDS DID table at `0x147E90` (`{DID, length, 0x5F, 0x0F, handler}`, Ford DIDs
 `0x404C 0x4190-0x4197 0xFD70...`) and a routine/IO table at `0x147640`.
 
+## Analog (KR3T) — cruise control set speed [found 14 Nov 2026]
+
+The workshop manual lists "Cruise control set speed display: GWM → HS-CAN3 → IPC". `0x202` byte 4-5 (`Veh_V_RqCcSet`)
+and `0x165` byte 2 (`Veh_V_DsplyCcSet`) both showed nothing on the bench, and `0x165` isn't an RX ID here. The GWM
+repacks the set speed into **`0x077` byte 4** on HS3.
+
+**Signal getters.** Com has one small getter per signal at `0x052FB0 - 0x055F86` (`ld.bu X[gp]` → shift / mask →
+`jmp [lp]`), sorted by CAN ID, each usually paired with a status getter on a `0xFEDDB7xx - 0xFEDDBAxx` byte (timeout /
+invalid, `& 7 == 0` = OK). Signals that span bytes have their own getters at `0x04DA2C - 0x04DF00`
+(`mov <RX buffer>, ep` + `sld.bu`). The ones that matter here:
+
+| Getter | Signal |
+|---|---|
+| `0x054A92` | `0x42C` byte 0 bits 7 - 5, cruise status (the icon). `0x42C` has no 8 bit signal |
+| `0x053BFA` / `0x053C02` | status / value of **`0x077` byte 4, cruise set speed** |
+| `0x053C0A` / `0x053C12` | status / value of `0x077` byte 5 bit 1 |
+
+**Cruise telltale** `0x01BFC8` ORs four parts into one state word:
+
+- `0x01BEAE`: a 2.5 s timer (`gp+1496`, up to 250 ticks) and the `0x42C` cruise status, kept in `gp+1498`
+- `0x01BF2A`: `0x077` byte 5 bit 1 = 1 with status OK → `0x40`; status `& 6 == 2` → `0x100`
+- `0x01BF5A`: `0x077` byte 4. **1 - 253 is the set speed**, kept in `gp+1499`; `0xFE` / `0xFF` are invalid and kept as
+  0; non-zero → `0x80`; timed out → `0x100`. The range matches the DBC's `Veh_V_DsplyCcSet` (0 - 253, no scale)
+- `0x01BF9C`: `0x3D8` byte 4 bits 3 - 2 → `0x200`
+
+**Display.** `0x01B5A6` picks what the cruise display item shows from the HMI state in `gp+1460` (bits 19 - 18). In
+state `0x40000` it is `gp+1499` (read back by `0x01C004`), the set speed. In state `0x80000` it is `0x077` byte 4 read
+directly (same `< 0xFE` check). Either way the value goes to `gp+1464` with a byte from `0x138910` (`01 00`), picked by
+bit 0 of `0x036862()`, likely km/h / mph. The number is shown as sent, so send it in the cluster's display unit.
+
+So the bench never showed it: the steering warning fix frame (`FF FF FF FF FF FF 00 FC`) has `FF`, "invalid", in
+byte 4. Bench test: `python interactive_brute_force.py cruise77` (byte 4 swept on the fix frame, icon green).
+
 ## Tooling
 
 - `vbf/canscan.py <bin> [base_hex] [be|le]` — scan an **uncompressed** image for the RX ID hash table

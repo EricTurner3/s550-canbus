@@ -9,6 +9,7 @@ A more interactive [web view](https://ericturner3.github.io/s550-canbus/) is als
 
 Main Scripts
 * s550_cluster.py <game> - Currently supports Forza Horizon 5, American Truck Simulator & Euro Truck Simulator 2 in an alpha state. Allows that game to interface with the cluster. See s550_data.py for the model in translating other game data
+    * `python s550_cluster.py simhub` - any game [SimHub](https://www.simhubdash.com/) reads. Turn on SimHub's web server (Settings > General, port 8888), games/simhub.py reads its `/api/getgamedata`. No SimHub device or dashboard needed
     * [Video Demonstration](https://youtu.be/KNyn1v3_cwc)
     * [Video Demonstration v2](https://www.youtube.com/shorts/0d_nqnypM2c) - 7 November 2026, shows new AFR, Boost, Inlet Air Temp, Track Apps Accelerometer gauges
 * interactive_brute_force.py - Sends the full set of cluster messages and sweeps one signal (a preset) so you can watch what changes. The up,down,left,right,enter keys control the menu on the cluster, space pauses the sweep, + / - step the value by hand, r resets it

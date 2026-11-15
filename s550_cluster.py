@@ -9,6 +9,7 @@ import sys
 import s550_data
 import games.fh5
 import games.ats
+import games.simhub
 
 can_adapter_channel = 'COM3'
 retry_period = 3 # seconds
@@ -431,6 +432,7 @@ def send_door_status(clusterdata):
         Byte 0 & 1 have to do with if the IPC is on
                 40 48 is running, doors closed, lights off
                 41 48 is running, trunk ajar
+                44 48 is running, headlamps on (icon_low_beams)
         Byte 3  has to do with backlight
                 0x00 is backlight off
                 0x0a is backlight on (mycolor)
@@ -455,6 +457,8 @@ def send_door_status(clusterdata):
     # the turn signals are sent on 0x3B2 (send_track_apps), byte 4 here is all outside temp
     outside_temp = clamp((clusterdata.outside_temp + 40) * 2, 0x00, 0xDF)
     key = 0x40 if key_on else 0x10
+    if clusterdata.icon_low_beams:
+        key |= 0x04 # headlamps on
     data = [key, 0x48, 0x02, lights, outside_temp, 0x05, parking_brake_light, 0x02]
     return send_msg(DOOR_STATUS, start, data)
 
@@ -760,11 +764,19 @@ def send_vehicle_speed_77(clusterdata):
         byte 6 0xE6 keeps Hill Start Assist Not Available off
         10 Nov 2026 - steering_warning_fix sends FF FF FF FF FF FF 00 FC instead (every ABS signal invalid), which keeps
         Steering Assist Fault and Steering Fault Service Now off with EPAS enabled in the as-built
+        14 Nov 2026 - byte 4 is the cruise set speed above the icon (value_cruise_speed, FF none), byte 5 bit 1 its
+        shade: clear bright white (icon_cruise_control 1, active), set light grey (standby / off)
     '''
+    if clusterdata.icon_cruise_control and clusterdata.value_cruise_speed >= 1:
+        cruise_speed = clamp(clusterdata.value_cruise_speed, 0x01, 0xFD)
+    else:
+        cruise_speed = None
+    grey = 0x00 if clusterdata.icon_cruise_control == 1 else 0x02
     if clusterdata.steering_warning_fix:
-        return send_msg(0x77, start, [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFC])
+        return send_msg(0x77, start, [0xFF, 0xFF, 0xFF, 0xFF, cruise_speed or 0xFF, 0xFD | grey, 0x00, 0xFC])
+    # without cruise, 7F like every log
     raw = clamp(clusterdata.value_speed * 175, 0, 0x3FFF)
-    return send_msg(0x77, start, [raw >> 8, raw & 0xFF, 0x08, 0x00, 0x7F, 0xF7, 0xE6, 0x02])
+    return send_msg(0x77, start, [raw >> 8, raw & 0xFF, 0x08, 0x00, cruise_speed or 0x7F, 0xF5 | grey, 0xE6, 0x02])
 
 def send_vehicle_speed_415(clusterdata):
     '''
@@ -841,7 +853,7 @@ PSCM_SCHEDULE = [
 ]
 
 def load_game(game):
-    supported_games = ['fh5', 'ats']
+    supported_games = ['fh5', 'ats', 'simhub']
     if(game in supported_games):
         #print('Loading {}'.format(game))
         if game == 'fh5':
@@ -849,6 +861,8 @@ def load_game(game):
         elif game == 'ats':
             time.sleep(0.1) # trying to poll the API endpoint too much causes it to fail
             return games.ats.data()
+        elif game == 'simhub':
+            return games.simhub.data() # any game SimHub reads, through its web API
     else:
         pass
 
