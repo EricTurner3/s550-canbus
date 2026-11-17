@@ -1361,7 +1361,7 @@ The digital menu is 1-D: Up / Down / OK / Menu / Back only (no left/right), whic
 to it. On the S550 wheel the physical packs are media on the left spoke, menu+voice on the right (18+; believed flipped
 on 15-17) - so the "ignored" bits are real buttons the IPC simply does not act on.
 
-## Fault / lamp suppression (digital, standalone / no GWM)
+## Fault / lamp suppression
 
 The digital cluster latches more than the analog. Confirmed on the bench:
 
@@ -1372,13 +1372,8 @@ The digital cluster latches more than the analog. Confirmed on the bench:
 | Blind-spot lamp | `0x3A6` and `0x3A7` = `00 40 02 00 00 00 00 00` |
 | TPMS lamp | `0x3B4` zeros |
 | ABS / TCS / red BRAKE | `0x416` lamp fields 0 (a healthy ABS also clears them) |
-| Wrench + "See Manual" | `0x168` b2 bit7 = 0 |
 | Lost-comm U-codes | module-presence frames held at zeros: `0x076`->U0121 (ABS), `0x168`->U0103 (GSM), `0x223`->U0193 (DACM), `0x2E3`->U0253 (APIM); pair `0x2A1`+`0x3E6`->U0212 (SCCM) |
 
-- **Charge + wrench are latched by the cluster own U-code DTCs** and cannot be cleared by any status frame a 2015-17
-  car sends. Workaround: UDS `14 FF FF FF` on `0x720` (IPC, default session, no security) every ~2 s clears them (and
-  reveals outside temp); codes re-set in ~5 s, so a periodic clear keeps them suppressed. Real fix = emulate each lost
-  module (the real GWM HS3 output clears U0100/U0420/U0232/U0233/U0256/U0557 by itself).
 
 ## 0x430 - Ignition status (digital, cluster TX)
 
