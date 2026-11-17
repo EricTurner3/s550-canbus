@@ -91,6 +91,14 @@ def data():
     if nd.get('EngineIgnitionOn') == 1 and nd.get('EngineStarted') == 0:
         formatted_data.icon_check_engine = 1 # key on, engine off, like the car's bulb check
     formatted_data.icon_parking_brake = int(nd.get('ParkingBrakeActive') == 1 or (nd.get('Handbrake') or 0) > 0)
+    # Gear is a string, N / 0 neutral, R reverse, 1+ the gear. Games don't send P, the parking brake stands in for it
+    gear = str(nd.get('Gear') or 'N').upper()
+    if nd.get('ParkingBrakeActive') == 1 or gear == 'P':
+        formatted_data.value_gear = -2
+    elif gear == 'R':
+        formatted_data.value_gear = -1
+    else:
+        formatted_data.value_gear = int(gear) if gear.isdigit() else 0
     formatted_data.icon_high_beams = int(nd.get('HighBeamActive') == 1)
     formatted_data.icon_low_beams = int(nd.get('LowBeamActive') == 1 or nd.get('HeadlightsActive') == 1)
     formatted_data.icon_cruise_control = int(nd.get('CruiseControlActive') == 1)  # 1 green, active

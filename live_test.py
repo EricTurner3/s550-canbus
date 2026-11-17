@@ -78,6 +78,7 @@ FIELDS = {
 
     'value_speed':            dict(group='Gauges', kind='range', min=0, max=200, step=1, unit='mph'),
     'value_cruise_speed':     dict(group='Gauges', kind='range', min=0, max=253, step=1, unit='mph'),
+    'value_gear':             dict(group='Gauges', kind='range', min=-2, max=10, step=1, unit='P R N 1+'),
     'value_rpm':              dict(group='Gauges', kind='range', min=0, max=10000, step=50, unit='rpm'),
     'value_rpm_max':          dict(group='Gauges', kind='range', min=1000, max=12000, step=100, unit='rpm'),
     'value_odometer':         dict(group='Gauges', kind='number', min=0, max=0xFFFFFF, step=1, unit='km'),

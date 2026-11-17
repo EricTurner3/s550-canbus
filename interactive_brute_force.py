@@ -323,6 +323,31 @@ TESTS = {
     'apimpower': dict(can_ids=(0x048,), test_bytes=(4,), mode='sequential', value_range=(0x00, 0x1F), step_size=1,
                 step_period=30.0, send_period=cluster.SPEED_THREE, sample_data=[0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0xE0, 0x00],
                 describe=lambda v: '{:#04x} -> {}'.format(v, POWER_MODES.get(v, '?'))),
+    # 16 Nov 2026 - SelectShift gear display. Needs the as-built on Transmission Type Automatic (720-03-02 C818-000C)
+    # and Gear Select SST (720-02-01 6D80-3C30-1EA1). v-ivanyshyn's GT (6R80 auto) sends 0x171 every ~30 ms, in the
+    # analog firmware's receive table too. Its whole drive is byte 1 0x80 (S) with byte 0 high nibble = gear (14 in
+    # 1st, 24 in 2nd, 0x230 byte 0 10 / 11 and 20 / 21 alongside), then shifted out: 10 60 D, 14 40 N, 14 20 R, 14 00 P
+    # Ford DBC EngineData_1: byte 0 bits 7 - 4 TrnIpcDsplyGear_D_Actl (gear shown), 3 - 2 TrnIpcDsplyMde_D_Stat and
+    # 1 - 0 TrnIpcDsplyGear_D_Stat (0 blank, 1 on, 2 flash), byte 1 bits 7 - 5 TrnIpcDsplyMde_D_Actl (P R N D S, then
+    # Manual 1 / 2 / 3). The log's 14 is gear 1 with the digit blank, the digit needs byte 0 bit 0 (x5)
+    #   gear171   - byte 1 mode P R N D S M1 M2 M3 (00 - E0), byte 0 15 (gear 1, digit on)
+    #   gear171s  - S held (byte 1 80), byte 0 gear 1 - 10 with the digit on (15 - A5)
+    #   gear171stat - S held, gear 3, byte 0 low nibble 0 - F (both display statuses)
+    #   gear230   - 0x230 the automatic's way (byte 1 08 = D), byte 0 gear 1 - 10 (10 - A0). --gt-only 0x171 loops
+    #               the log's 0x171 alongside (S in gear 1 / 2 for most of it, D N R P for the last seconds)
+    'gear171': dict(can_ids=(0x171,), test_bytes=(1,), mode='sequential', value_range=(0x00, 0xE0), step_size=0x20,
+                step_period=4.0, send_period=0.03, sample_data=[0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+                describe=lambda v: '{:#04x} -> {}'.format(v, ('P', 'R', 'N', 'D', 'S', 'Manual 1', 'Manual 2', 'Manual 3')[v >> 5])),
+    'gear171s': dict(can_ids=(0x171,), test_bytes=(0,), mode='sequential', value_range=(0x15, 0xA5), step_size=0x10,
+                step_period=4.0, send_period=0.03, sample_data=[0x15, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+                describe=lambda v: '{:#04x} -> S, gear {}'.format(v, v >> 4)),
+    'gear171stat': dict(can_ids=(0x171,), test_bytes=(0,), mode='sequential', value_range=(0x30, 0x3F), step_size=1,
+                step_period=4.0, send_period=0.03, sample_data=[0x35, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+                describe=lambda v: '{:#04x} -> gear 3, mode display {}, gear display {}'.format(
+                    v, ('blank', 'on', 'flash', 'blank')[v >> 2 & 3], ('blank', 'on', 'flash', 'blank')[v & 3])),
+    'gear230': dict(can_ids=(0x230,), test_bytes=(0,), mode='sequential', value_range=(0x10, 0xA0), step_size=0x10,
+                step_period=4.0, send_period=cluster.SPEED_TWO, sample_data=[0x10, 0x08, 0x00, 0x00, 0x82, 0x00, 0x00, 0x00],
+                describe=lambda v: '{:#04x} -> gear {}'.format(v, v >> 4)),
 }
 parser = argparse.ArgumentParser(description='Sweep a CAN signal on the cluster')
 parser.add_argument('test', nargs='?', default='afr', choices=TESTS)

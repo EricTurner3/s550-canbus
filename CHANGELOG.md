@@ -1,5 +1,43 @@
 # Changelog
 
+## [2.9.0]
+![gear indicator](docs/gear_indicator.png)
+
+**The SelectShift gear shows on a manual cluster.** With the as-built data switched to Automatic (`720-03-02` C**8**18-000**C**) + SelectShift Enabled (`720-02-01` **6**D80-3C30-1E**A**1), `0x171`
+shows gears 1 - 6 next to the odometer.
+
+### s550_data.py
+
+- New `value_gear`: `-2` P (default), `-1` R, `0` N, `1+` the gear
+
+### s550_cluster.py
+
+- `send_trans_display` sends `0x171` every 20 ms: S with the gear for `1+`, P / R / N otherwise, and always P while the
+  key is off (start up and exit), so an automatic-configured cluster never shows Transmission Not in Park. A
+  manual-configured cluster ignores it
+
+### games/simhub.py
+
+- `Gear` mapped to `value_gear` (N / 0 neutral, R reverse, 1+ the gear). `ParkingBrakeActive` stands in for P, games
+  don't send it. The analog handbrake doesn't, so handbrake turns keep the gear
+
+### live_test.py
+
+- `value_gear` slider (-2 P to 10)
+
+### database.md
+
+- New `0x171` (Ford DBC `EngineData_1`) section: gear, mode P R N D S M1 - M3, and the gear digit's on / flash bits.
+  Needs P at start up and shut down, or the cluster shows Transmission Not in Park
+- IPC As-Built: Gear Select SST (`720-02-01`) and Transmission Type Automatic (`720-03-02`), both needed for the gear.
+  Gear Shift Indicator (`720-04-01`) is refused by the cluster (`7F 2E 31`). Field names from the CyanLabs Visteon L3
+  database
+- `0x230` and the digital `0x171` point to the new section
+
+### interactive_brute_force.py
+
+- `gear171`, `gear171s`, `gear171stat`, `gear230` presets
+
 ## [2.8.0] - 14 Nov 2026
 **SimHub drives the cluster, and cruise shows its set speed.** `python s550_cluster.py simhub` reads any game SimHub
 supports through SimHub's web API, with `s550_cluster.py` still sending every heartbeat, so no warnings. The cruise

@@ -33,6 +33,7 @@ class s550_ipc:
         # raw values, typically numbers used in gauges
         self.value_speed = 0.0              # miles per hour
         self.value_cruise_speed = 0         # cruise set speed above the icon (0x77 byte 4), in the cluster's unit. 0 none
+        self.value_gear = -2                # -2 P, -1 R, 0 N, 1+ gear (shown 1 - 6). Needs the automatic as-built (0x171)
         self.value_rpm = 0.0
         self.value_rpm_max = 8000           # modify if game car has higher/lower RPM than cluster
         self.value_odometer = 0             # kilometers

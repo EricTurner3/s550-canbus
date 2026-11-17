@@ -96,6 +96,7 @@ GPS_NAV = 0x466 # compass + GPS time, the DBC's APIMGPS_Data_Nav_2_FD1 (0x463) l
 GWM_PRESENT = 0x46A # 11 Nov 2026 - sending it stops the cluster's U0146 (lost comm with the GWM)
 RADIO_PRESENT = 0x223 # 11 Nov 2026 - sending it stops the cluster's U0184 (lost comm with the radio)
 TRANS_SERVICE = 0x14C # 14 Nov 2026 - wrench input (transmission service required), found in the firmware
+TRANS_DISPLAY = 0x171 # 16 Nov 2026 - SelectShift gear / PRNDS, needs the automatic as-built (Ford DBC EngineData_1)
 
 
 # Stock slcan firmware on Windows
@@ -724,6 +725,22 @@ def send_trans_service(clusterdata):
     '''
     return send_msg(TRANS_SERVICE, start, [0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00])
 
+# 16 Nov 2026
+TRANS_MODES = {-2: 0x00, -1: 0x20, 0: 0x40} # P, R, N in byte 1 bits 7 - 5 (D 0x60 isn't used, games have no D)
+
+def send_trans_display(clusterdata):
+    '''
+        0x171, the automatic's gear display. Only shows with the as-built on Transmission Type Automatic + Gear Select
+        SST, a manual-configured cluster ignores it (no display, no faults). value_gear 1+ is S with the gear next to
+        the odometer: byte 0 gear in bits 7 - 4, mode and gear digit on (x5), byte 1 0x80 S. This cluster shows 1 - 6,
+        higher stays blank. P / R / N like v-ivanyshyn's GT: byte 0 14 (digit blank), byte 1 the mode
+        P while the key is off (script start up / exit), or the automatic cluster shows Transmission Not in Park
+    '''
+    gear = clusterdata.value_gear if key_on else -2
+    if gear >= 1:
+        return send_msg(TRANS_DISPLAY, start, [min(gear, 14) << 4 | 0x05, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+    return send_msg(TRANS_DISPLAY, start, [0x14, TRANS_MODES.get(gear, 0x40), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+
 # 11 Nov 2026
 def send_radio_present(clusterdata):
     '''
@@ -828,7 +845,7 @@ def keys():
 # every function in a group is sent once per period. IDs not seen in the GT350 logs (APIM, climate, 0x156, 0x179, 0x3B5) are at a best guess
 SCHEDULE = [
     (SPEED_ONE, [send_rpm, send_misc_8, send_accelerometer]),
-    (SPEED_TWO, [send_speed, send_steering, send_vehicle_speed_77]),
+    (SPEED_TWO, [send_speed, send_steering, send_vehicle_speed_77, send_trans_display]),
     (SPEED_THREE, [send_warnings_1, send_seatbelt_icon, send_misc_2, send_launch_control, send_engine_temp,
                    send_climate, send_climate_fan, send_apim_1, send_apim_2, send_apim_3,
                    send_engine_gauges, send_engine_status, send_occupant, send_blind_spot, send_gwm_present,
