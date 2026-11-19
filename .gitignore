@@ -6,6 +6,8 @@ uds_security.py
 *_unpacked/
 python-vbf.py
 fw_*
+vbf/dbdata.bin
+vbf/*.bin
 # vbf/ RE tooling + notes are tracked; the firmware blobs (*.vbf, *_unpacked/) and the vendor
 # unpacker (python-vbf.py) stay ignored via the patterns above.
 

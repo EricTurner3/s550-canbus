@@ -393,14 +393,14 @@ def send_0x5__series(clusterdata):
     send_msg(x5xx_SERIES_4, start, [0xB3, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
     return send_msg(x5xx_SERIES_5, start, [0xB5, 00, 0xFF,0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
 
-ODOMETER_COUNTS_PER_MILE = 8767 # 0x179 byte 5, measured from v-ivanyshyn's GT log
+ODOMETER_COUNTS_PER_MILE = 8047 # 0x179 byte 5, 0.2 m per count (firmware: 8047/mi digital, 5000/km analog)
 odometer_counts = 0.0
 odometer_time = None
 
 def send_warnings_1(clusterdata):
     '''
         Several Warning messages such as fuel service inlet, change oil soon, oil change required
-        7 Nov 2026 - Byte 5 is a rolling distance counter (8 bit, ~8767 per mile). The odometer counts up from it
+        7 Nov 2026 - Byte 5 is a rolling distance counter (8 bit, 8047 per mile). The odometer counts up from it
         and the cluster saves it, so game miles are added for good. Advanced here from the speed shown on the cluster
         Bytes 6 & 7 are a second counter (wraps at 3000) that runs at idle and with load, likely fuel used. Left static
     '''
@@ -941,6 +941,82 @@ def _scheduler(key_off_for=None):
             next_deadline = now + period
         heapq.heapreplace(queue, (next_deadline, key, period, m))
 
+# 18 Nov 2026 - the game's odometer onto the cluster's own main counter (FR33, see vbf/FR33_NOTES.md). The counter is
+# a RAM word (whole km, packed BCD) the app lets ReadMemoryByAddress / WriteMemoryByAddress reach with no session or
+# security. The cluster saves RAM to its NvM at the next km of 0x179 counts, so a write sticks once you drive.
+# value_odometer 0 = the game doesn't send one, nothing is written
+ODOMETER_SYNC = True
+ODOMETER_SYNC_PERIOD = 5.0      # s between checks
+ODOMETER_SYNC_KM = 2            # write when the cluster is at least this far from the game. 0x179 covers the rest
+ODOMETER_RAM = 0x40008ABC
+DIAG_REQ, DIAG_RSP = 0x720, 0x728
+
+def _diag_recv(timeout):
+    end = time.time() + timeout
+    while time.time() < end:
+        m = bus.recv(0.05)
+        if m and m.arbitration_id == DIAG_RSP:
+            return bytes(m.data)
+    return None
+
+def _diag(req, timeout=1.0):
+    '''
+        One UDS request to the cluster, ISO-TP single or multi frame out, single frame reply (the 0x23 / 0x3D replies
+        here are 7 bytes at most). None when nothing comes back
+    '''
+    while bus.recv(0):          # drop what queued up since the last request
+        pass
+    if len(req) <= 7:
+        send_msg(DIAG_REQ, start, [len(req)] + list(req) + [0] * (7 - len(req)))
+    else:
+        send_msg(DIAG_REQ, start, [0x10 | (len(req) >> 8), len(req) & 0xFF] + list(req[:6]))
+        fc = _diag_recv(timeout)
+        if not fc or fc[0] >> 4 != 3:
+            return None
+        sn = 1
+        for p in range(6, len(req), 7):
+            chunk = list(req[p:p + 7])
+            send_msg(DIAG_REQ, start, [0x20 | sn] + chunk + [0] * (7 - len(chunk)))
+            sn = (sn + 1) & 0x0F
+            time.sleep(max(fc[2], 1) / 1000 if fc[2] <= 0x7F else 0.001)
+    while True:
+        f = _diag_recv(timeout)
+        if f is None or f[0] >> 4 != 0:
+            return None
+        r = f[1:1 + (f[0] & 0x0F)]
+        if not (r[0] == 0x7F and len(r) >= 3 and r[2] == 0x78):  # response pending, keep waiting
+            return r
+
+def _odometer_read():
+    r = _diag([0x23, 0x14] + list(ODOMETER_RAM.to_bytes(4, 'big')) + [0x04])
+    if r and r[0] == 0x63 and len(r) >= 5 and r[1:5].hex().isdigit():
+        return int(r[1:5].hex())
+    return None
+
+def _odometer_write(km):
+    bcd = bytes.fromhex('{:08d}'.format(km))
+    r = _diag([0x3D, 0x14] + list(ODOMETER_RAM.to_bytes(4, 'big')) + [0x04] + list(bcd))
+    return bool(r and r[0] == 0x7D)
+
+def _odometer_sync():
+    last_note = None
+    while True:
+        time.sleep(ODOMETER_SYNC_PERIOD)
+        data = clusterdata
+        if not key_on or data is None or not data.value_odometer:
+            continue
+        target = int(clamp(data.value_odometer, 0, 999999))
+        current = _odometer_read()
+        if current is None:
+            if last_note != 'no reply':
+                print('* Odometer sync: no reply to 0x23 (not the FR33 app?), retrying')
+                last_note = 'no reply'
+            continue
+        last_note = None
+        if abs(current - target) >= ODOMETER_SYNC_KM:
+            ok = _odometer_write(target)
+            print('* Odometer sync: cluster {} km -> game {} km{}'.format(current, target, '' if ok else ' FAILED'))
+
 def _key_off():
     global key_on
     if not scheduler_runs or clusterdata is None:
@@ -986,6 +1062,9 @@ def activate(game=None):
     for speed in SCHEDULE:
         print('* Scheduling speed: {}, functions: {}'.format(speed[0], [m.__name__ for m in speed[1]]))
     threading.Thread(target=_status, daemon=True).start()
+    if ODOMETER_SYNC:
+        print('* Starting thread for odometer sync (game value_odometer -> cluster main counter)')
+        threading.Thread(target=_odometer_sync, daemon=True).start()
     _scheduler()
 
 

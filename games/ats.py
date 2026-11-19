@@ -29,6 +29,7 @@ def data():
     formatted_data.value_rpm_max = data_out['engineRpmMax']
     formatted_data.oil_temp = data_out['oilTemperature']
     formatted_data.engine_temp = data_out['waterTemperature']
+    formatted_data.value_odometer = data_out.get('odometer', 0) # km, the truck's own odometer (synced to the cluster)
     # truck's local space, m/s^2, SCS axes x right, z backward. Same as Forza: lateral flipped (the force the driver
     # feels), longitudinal is the forward acceleration. Not tested in ATS, flip a sign if the dot moves the wrong way
     acceleration = data_out.get('acceleration', {})

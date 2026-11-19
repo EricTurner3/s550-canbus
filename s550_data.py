@@ -36,7 +36,8 @@ class s550_ipc:
         self.value_gear = -2                # -2 P, -1 R, 0 N, 1+ gear (shown 1 - 6). Needs the automatic as-built (0x171)
         self.value_rpm = 0.0
         self.value_rpm_max = 8000           # modify if game car has higher/lower RPM than cluster
-        self.value_odometer = 0             # kilometers
+        self.value_odometer = 0             # kilometers, the game car's odometer. s550_cluster writes it to the
+                                            # cluster's own counter when they're 2+ km apart. 0 = not sent, no sync
         self.value_boost = 0.0              # psi, negative is vacuum. Gauge is 30 inHg (-14.7 psi) to 20 psi
         self.value_afr = 14.7               # air fuel ratio
         self.value_fuel = 0.0               # unmapped; fuel is not sent over CAN. This would need a custom device (like arduino) to take the data and send it to different pins

@@ -1,5 +1,53 @@
 # Changelog
 
+## [2.10.0]
+
+**The cluster's odometer follows the game, up or down.** The bench FR33's allows WriteMemoryByAddress (`0x3D`) on its RAM with no session or security. The main counter is a RAM word
+(whole km, packed BCD) that the cluster saves to its memory at the next km driven. Full details in `vbf/FR33_NOTES.md`.
+
+### s550_cluster.py
+
+- Odometer sync (`ODOMETER_SYNC`): every 5 s, reads the cluster's main counter (`0x23`) and writes the game's
+  `value_odometer` (`0x3D`) when they're 2 km or more apart, e.g. after switching cars. `0x179` keeps it counting in
+  between. Off when the game doesn't send an odometer (`value_odometer` 0)
+- `ODOMETER_COUNTS_PER_MILE` 8767 → **8047**, the firmware's own value (0.2 m per `0x179` byte 5 count). Game miles
+  were reading ~8% long
+
+### s550_data.py
+
+- `value_odometer` is the game car's odometer in km, synced to the cluster. 0 = not sent
+
+### games/ats.py, games/fh5.py
+
+- ATS / ETS2: `value_odometer` from the truck's `odometer`
+- Forza: `DistanceTraveled` no longer goes to `value_odometer`. It's the current event's distance, and the sync
+  would set the cluster to it
+
+### ipc_dtc_test.py
+
+- `odo [set=<km>]`: read the FR33 main counter (`22 404C` + `23` on the RAM word) or set it via `0x3D`
+- `upload`: dumps the cluster's flash. Programming session, level 01, the SBL `FR33-14C025-AB` into RAM and activated,
+  then RequestUpload in 64 KB chunks (no erase, nothing written to flash). `sblprobe` / `upprobe` are its probes
+- `trykeys level=<n>`: tests a list of candidate secrets, one fresh seed each, and waits out lockouts
+- ISO-TP multi-frame requests (anything over 7 bytes), with the flow-control timing the ECU asks for
+- The seed/key functions and secrets stay in the git-ignored `uds_security.py`
+
+### vbf/
+
+- New `FR33_NOTES.md` for the bench cluster's own firmware, confirmed findings only: the dump, diagnostic access, app
+  UDS tables, the `404C` read/write path, main counter storage, `0x3D` / `0x23`, the bootloader and SBL
+- `FIRMWARE_NOTES.md`: analog KR3T 0x2E writes (`404C`, `601F`), how the KR3T / KL3T odometers could be zeroed,
+  and the KL3T's `0x2E` block and service map (it has no `0x3D`)
+- `vledis.py`: `VLE_IMAGE=fr33` reads the FR33 dump. New `vlexref.py` (memory / pointer / call cross-references)
+
+### database.md
+
+- `0x179` byte 5: 8047 counts per mile from the firmware
+
+### .gitignore
+
+- Firmware dumps (`vbf/*.bin`) and Forscan's `vbf/dbdata.bin`
+
 ## [2.9.0]
 ![gear indicator](docs/gear_indicator.png)
 

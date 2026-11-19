@@ -48,16 +48,25 @@
 #                                          passive: log every seed (67 31) and key (27 32) while Forscan unlocks the
 #                                          IPC. Run it, then unlock in Forscan a few times to collect seed/key pairs to
 #                                          derive the 3-byte algorithm from. Ctrl+C to stop. Log: fw_seedsniff_<time>.txt
-#   python ipc_dtc_test.py upload <addr_hex> <len_hex> [session=02] [sec=01]
-#                                          the strategy dump: RequestUpload + TransferData loop -> fw_upload_<time>.bin.
-#                                          sec=01 requests the seed and prints it (no key sent). Drop your key algo into
-#                                          security()'s key_fn to unlock, then rerun. 3 bad keys = ~10 min lockout.
+#   python ipc_dtc_test.py upload [start=8000] [end=200000] [chunk=10000] [vbf=vbf/FR33-14C025-AB.vbf]
+#                                          the strategy dump: 10 02, 27 01, SBL to RAM + 31 01 0301, then RequestUpload in
+#                                          chunks until out of range -> fw_upload_<start>_<time>.bin. Never touches flash.
+#   python ipc_dtc_test.py upprobe         read-only: bootloader DIDs + RequestUpload variants. Log: fw_upprobe_<time>.txt
+#   python ipc_dtc_test.py sblprobe [vbf=vbf/FR33-14C025-AB.vbf]
+#                                          OPT-IN: SBL (flash driver) to RAM + activate (31 01 0301), then retry 0x35.
+#                                          Never erases or downloads to flash. Key off after. Log: fw_sblprobe_<time>.txt
+#   python ipc_dtc_test.py odo [set=<km>] [session=03]
+#                                          FR33 main counter: read (22 404C + 23 RAM) or set RAM via 3D, up or down.
+#                                          Permanent once the next km of 0x179 counts commits it. Log: fw_odo_<time>.txt
+#   python ipc_dtc_test.py trykeys [level=01] [session=02] [start=0] [wait=620]
+#                                          test uds_security.L01_CANDIDATES (Ford LFSR secrets) one fresh seed each;
+#                                          waits out NRC 36/37 lockouts. Seed/key only. Log: fw_trykeys_<time>.txt
 #
 #   add `dummy` to any of these to also send s550_cluster.DUMMY_SCHEDULE (interactive_brute_force.py --dummydata)
 #
 # A candidate with the same ID as a heartbeat frame replaces it while it is on.
 # Run with the venv from this folder; it imports s550_cluster (opens COM3), so close s550_cluster.py first.
-import sys, time, threading, builtins
+import sys, time, threading, builtins, re
 try:
     from uds_security import KEY_FNS   # per-level key functions; only needed to unlock for programming / diag
 except ImportError:
@@ -216,11 +225,45 @@ def _recv(timeout):
             return bytes(m.data)
     return None
 
+FC_STMIN = 0         # ms between the ECU's consecutive frames we ask for; upload raises it if frames get dropped
+
+def _stmin_s(b):
+    return b / 1000 if b <= 0x7F else (b - 0xF0) / 1e4 if 0xF1 <= b <= 0xF9 else 0.127
+
+def _send_multi(req):
+    # requests over 7 bytes (e.g. 0x35 with 4-byte address + size): first frame, wait for flow control, consecutive
+    # frames honouring the block size and STmin it asks for. False if the ECU never sends flow control.
+    n = len(req)
+    _send_raw(REQ, c.start, [0x10 | (n >> 8), n & 0xFF] + list(req[:6]))
+    pos, sn = 6, 1
+    while pos < n:
+        while True:
+            f = _recv(1.0)
+            if f is None:
+                return False
+            if f[0] >> 4 == 3:
+                if f[0] & 0x0F == 1:                        # wait
+                    continue
+                if f[0] & 0x0F == 2:                        # overflow
+                    return False
+                break
+        bs, gap = f[1], _stmin_s(f[2])
+        sent = 0
+        while pos < n and (bs == 0 or sent < bs):
+            chunk = list(req[pos:pos + 7])
+            _send_raw(REQ, c.start, [0x20 | sn] + chunk + [0] * (7 - len(chunk)))
+            pos += 7; sn = (sn + 1) & 0x0F; sent += 1
+            time.sleep(gap)
+    return True
+
 def uds(req, timeout=1.0):
     with rx_lock:
         while c.bus.recv(0):          # drop anything queued
             pass
-        _send_raw(REQ, c.start, [len(req)] + list(req) + [0] * (7 - len(req)))
+        if len(req) <= 7:
+            _send_raw(REQ, c.start, [len(req)] + list(req) + [0] * (7 - len(req)))
+        elif not _send_multi(req):
+            return None
         t = timeout
         while True:
             f = _recv(t)
@@ -232,7 +275,7 @@ def uds(req, timeout=1.0):
             elif pci == 1:                                  # first frame -> flow control, collect
                 total = ((f[0] & 0x0F) << 8) | f[1]
                 resp = bytearray(f[2:8])
-                _send_raw(REQ, c.start, [0x30, 0, 0, 0, 0, 0, 0, 0])
+                _send_raw(REQ, c.start, [0x30, 0, FC_STMIN, 0, 0, 0, 0, 0])
                 sn = 1
                 while len(resp) < total:
                     cf = _recv(1.0)
@@ -874,48 +917,262 @@ def unlock(args):
     print('  unlocked' if security(level) else '  NOT unlocked')
     uds([0x10, 0x01], timeout=1.0); tp_on = False       # back to default session -> re-locks, stop keep-alive
 
-def upload(args):
-    # RequestUpload (0x35) + TransferData (0x36) - the strategy dump. `upload <addr_hex> <len_hex> [session=02] [sec=01]`
-    # Tries an extended/programming session and a seed request first. Without a valid key the 0x35 will usually NRC 33;
-    # the loop is here so that once security() is satisfied (your key in key_fn) a rerun dumps straight to .bin.
+def trykeys(args):
+    # Find the level's secret among candidates. `trykeys [level=01] [session=02] [start=0] [wait=620]`
+    # One fresh seed + one key per candidate (uds_security.L01_CANDIDATES through ford_key). Seed/key only, no writes.
+    # A wrong key is NRC 35. On NRC 36/37 (3 strikes / delay) it waits `wait` s and retries the same candidate.
+    # start= resumes from a candidate index after a stop.
     global tp_on
-    if len(args) < 2:
-        print('  upload <start_addr_hex> <total_len_hex> [session=02] [sec=01]'); return
-    start = int(args[0], 16); total = int(args[1], 16)
-    sess = next((a[8:] for a in args if a.startswith('session=')), '02')  # 02 programming, 03 extended
-    sec = next((a[4:] for a in args if a.startswith('sec=')), None)
-    aw = (len(args[0]) + 1) // 2; sw = (len(args[1]) + 1) // 2
-    log = open_log('fw_upload')
-    tp_on = True                                        # 3E 80 keep-alive so S3 can't expire mid-dump
-    r = uds([0x10, int(sess, 16)], timeout=2.0)
-    log('session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else _reply(r))
-    if sec:
-        if not security(int(sec, 16)):                  # uses uds_security.KEY_FNS[level]
-            log('not unlocked at level {} - RequestUpload will likely refuse'.format(sec))
-    alf = (sw << 4) | aw
-    req = [0x35, 0x00, alf] + list(start.to_bytes(aw, 'big')) + list(total.to_bytes(sw, 'big'))
-    r = uds(req, timeout=2.0)
-    if r is None or r[0] != 0x75:
-        log('RequestUpload refused:', _reply(r)); return
-    lenfmt = r[1] >> 4                                  # bytes that encode maxNumberOfBlockLength
-    maxblk = int.from_bytes(r[2:2 + lenfmt], 'big')
-    log('upload accepted, max block {} bytes'.format(maxblk))
-    out = open(time.strftime('fw_upload_%Y%m%d_%H%M%S.bin'), 'wb')
-    seq = 1; got = 0
-    while got < total:
-        r = uds([0x36, seq], timeout=2.0)
-        if r is None or r[0] != 0x76:
-            log('TransferData seq {} failed: {}'.format(seq, _reply(r))); break
-        chunk = r[2:]                                   # r[1] echoes the seq
-        out.write(chunk); out.flush(); got += len(chunk)
-        if seq % 64 == 0:
-            log('{} bytes'.format(got))
-        seq = (seq + 1) & 0xFF
-        if not chunk:
+    level = int(next((a[6:] for a in args if a.startswith('level=')), '01'), 16)
+    try:
+        import uds_security
+        ford_key = uds_security.ford_key
+        L01_CANDIDATES = getattr(uds_security, 'L%02X_CANDIDATES' % level)     # L01_ / L31_CANDIDATES ...
+    except (ImportError, AttributeError):
+        print('  needs ford_key + L{:02X}_CANDIDATES in uds_security.py'.format(level)); return
+    sess = next((a[8:] for a in args if a.startswith('session=')), '02')
+    i = int(next((a[6:] for a in args if a.startswith('start=')), '0'))
+    wait = int(next((a[5:] for a in args if a.startswith('wait=')), '620'))
+    log = open_log('fw_trykeys')
+    tp_on = True
+    while i < len(L01_CANDIDATES):
+        secret = bytes.fromhex(L01_CANDIDATES[i])
+        r = uds([0x10, int(sess, 16)], timeout=2.0)
+        if not r or r[0] != 0x50:
+            log('session {}: {} - stopping'.format(sess, _reply(r))); break
+        r = uds([0x27, level], timeout=2.0)
+        if r is None or r[0] != 0x67:
+            if r and r[0] == 0x7F and r[2] in (0x36, 0x37):
+                log('seed refused ({}), waiting {} s'.format(_nrc(r[2]), wait)); time.sleep(wait); continue
+            log('seed request: {} - stopping'.format(_reply(r))); break
+        seed = bytes(r[2:])
+        if not any(seed):
+            log('seed all zero - already unlocked'); break
+        key = ford_key(seed, secret)
+        r = uds([0x27, level + 1] + list(key), timeout=2.0)
+        if r and r[0] == 0x67:
+            log('#{} {} ACCEPTED  (seed {} key {})'.format(i, secret.hex(' '), seed.hex(' '), key.hex(' ')))
+            log('add to uds_security.KEY_FNS: {:#04x}: lambda s: ford_key(s, bytes.fromhex(\'{}\'))'.format(level, secret.hex(' ')))
             break
-    uds([0x37], timeout=2.0)                             # RequestTransferExit
-    log('wrote {} / {} bytes to {}'.format(got, total, out.name)); out.close()
-    uds([0x10, 0x01], timeout=1.0); tp_on = False        # default session -> re-lock, stop keep-alive
+        nrc = r[2] if r and r[0] == 0x7F else None
+        log('#{} {} rejected: {}'.format(i, secret.hex(' '), _reply(r)))
+        if nrc == 0x35:
+            i += 1
+        elif nrc in (0x36, 0x37):
+            i += 1                                      # this candidate was still tested before the lockout
+            log('lockout, waiting {} s'.format(wait)); time.sleep(wait)
+        else:
+            log('unexpected reply - stopping'); break
+    else:
+        log('no candidate accepted')
+    uds([0x10, 0x01], timeout=1.0); tp_on = False
+
+def _upload_range(log, addr, size):
+    # one RequestUpload of [addr, addr+size) -> bytes, or (None, nrc) when refused. A TransferData reply that loses a
+    # frame is re-requested with the same sequence counter (the ECU repeats the block), slowing the ECU down on retry.
+    global FC_STMIN
+    r = uds([0x35, 0x00, 0x44] + list(addr.to_bytes(4, 'big')) + list(size.to_bytes(4, 'big')), timeout=2.0)
+    if not r or r[0] != 0x75:
+        return None, (r[2] if r and r[0] == 0x7F else None)
+    data, seq = bytearray(), 1
+    while len(data) < size:
+        for attempt in range(4):
+            r = uds([0x36, seq], timeout=3.0)
+            if r and r[0] == 0x76 and r[1] == seq:
+                break
+            FC_STMIN = min(FC_STMIN + 1, 5)
+            log('   36 seq {} retry {} ({}), STmin now {} ms'.format(seq, attempt + 1, _reply(r), FC_STMIN))
+        else:
+            uds([0x37], timeout=2.0)
+            return None, 'transfer failed at {:08X}'.format(addr + len(data))
+        if len(r) <= 2:
+            break
+        data += r[2:]; seq = (seq + 1) & 0xFF
+    r = uds([0x37], timeout=3.0)
+    log('   {:08X}+{:X}: {} bytes, 37 -> {}'.format(addr, size, len(data), r.hex(' ') if r else 'no reply'))
+    return bytes(data[:size]), None
+
+def upload(args):
+    # The strategy dump: programming session, level 01, SBL into RAM + activate (as sblprobe), then RequestUpload in
+    # chunk-sized pieces from start until the bootloader says out of range. Read-only for flash (no erase, no download
+    # to flash). `upload [start=8000] [end=200000] [chunk=10000] [vbf=vbf/FR33-14C025-AB.vbf]`
+    # Writes fw_upload_<start>_<time>.bin (contiguous from start). Key off afterwards.
+    global tp_on
+    start = int(next((a[6:] for a in args if a.startswith('start=')), '8000'), 16)
+    end = int(next((a[4:] for a in args if a.startswith('end=')), '200000'), 16)
+    chunk = int(next((a[6:] for a in args if a.startswith('chunk=')), '10000'), 16)
+    path = next((a[4:] for a in args if a.startswith('vbf=')), 'vbf/FR33-14C025-AB.vbf')
+    log = open_log('fw_upload')
+    tp_on = True
+    if not _boot_sbl(log, path):
+        tp_on = False; return
+    name = time.strftime('fw_upload_{:08X}_%Y%m%d_%H%M%S.bin'.format(start))
+    out = open(name, 'wb')
+    addr, t0 = start, time.time()
+    while addr < end:
+        size = min(chunk, end - addr)
+        data, err = _upload_range(log, addr, size)
+        while data is None and err == 0x31 and size > 0x100:       # the last chunk may cross the end of the app area
+            size //= 2
+            data, err = _upload_range(log, addr, size)
+        if data is None:
+            log('{:08X}: stopped ({})'.format(addr, _nrc(err) if isinstance(err, int) else err)); break
+        out.write(data); out.flush(); addr += len(data)
+        log('{:08X} done, {} KB in {:.0f} s'.format(addr, (addr - start) // 1024, time.time() - t0))
+    out.close()
+    log('wrote {:08X}-{:08X} ({} bytes) to {}'.format(start, addr, addr - start, name))
+    log('done - key off / power cycle now (nothing in flash was touched)')
+    tp_on = False
+
+def upprobe(args):
+    # Read-only: why does the bootloader refuse 0x35? One programming session + level 01, then the bootloader's identity
+    # DIDs and RequestUpload with several address / length / format variants. Never sends 0x31 routines or 0x34/0x36
+    # downloads. An accepted upload is closed straight away with 0x37. `upprobe`  Log: fw_upprobe_<time>.txt
+    global tp_on
+    log = open_log('fw_upprobe')
+    tp_on = True
+    r = uds([0x10, 0x02], timeout=2.0)
+    log('session 02:', 'ok' if r and r[0] == 0x50 else _reply(r))
+    time.sleep(1.5)
+    ok = None
+    for _ in range(3):
+        ok = security(0x01)
+        if ok is not None:
+            break
+        time.sleep(1.0)
+    log('level 01:', 'unlocked' if ok else 'NOT unlocked')
+    for did in (0xF180, 0xF181, 0xF182, 0xF186, 0xF188, 0xF110, 0xF111, 0xF113, 0xF124, 0xF125, 0xD100, 0xF162):
+        r = uds([0x22, did >> 8, did & 0xFF], timeout=1.0)
+        log('22 {:04X}: {}'.format(did, _ascii_or_hex(r[3:]) if r and r[0] == 0x62 else _reply(r)))
+    tries = [  # (dfi, address, size, addr bytes, size bytes)
+        (0x00, 0x00008000, 0x100, 4, 4), (0x00, 0x00000000, 0x100, 4, 4), (0x00, 0x00010000, 0x100, 4, 4),
+        (0x00, 0x00008000, 0x100, 4, 2), (0x00, 0x00008000, 0x100, 3, 3), (0x00, 0x00008000, 0x100, 4, 3),
+        (0x00, 0x40000000, 0x100, 4, 4), (0x00, 0x40008000, 0x100, 4, 4), (0x00, 0x00FFC000, 0x100, 4, 4),
+        (0x00, 0x00200000, 0x100, 4, 4), (0x00, 0x001F0000, 0x100, 4, 4), (0x11, 0x00008000, 0x100, 4, 4),
+        (0x00, 0x00008000, 0x10, 4, 4), (0x00, 0x00008000, 0x200000 - 0x8000, 4, 4),
+    ]
+    for dfi, addr, size, aw, sw in tries:
+        req = [0x35, dfi, (sw << 4) | aw] + list(addr.to_bytes(aw, 'big')) + list(size.to_bytes(sw, 'big'))
+        r = uds(req, timeout=2.0)
+        tag = 'dfi {:02X} addr {:0{}X} size {:X} ({}/{})'.format(dfi, addr, aw * 2, size, aw, sw)
+        if r and r[0] == 0x75:
+            log(tag, '-> ACCEPTED', r.hex(' '))
+            r = uds([0x36, 0x01], timeout=2.0)
+            log('   36 01:', r[:18].hex(' ') if r and r[0] == 0x76 else _reply(r))
+            log('   37:', _reply(uds([0x37], timeout=2.0)))
+        else:
+            log(tag, '->', _reply(r))
+        uds([0x3E, 0x00], timeout=0.5)
+    log('done - key off / power cycle returns to the app')
+    tp_on = False
+
+def _vbf_blocks(path):
+    # Volvo-format VBF: ASCII header to the closing brace, then blocks of addr(4) len(4) data crc16(2), big-endian
+    raw = open(path, 'rb').read()
+    hdr_end = raw.index(b'\n}') + 2
+    call = re.search(rb'call\s*=\s*0x([0-9A-Fa-f]+)', raw[:hdr_end])
+    body, blocks, p = raw[hdr_end:], [], 0
+    while p + 8 <= len(body):
+        addr, n = int.from_bytes(body[p:p + 4], 'big'), int.from_bytes(body[p + 4:p + 8], 'big')
+        blocks.append((addr, body[p + 8:p + 8 + n], body[p + 8 + n:p + 10 + n]))
+        p += 10 + n
+    return blocks, int(call.group(1), 16) if call else None
+
+def _boot_sbl(log, path):
+    # programming session, level 01, the SBL (a flash driver) into RAM, activate it (31 01 03 01 <call>). RAM only:
+    # never sends the erase routine (31 01 FF 00) or any download to flash. True when RequestUpload can follow.
+    blocks, call = _vbf_blocks(path)
+    log('{}: {} block(s) {}, call {}'.format(path, len(blocks),
+        ' '.join('{:08X}+{:X}'.format(a, len(d)) for a, d, _ in blocks), '{:08X}'.format(call) if call else '?'))
+    if call is None or not (0x40000000 <= call < 0x40010000):
+        log('call address is not in RAM - refusing'); return False
+    r = uds([0x10, 0x02], timeout=2.0)
+    log('session 02:', 'ok' if r and r[0] == 0x50 else _reply(r))
+    time.sleep(1.5)                                     # 10 02 resets into the bootloader (display goes dark)
+    ok = None
+    for _ in range(3):                                  # the bootloader may still be starting: retry a silent seed
+        ok = security(0x01)
+        if ok is not None:
+            break
+        time.sleep(1.0)
+    if not ok:
+        log('level 01 not unlocked - stopping'); return False
+    for addr, data, crc in blocks:
+        r = uds([0x34, 0x00, 0x44] + list(addr.to_bytes(4, 'big')) + list(len(data).to_bytes(4, 'big')), timeout=2.0)
+        log('34 {:08X} {:X}:'.format(addr, len(data)), r.hex(' ') if r and r[0] == 0x74 else _reply(r))
+        if not r or r[0] != 0x74:
+            return False
+        maxblk = int.from_bytes(r[2:2 + (r[1] >> 4)], 'big')
+        step = max(1, maxblk - 2)                       # maxNumberOfBlockLength includes SID + sequence counter
+        seq = 1
+        for p in range(0, len(data), step):
+            r = uds([0x36, seq] + list(data[p:p + step]), timeout=3.0)
+            if not r or r[0] != 0x76:
+                log('36 seq {}: {} - stopping'.format(seq, _reply(r))); return False
+            seq = (seq + 1) & 0xFF
+        log('36: {} bytes sent in {} block(s)'.format(len(data), seq - 1))
+        r = uds([0x37], timeout=3.0)
+        log('37: {} (VBF block crc {})'.format(r.hex(' ') if r else 'no reply', crc.hex()))
+    r = uds([0x31, 0x01, 0x03, 0x01] + list(call.to_bytes(4, 'big')), timeout=5.0)
+    log('31 01 0301 activate SBL:', r.hex(' ') if r and r[0] == 0x71 else _reply(r))
+    return bool(r and r[0] == 0x71)
+
+def sblprobe(args):
+    # OPT-IN. _boot_sbl, then two small RequestUploads. Key off / power cycle afterwards.
+    # `sblprobe [vbf=vbf/FR33-14C025-AB.vbf]`  Log: fw_sblprobe_<time>.txt
+    global tp_on
+    path = next((a[4:] for a in args if a.startswith('vbf=')), 'vbf/FR33-14C025-AB.vbf')
+    log = open_log('fw_sblprobe')
+    tp_on = True
+    if not _boot_sbl(log, path):
+        tp_on = False; return
+    for addr, size in ((0x00008000, 0x100), (0x00010000, 0x100)):
+        r = uds([0x35, 0x00, 0x44] + list(addr.to_bytes(4, 'big')) + list(size.to_bytes(4, 'big')), timeout=2.0)
+        if r and r[0] == 0x75:
+            log('35 {:08X} {:X}: ACCEPTED'.format(addr, size), r.hex(' '))
+            r = uds([0x36, 0x01], timeout=2.0)
+            log('   36 01:', r[:34].hex(' ') if r and r[0] == 0x76 else _reply(r))
+            log('   37:', _reply(uds([0x37], timeout=2.0)))
+        else:
+            log('35 {:08X} {:X}:'.format(addr, size), _reply(r))
+    log('done - key off / power cycle now (nothing in flash was touched)')
+    tp_on = False
+
+ODO_RAM = 0x40008ABC  # FR33 main counter, whole km in packed BCD (FR33_NOTES.md "Main counter storage")
+
+def _odo_read(log):
+    r = uds([0x22, 0x40, 0x4C], timeout=1.0)
+    total = int.from_bytes(r[3:6], 'big') if r and r[0] == 0x62 else None
+    m = uds([0x23, 0x14] + list(ODO_RAM.to_bytes(4, 'big')) + [0x04], timeout=1.0)
+    main = int(m[1:5].hex()) if m and m[0] == 0x63 and all(c in '0123456789' for c in m[1:5].hex()) else None
+    log('22 404C total: {}   23 RAM {:08X} main: {}'.format(
+        '{:.1f} km'.format(total / 10) if total is not None else _reply(r), ODO_RAM,
+        '{} km (BCD {})'.format(main, m[1:5].hex(' ')) if main is not None else _reply(m)))
+    return total, main
+
+def odo(args):
+    # FR33 main counter. `odo` reads it (22 404C total, 23 RAM main). `odo set=<km>` writes RAM via 3D (no security,
+    # up or down) and reads back. RAM only: it becomes permanent when the next km of 0x179 counts commits it to NvM
+    # (increment 0x34142); a power cycle before that reverts it. [session=03] sends 10 03 first.
+    # Log: fw_odo_<time>.txt
+    global tp_on
+    log = open_log('fw_odo')
+    sess = next((a[8:] for a in args if a.startswith('session=')), None)
+    km = next((a[4:] for a in args if a.startswith('set=')), None)
+    if sess:
+        tp_on = True
+        r = uds([0x10, int(sess, 16)], timeout=2.0)
+        log('session {}:'.format(sess), 'ok' if r and r[0] == 0x50 else _reply(r))
+    total, main = _odo_read(log)
+    if km is not None:
+        km = int(km)
+        if not 0 <= km <= 999999:
+            log('set= must be 0..999999 km'); tp_on = False; return
+        bcd = bytes.fromhex('{:08d}'.format(km))
+        r = uds([0x3D, 0x14] + list(ODO_RAM.to_bytes(4, 'big')) + [0x04] + list(bcd), timeout=2.0)
+        log('3D {:08X} <- {} ({} km):'.format(ODO_RAM, bcd.hex(' '), km), r.hex(' ') if r and r[0] == 0x7D else _reply(r))
+        _odo_read(log)
+    tp_on = False
 
 def _reply(r):
     return 'nrc ' + _nrc(r[2]) if r and r[0] == 0x7F else (r.hex(' ') if r else 'no reply')
@@ -966,6 +1223,14 @@ if __name__ == '__main__':
         unlock(sys.argv[2:])
     elif mode == 'upload':
         upload(sys.argv[2:])
+    elif mode == 'trykeys':
+        trykeys(sys.argv[2:])
+    elif mode == 'upprobe':
+        upprobe(sys.argv[2:])
+    elif mode == 'sblprobe':
+        sblprobe(sys.argv[2:])
+    elif mode == 'odo':
+        odo(sys.argv[2:])
     elif mode == 'seeds':
         seeds(sys.argv[2:])
     elif mode == 'seedsniff':

@@ -32,7 +32,7 @@ def data():
     formatted_data.value_rpm = fh5_data_out['CurrentEngineRpm']
     formatted_data.value_rpm_max = fh5_data_out['EngineMaxRpm']
     formatted_data.value_boost = fh5_data_out['Boost']
-    formatted_data.value_odometer = fh5_data_out['DistanceTraveled']
+    # DistanceTraveled is the distance of the current event, not the car's odometer, so value_odometer stays 0 (no sync)
     # car's local space, m/s^2: X right, Z forward. Tested on the Track Apps g meter:
     # lateral is the force the driver feels (turning right moves the dot left), so X is flipped
     # longitudinal follows the acceleration (speeding up moves the dot to accel), Z as is

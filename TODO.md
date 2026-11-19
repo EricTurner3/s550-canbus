@@ -46,11 +46,11 @@ Full state in `vbf/FIRMWARE_NOTES.md`.
 - [ ] What config params 13 / 205 / 245 are (`0x4E836`), and their values on the FR33 (as-built?).
 - [ ] Richer `sample_bytes` in the notes from `/can/*.csv` (`build_web.py` already takes the first sample per ID);
       only the freeze frame is used now.
-- [ ] **(Optional) UDS strategy dump of our own cluster** — blocked: `RequestUpload` needs programming session
-      (0x10 02) + L1 security (`0x01`, a different generator than the solved 0x03). Capturing L1 pairs safely is
-      the hard part (the Forscan op that unlocks L1 is a reflash = brick risk). See `uds_security.py` (gitignored)
-      and memory `ipc-security-access`. Try `memread ... session=03 sec=03` first — if 0x23 reads flash under the
-      key we already have, L1 is moot.
+- [x] **UDS strategy dump of our own cluster (FR33)**: done 18 Nov 2026, `vbf/FR33-14C026-AG.bin` (see `vbf/FR33_NOTES.md`)
+- [ ] Odometer sync on the road: drive 1 km after a sync and confirm the value survives a power cycle (NvM commit at
+      `0x34142`). Find a SimHub property for the car's odometer, if any game exposes one.
+- [ ] Map the rest of the FR33 image (wrench / warnings, the PCM learn on `0x166`) and move confirmed items into
+      `FR33_NOTES.md`.
 
 ## Smaller things
 

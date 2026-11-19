@@ -8,10 +8,16 @@
 #
 # Run with -I since the .bin is extracted/untrusted data.
 import os, sys
-IMG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "KL3T-14C026-BD_unpacked",
-                   "KL3T-14C026-BD.vbf_section_001_00008000_len_1F8000.bin")
-BASE = 0x8000
-R2, R13 = 0x001751F8, 0x4000A4D0
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# VLE_IMAGE=fr33 selects the bench cluster's own dump (vbf/FR33-14C026-AG.bin, see FR33_NOTES.md); default KL3T.
+if os.environ.get("VLE_IMAGE", "").lower() == "fr33":
+    IMG = os.path.join(_HERE, "FR33-14C026-AG.bin")
+    BASE = 0x8000
+    R2, R13 = 0x000FC418, 0x40003000                 # set at 0xDC46/0xDC54; r13 is barely used in this build
+else:
+    IMG = os.path.join(_HERE, "KL3T-14C026-BD_unpacked", "KL3T-14C026-BD.vbf_section_001_00008000_len_1F8000.bin")
+    BASE = 0x8000
+    R2, R13 = 0x001751F8, 0x4000A4D0
 d = open(IMG, "rb").read()
 def u16(a): o = a - BASE; return (d[o] << 8) | d[o + 1]
 def u32(a): return (u16(a) << 16) | u16(a + 2)
@@ -128,7 +134,8 @@ def dis(a):
 
 def sweep(start, end, regs0=None):
     """Linear sweep with constant tracking. Yields (addr, len, text, info, ea) where ea is the absolute address of a
-    load/store when known. Register knowledge is dropped at calls and branch targets are not followed."""
+    load/store when known. Calls keep the callee-saved r14-r31 (EABI) and drop the rest; returns and jumps drop
+    everything. Branch targets are not followed."""
     regs = dict(regs0 or {}); a = start
     while a < end:
         try: L, s, info = dis(a)
@@ -155,7 +162,8 @@ def sweep(start, end, regs0=None):
             if b is not None: ea = (b + info["imm"]) & 0xFFFFFFFF
             if k == "ld": regs[info["rd"]] = None
         elif k == "clob": regs[info.get("rd")] = None
-        elif k in ("call", "ret", "jmp"): regs = {}
+        elif k == "call": regs = {r: x for r, x in regs.items() if r is not None and r >= 14}
+        elif k in ("ret", "jmp"): regs = {}
         yield a, L, s, info, ea
         a += L
 

@@ -454,7 +454,7 @@ cluster's car). In the 2019 analog firmware's receive table.
 |---|---|---|
 | 2 | Engine service required (bit 3, `0x08`) | **Keep `0`**. A [wrench](#wrench--see-manual-powertrain-malfunction-rtt) input in the 2019 analog firmware (`EngSrvcRqd_B_Rq`); the 2019 digital firmware doesn't read it |
 | 4 | | `0x4E` constant in the GT log |
-| 5 | Distance counter | 8 bit, wraps at 256. ~8767 counts per mile (~0.18 m per count), using the `0x202` speed scale. Still when stopped |
+| 5 | Distance counter | 8 bit, wraps at 256. **8047 counts per mile (0.2 m per count)** from the firmware: digital rolls a mile every 8047, analog a km every 5000 (see `vbf/FIRMWARE_NOTES.md`). The earlier ~8767 was measured from a log with the `0x202` speed scale. Still when stopped |
 | 6 - 7 | Second counter | Wraps at 3000 (max `0xBB6`). Runs at idle and faster with rpm / load (corr 0.78 with rpm × load), likely fuel used. Units unknown |
 
 - Sending this frame turns off warnings like fuel service inlet, change oil soon and oil change required. Which bit does which isn't known.
