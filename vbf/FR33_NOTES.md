@@ -1,7 +1,7 @@
 # FR33 IPC notes
 
 The bench cluster: 2015 Mustang analog IPC on an SPC56 (Power Architecture, big-endian, VLE code). Only confirmed
-findings go here. Leads from the KL3T / KR3T images stay in `FIRMWARE_NOTES.md` until the FR33 image confirms them.
+findings go here. Leads from the KL3T / KR3T images stay in `KL3T_NOTES.md` / `KR3T_NOTES.md` until the FR33 image confirms them.
 
 ## Strategy F188 `FR33-14C026-AG`
 | | |

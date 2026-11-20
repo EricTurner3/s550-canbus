@@ -475,7 +475,7 @@
     }
    ],
    "required_bytes": null,
-   "notes": "**Cruise set speed: byte 4** (GWM copy of Veh_V_DsplyCcSet), 1 - 253 shown as sent, FE / FF invalid (getter 0x053C02, telltale 0x01BF5A). Byte 5 bit 1 is a cruise flag (0x01BF2A). See FIRMWARE_NOTES.md"
+   "notes": "**Cruise set speed: byte 4** (GWM copy of Veh_V_DsplyCcSet), 1 - 253 shown as sent, FE / FF invalid (getter 0x053C02, telltale 0x01BF5A). Byte 5 bit 1 is a cruise flag (0x01BF2A). See KR3T_NOTES.md"
   },
   {
    "id": "0x081",

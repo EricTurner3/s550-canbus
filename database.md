@@ -199,7 +199,7 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 |---|---|---|
 | 0 - 1 | Vehicle speed | 14 bit (mask byte 0 with `0x3F`), `MPH * 175`, same as `0x202` |
 | 2 - 3 | Yaw rate / lateral accel | 12 bit, center `0x0800`. Tracks the left / right wheel speed difference in turns |
-| 4 | **Cruise set speed** | Confirmed (14 Nov 2026, `cruise77`). The number above the cruise icon, shown as sent in the cluster's unit (mph here): `0x41` = 65. `0x01` - `0xFD` shown, `0xFE` / `0xFF` = none. The gateway's copy of the PCM's `Veh_V_DsplyCcSet` (`0x165` byte 2, DBC range 0 - 253), found in the KR3T firmware (`vbf/FIRMWARE_NOTES.md`) |
+| 4 | **Cruise set speed** | Confirmed (14 Nov 2026, `cruise77`). The number above the cruise icon, shown as sent in the cluster's unit (mph here): `0x41` = 65. `0x01` - `0xFD` shown, `0xFE` / `0xFF` = none. The gateway's copy of the PCM's `Veh_V_DsplyCcSet` (`0x165` byte 2, DBC range 0 - 253), found in the KR3T firmware (`vbf/KR3T_NOTES.md`) |
 | 5 | Cruise set speed shade (bit 1, `0x02`) | Confirmed (`cruise77b5`). `0` bright white, `1` light grey. Likely the PCM's standby state: brake pressed, cruise off but the speed kept for RESUME (with the grey `0x42C` icon) |
 | 6 | Hill Start Assist Not Available | `0x_C` shows it, `0x_6` hides it (`s550_cluster.py` sends `0xE6`) |
 
@@ -454,7 +454,7 @@ cluster's car). In the 2019 analog firmware's receive table.
 |---|---|---|
 | 2 | Engine service required (bit 3, `0x08`) | **Keep `0`**. A [wrench](#wrench--see-manual-powertrain-malfunction-rtt) input in the 2019 analog firmware (`EngSrvcRqd_B_Rq`); the 2019 digital firmware doesn't read it |
 | 4 | | `0x4E` constant in the GT log |
-| 5 | Distance counter | 8 bit, wraps at 256. **8047 counts per mile (0.2 m per count)** from the firmware: digital rolls a mile every 8047, analog a km every 5000 (see `vbf/FIRMWARE_NOTES.md`). The earlier ~8767 was measured from a log with the `0x202` speed scale. Still when stopped |
+| 5 | Distance counter | 8 bit, wraps at 256. **8047 counts per mile (0.2 m per count)** from the firmware: digital rolls a mile every 8047, analog a km every 5000 (see `vbf/KL3T_NOTES.md`). The earlier ~8767 was measured from a log with the `0x202` speed scale. Still when stopped |
 | 6 - 7 | Second counter | Wraps at 3000 (max `0xBB6`). Runs at idle and faster with rpm / load (corr 0.78 with rpm × load), likely fuel used. Units unknown |
 
 - Sending this frame turns off warnings like fuel service inlet, change oil soon and oil change required. Which bit does which isn't known.

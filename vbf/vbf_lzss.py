@@ -14,7 +14,7 @@
 #
 #   python vbf_lzss.py <compressed_section.bin> [out.bin]
 #
-# Run with -I since the .bin is extracted/untrusted data. See FIRMWARE_NOTES.md.
+# Run with -I since the .bin is extracted/untrusted data. See KR3T_NOTES.md.
 import sys
 
 EI, EJ, P = 10, 4, 1

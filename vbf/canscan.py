@@ -9,7 +9,7 @@
 # It anchors on the wrench-ID cluster and then widens along the run of FFFF-or-valid-ID halfwords, so it
 # won't latch onto a monotonic PDU/index array (which has valid IDs but no FFFF padding).
 # SPC56 is a Power Architecture core; compressed sections (VBF data_format_identifier 0x10) must be
-# decompressed first with vbf_lzss.py - see FIRMWARE_NOTES.md.
+# decompressed first with vbf_lzss.py - see KR3T_NOTES.md.
 #
 #   python canscan.py <image.bin> [base_hex] [be|le]   base defaults 0x8000 (digital); analog erase base 0xC000
 #

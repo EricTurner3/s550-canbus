@@ -24,7 +24,7 @@ Requested when any **active** input's watchdog times out (missing 5 s) or its se
 | `0x048` | rx | 7 | APIM power mode (required to boot the APIM) | 5000 |  |  |  |  |
 | `0x04C` | rx | 5 | Airbag / seatbelt indicators | 5000 |  | `30 FF FF 1E 00` | `10 AF FF 00 00 00 00 00` |  |
 | `0x076` | rx | 7 | Steering angle, Track Apps g meter |  | b0.7=1 StopLamp_B_RqBrk | `00 00 00 00 00 00 00` | `3E 83 C0 00 00 00 00 00` |  |
-| `0x077` | rx | 8 | Vehicle speed / yaw, steering warning fix |  | b0.6=1 VehOverGnd_V_Est; b5.7=1 ; b0.4=1 VehOverGnd_V_Est; b5.2=1 VehLatComp_A_Actl; b5.0=1 VehLatComp_A_Actl; b0.5=1 VehOverGnd_V_Est; b6.0=1 VehLongComp_A_Actl; b6.6=1 VehLatComp_A_Actl | `00 00 00 00 00 00 00 00` | `00 00 07 FF 7F F7 E6 02` | **Cruise set speed: byte 4** (GWM copy of Veh_V_DsplyCcSet), 1 - 253 shown as sent, FE / FF invalid (getter 0x053C02, telltale 0x01BF5A). Byte 5 bit 1 is a cruise flag (0x01BF2A). See FIRMWARE_NOTES.md |
+| `0x077` | rx | 8 | Vehicle speed / yaw, steering warning fix |  | b0.6=1 VehOverGnd_V_Est; b5.7=1 ; b0.4=1 VehOverGnd_V_Est; b5.2=1 VehLatComp_A_Actl; b5.0=1 VehLatComp_A_Actl; b0.5=1 VehOverGnd_V_Est; b6.0=1 VehLongComp_A_Actl; b6.6=1 VehLatComp_A_Actl | `00 00 00 00 00 00 00 00` | `00 00 07 FF 7F F7 E6 02` | **Cruise set speed: byte 4** (GWM copy of Veh_V_DsplyCcSet), 1 - 253 shown as sent, FE / FF invalid (getter 0x053C02, telltale 0x01BF5A). Byte 5 bit 1 is a cruise flag (0x01BF2A). See KR3T_NOTES.md |
 | `0x081` | rx | 3 | Steering wheel buttons | 5000 |  |  | `00 00 00 00 00 00 00 00` |  |
 | `0x082` | rx | 3 | Steering mode | 5000 |  |  | `82 00 14 40 7E 00 64 FF` |  |
 | `0x084` | rx | 7 | GlobalClock_Data_FD1 | 0 |  | `00 00 00 00 00 00 00` | `13 00 00 79 01 03 15 00` |  |

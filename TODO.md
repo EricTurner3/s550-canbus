@@ -13,7 +13,7 @@ sequence).
 - [x] No faults with the 2.6.0 heartbeat (Forscan, 12 Nov 2026), the wrench stays
 - [x] `0x46A` value sweep, the GWM frames in groups of 7, `watch off` / `watch zeros`: nothing
 - [x] **1. The service required frames we don't send**, zeros (quiet, 1 min). **No change** (13 Nov 2026).
-      `0x168 0x263 0x4A2` are confirmed RX messages in the 2019 digital firmware (`vbf/FIRMWARE_NOTES.md`),
+      `0x168 0x263 0x4A2` are confirmed RX messages in the 2019 digital firmware (`vbf/KL3T_NOTES.md`),
       but sending them didn't move the wrench. It also returns instantly on a power cycle mid-run, so it's a
       default-on state, not a latched fault.
       ```
@@ -34,7 +34,7 @@ sequence).
 
 ## Firmware RE
 
-Full state in `vbf/FIRMWARE_NOTES.md`.
+Full state in `vbf/KR3T_NOTES.md` (analog) and `vbf/KL3T_NOTES.md` (digital); FR33 in `vbf/FR33_NOTES.md`.
 
 - [x] **Decompress the analog KR3T VBF**: bit-packed Okumura LZSS (`vbf/vbf_lzss.py`), image loads at 0xC100.
 - [x] **Analog receive path + wrench (14 Nov 2026).** RH850 code, read with `vbf/rh850dis.py`, pulled out by
@@ -42,7 +42,7 @@ Full state in `vbf/FIRMWARE_NOTES.md`.
       `0x3A7` 1.6 s, 13 unmonitored) and the frame bits each watches, plus the wrench inputs (`0x14C` / `0x179` /
       `0x3B2`). Notes: `vbf/KR3T-14C026-AC_CAN_Notes.{md,json}` via `vbf/make_can_notes.py`.
 - [x] **Digital wrench mapped (14 Nov 2026)** with `vbf/vledis.py`: routine `0x0A8A86`, inputs `0x14C` / `0x46A` /
-      `0x3B2` always, `0x263` / `0x4A2` / `0x46B` by config. See FIRMWARE_NOTES.md.
+      `0x3B2` always, `0x263` / `0x4A2` / `0x46B` by config. See KL3T_NOTES.md.
 - [ ] What config params 13 / 205 / 245 are (`0x4E836`), and their values on the FR33 (as-built?).
 - [ ] Richer `sample_bytes` in the notes from `/can/*.csv` (`build_web.py` already takes the first sample per ID);
       only the freeze frame is used now.

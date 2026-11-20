@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.10.1]
+
+- split notes by cluster for easier readability
+
 ## [2.10.0]
 
 **The cluster's odometer follows the game, up or down.** The bench FR33's allows WriteMemoryByAddress (`0x3D`) on its RAM with no session or security. The main counter is a RAM word

@@ -1,7 +1,7 @@
 # Pull the analog KR3T cluster's CAN receive configuration out of its decompressed firmware image and write
 # KR3T-14C026-AC_com.json: every RX ID with its handle, DLC, firmware init bytes, its message-missing monitor
 # (and deadline), the frame bits that feed the per-signal monitors, plus the wrench (service required) inputs.
-# make_can_notes.py turns that into the notes file. How each table was found is in FIRMWARE_NOTES.md.
+# make_can_notes.py turns that into the notes file. How each table was found is in KR3T_NOTES.md.
 #
 #   python -I kr3t_com_extract.py
 #
@@ -15,7 +15,7 @@ from rh850dis import dis, d, BASE
 OUT = os.path.join(HERE, "KR3T-14C026-AC_com.json")
 GP = 0xFEDD9334
 
-# ---- tables (see FIRMWARE_NOTES.md "Analog (KR3T) - receive path") ----
+# ---- tables (see KR3T_NOTES.md "Receive path") ----
 HASH_KEYS, HASH_N = 0x145434, 223   # CanIf hash: slot = (id + 0x56) % 223, linear probe, FFFF = empty
 LIST_IDS = 0x1455F4                 # IDs outside the hash: LE32, sorted descending
 HASH_VALS = 0x1456B4                # handle per hash slot
