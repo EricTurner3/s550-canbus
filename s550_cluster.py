@@ -40,6 +40,28 @@ KEY_ON_DELAY = 1.5      # s of key off at start, long enough for every frame to 
 KEY_OFF_GRACE = 3.0     # s of key off at exit before the bus goes quiet
 key_on = False
 
+# 22 Nov 2026 - the game's engine on / off (clusterdata.engine_on, ATS engineOn) is the key. Off is a key off like the
+# exit: 0x3B3 byte 0 1_ for KEY_OFF_GRACE, then 0x3B3 / 0x3B2 stop and the cluster sleeps. Every other frame keeps going.
+# On again is a key on like the start: 1_ for KEY_ON_DELAY (only after a sleep), then 4_ and the needle sweep
+ENGINE_OFF_MUTE = True  # False keeps 0x3B3 / 0x3B2 going with the key off instead of letting the cluster sleep
+bcm_quiet = False       # 0x3B3 / 0x3B2 not sent
+key_off_at = None       # time.time() the key went off for the engine, None while on
+key_on_at = None        # time.time() the key goes on, None unless waking up
+
+# needle sweep on every key on, 0 -> full -> 0, game values after. The FR33 app only sweeps from its self test and
+# hidden menu (vbf/FR33_NOTES.md), never at key on by itself.
+# 'cluster' - the cluster sweeps all four needles itself: the same profile, written into each gauge's RAM with 0x3D
+#             (no session or key, like the odometer sync). No screen, lamps or chime
+# 'script'  - 0x204 / 0x202 swept from here, RPM and speed only, for a cluster that doesn't take the write
+SWEEP = True
+SWEEP_MODE = 'cluster'
+SWEEP_UP = 2.0          # s, 0 -> full. The self test is 2.0 / 0.5 / 2.0, the hidden menu 3.0 / 0 / 3.0
+SWEEP_HOLD = 0.5        # s at full scale. 'cluster' rounds these to 0.1 s
+SWEEP_DOWN = 2.0        # s, full -> 0
+SWEEP_DELAY = 0.5       # s after key on before it starts, if the cluster is still waking up
+SWEEP_MPH = 165         # top of the speedometer ('script')
+sweep_at = None         # time.time() of the last key on
+
 #CAN IDs
 RPM = 0x204
 SPEED = 0x202
@@ -446,6 +468,8 @@ def send_door_status(clusterdata):
             Second Digit is 2 for closed or A for Hood Ajar
             02 - All Closed, 32 - Driver/Pass Door Open, 2A - Driver + Hood Doors Open
     '''
+    if bcm_quiet:
+        return
     if(clusterdata.icon_parking_brake == 0):
         parking_brake_light = 0x00 # off
     else:
@@ -471,12 +495,31 @@ def send_track_apps(clusterdata):
         Byte 4 bit 0x08 - right turn signal (confirmed). Byte 6 bit 0x40 - left turn signal (from mustang.c)
         icon_left_signal / icon_right_signal 2 flashes, on and off for one send each (0.4s)
     '''
+    if bcm_quiet:
+        return
     lit = int((time.time() - start) / SPEED_FOUR) % 2 == 0
     right = 0x08 if clusterdata.icon_right_signal == 1 or (clusterdata.icon_right_signal == 2 and lit) else 0x00
     left = 0x40 if clusterdata.icon_left_signal == 1 or (clusterdata.icon_left_signal == 2 and lit) else 0x00
     key = 0x40 if key_on else 0x10
     data = [key, 0x00, 0x00, 0x12, 0x10 | right, 0x00, left, 0x02]
     return send_msg(TRACK_APPS, start, data)
+
+def _sweep():
+    '''
+        SWEEP_MODE 'script': needle position after a key on, 0 -> 1 -> 0. None when no sweep is running
+    '''
+    if not SWEEP or SWEEP_MODE != 'script' or sweep_at is None:
+        return None
+    t = max(time.time() - sweep_at - SWEEP_DELAY, 0)
+    if t < SWEEP_UP:
+        return t / SWEEP_UP
+    t -= SWEEP_UP
+    if t < SWEEP_HOLD:
+        return 1
+    t -= SWEEP_HOLD
+    if t < SWEEP_DOWN:
+        return 1 - t / SWEEP_DOWN
+    return None
 
 def send_rpm(clusterdata):
     '''
@@ -489,6 +532,9 @@ def send_rpm(clusterdata):
         rpm = (gauge_max * int(clusterdata.value_rpm))/clusterdata.value_rpm_max
     except:
         rpm = 0 # if the game is paused, these values will be 0 and cause a ZeroDivisionError
+    sweep = _sweep()
+    if sweep is not None:
+        rpm = gauge_max * sweep
 
     rpm_hex = bytearray(int(rpm).to_bytes(2, 'big'))
 
@@ -502,6 +548,9 @@ def send_speed(clusterdata):
     Bytes 6 & 7 are the speed gauge 
     '''
     speed = clusterdata.value_speed
+    sweep = _sweep()
+    if sweep is not None:
+        speed = SWEEP_MPH * sweep
     gauge_pos = int(speed) * 175
     speed_hex = bytearray((gauge_pos).to_bytes(2, 'big'))
     #print("    speed: {}  HEX: {}; 1: {} 2:{}".format(speed, speed_hex, speed_hex[0], speed_hex[1]))
@@ -906,14 +955,47 @@ def _game_loop(game):
 # Threads per speed don't help here: the GIL and the bus send lock mean they only wait on each other
 scheduler_runs = 0
 
+def _follow_engine():
+    '''
+        Key on / off from the game's engine_on, see ENGINE_OFF_MUTE
+    '''
+    global key_on, key_off_at, key_on_at, bcm_quiet, sweep_at
+    now = time.time()
+    if clusterdata.engine_on:
+        if key_on:
+            return
+        if key_on_at is None:
+            # out of a sleep, 0x3B3 comes back with the key off first so the cluster is up before the sweep
+            key_on_at = now + (KEY_ON_DELAY if bcm_quiet else 0)
+            bcm_quiet = False
+        if now >= key_on_at:
+            print('* Engine on, key on')
+            key_on = True
+            key_on_at = key_off_at = None
+            sweep_at = now
+            if SWEEP and SWEEP_MODE == 'cluster':
+                threading.Thread(target=_cluster_sweep, daemon=True).start()
+        return
+    key_on_at = None
+    if key_on:
+        print('* Engine off, key off')
+        key_on = False
+        key_off_at = now
+    elif ENGINE_OFF_MUTE and not bcm_quiet and now - key_off_at >= KEY_OFF_GRACE:
+        print('* Engine off for {} s, 0x3B3 / 0x3B2 stopped'.format(KEY_OFF_GRACE))
+        bcm_quiet = True
+
 def _scheduler(key_off_for=None):
     '''
-        Runs until the next _scheduler call takes over. Starts with the key off for KEY_ON_DELAY, then run.
+        Runs until the next _scheduler call takes over. Starts with the key off for KEY_ON_DELAY, then follows the
+        game's engine_on (_follow_engine).
         key_off_for - seconds to send with the key off, then return (the exit sequence, see _key_off)
     '''
-    global key_on, scheduler_runs
+    global key_off_at, scheduler_runs
     scheduler_runs += 1
     run = scheduler_runs
+    if key_off_for is None:
+        key_off_at = time.time() # the game may start with the engine off
     now = time.perf_counter()
     key_change = now + (KEY_ON_DELAY if key_off_for is None else key_off_for)
     queue = []
@@ -932,7 +1014,7 @@ def _scheduler(key_off_for=None):
         if deadline >= key_change:
             if key_off_for is not None:
                 return
-            key_on = True
+            _follow_engine()
         m(clusterdata)
         # if we fell more than a period behind (adapter stalled), skip ahead instead of bursting to catch up
         next_deadline = deadline + period
@@ -959,11 +1041,18 @@ def _diag_recv(timeout):
             return bytes(m.data)
     return None
 
+# the odometer sync and the needle sweep both talk to the cluster, one request at a time
+diag_lock = threading.Lock()
+
 def _diag(req, timeout=1.0):
     '''
         One UDS request to the cluster, ISO-TP single or multi frame out, single frame reply (the 0x23 / 0x3D replies
         here are 7 bytes at most). None when nothing comes back
     '''
+    with diag_lock:
+        return _diag_unlocked(req, timeout)
+
+def _diag_unlocked(req, timeout):
     while bus.recv(0):          # drop what queued up since the last request
         pass
     if len(req) <= 7:
@@ -986,6 +1075,55 @@ def _diag(req, timeout=1.0):
         r = f[1:1 + (f[0] & 0x0F)]
         if not (r[0] == 0x7F and len(r) >= 3 and r[2] == 0x78):  # response pending, keep waiting
             return r
+
+def _ram_write(addr, data):
+    r = _diag([0x3D, 0x14] + list(addr.to_bytes(4, 'big')) + [len(data)] + list(data))
+    return bool(r and r[0] == 0x7D)
+
+# 22 Nov 2026 - each gauge's sweep state in the FR33 (profile engine 0x2B000, started by 0x2B4D0 and its three copies),
+# in gauge order: speed, RPM, fuel, coolant temp. From the base: up, hold, down (u16, 100 ms ticks), start, peak, end
+# (u16, 0xFFFF full scale), tick count, mode, phase. Mode 1 holds the needle at start, mode 4 runs up / hold / down
+# once, mode 0 is the gauge's own input (CAN, or the fuel sender)
+SWEEP_RAM = (0x4000881E, 0x40008866, 0x40008778, 0x400088AE)
+
+def _sweep_running():
+    return SWEEP and SWEEP_MODE == 'cluster' and sweep_at is not None and \
+        time.time() < sweep_at + SWEEP_DELAY + SWEEP_UP + SWEEP_HOLD + SWEEP_DOWN + 0.5
+
+def _cluster_sweep():
+    time.sleep(SWEEP_DELAY)
+    ticks = [round(s * 10) for s in (SWEEP_UP, SWEEP_HOLD, SWEEP_DOWN)]
+    profile = b''.join(v.to_bytes(2, 'big') for v in ticks + [0, 0xFFFF, 0, 0]) + b'\x00\x00'   # mode 0 while it's set up
+    # every gauge set up first, then the four mode bytes back to back so the needles start together
+    if not all(_ram_write(base, profile) for base in SWEEP_RAM) or \
+       not all(_ram_write(base + 0x0E, b'\x04') for base in SWEEP_RAM):
+        print('* Needle sweep: no reply to 0x3D (not the FR33 app?)')
+
+# 22 Nov 2026 - the game's fuel level on the fuel needle (gauge 2 above, mode 1: 0x0000 empty, 0xFFFF full). The fuel
+# sender isn't on CAN, this replaces it for the needle only: the low fuel lamp and message still follow the cluster's
+# own input. Written again every FUEL_REFRESH in case the cluster reset it (power cycle, end of a sweep)
+FUEL_SYNC = True
+FUEL_PERIOD = 0.5       # s between checks
+FUEL_REFRESH = 5.0      # s between writes of an unchanged level
+FUEL_RAM = SWEEP_RAM[2]
+
+def _fuel_sync():
+    held, last, last_time = False, None, 0.0
+    while True:
+        time.sleep(FUEL_PERIOD)
+        data = clusterdata
+        if not key_on or data is None or _sweep_running():
+            last = None # write again as soon as the key is back on / the sweep is done
+            continue
+        if data.value_fuel < 0:
+            if held and _ram_write(FUEL_RAM + 0x0E, b'\x00'): # back to the cluster's own fuel input
+                held = False
+            continue
+        pos = round(clamp(data.value_fuel, 0, 100) / 100 * 0xFFFF)
+        if pos == last and time.time() - last_time < FUEL_REFRESH:
+            continue
+        if _ram_write(FUEL_RAM + 6, pos.to_bytes(2, 'big')) and _ram_write(FUEL_RAM + 0x0E, b'\x01'):
+            held, last, last_time = True, pos, time.time()
 
 def _odometer_read():
     r = _diag([0x23, 0x14] + list(ODOMETER_RAM.to_bytes(4, 'big')) + [0x04])
@@ -1065,6 +1203,9 @@ def activate(game=None):
     if ODOMETER_SYNC:
         print('* Starting thread for odometer sync (game value_odometer -> cluster main counter)')
         threading.Thread(target=_odometer_sync, daemon=True).start()
+    if FUEL_SYNC:
+        print('* Starting thread for fuel sync (game value_fuel -> cluster fuel needle)')
+        threading.Thread(target=_fuel_sync, daemon=True).start()
     _scheduler()
 
 

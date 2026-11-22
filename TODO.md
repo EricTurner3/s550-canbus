@@ -52,6 +52,17 @@ Full state in `vbf/KR3T_NOTES.md` (analog) and `vbf/KL3T_NOTES.md` (digital); FR
 - [ ] Map the rest of the FR33 image (wrench / warnings, the PCM learn on `0x166`) and move confirmed items into
       `FR33_NOTES.md`.
 
+## Needle sweep (FR33 routine 0202)
+
+The FR33 app only sweeps from its self test (routine `0202`, also white screen, every lamp, chime) and the hidden test
+menu (`vbf/FR33_NOTES.md`, Gauge motors). `s550_cluster.py` (`SWEEP_MODE = 'cluster'`) writes that sweep profile into
+each gauge's RAM with `0x3D` at key on, so the cluster sweeps all four needles itself.
+
+- [x] `selftest`: all four needles sweep, plus white screen, lamps and a long chime (22 Nov 2026)
+- [x] `SWEEP_MODE = 'cluster'`: all four needles sweep at key on, nothing else on the display (22 Nov 2026)
+- [x] Which base is which gauge: 0 speed, 1 RPM, 2 fuel, 3 coolant temp. Fuel `0x0000` E, `0xFFFF` F
+- [ ] `FUEL_SYNC` in a game (ATS `fuel` / `fuelCapacity`, SimHub `FuelPercent`) and the `live_test.py` slider
+
 ## Smaller things
 
 - [ ] Occupant Sensor Blocked is sent as `18` now (was `88`): check `warning_occupant_sensor_pass` still shows it

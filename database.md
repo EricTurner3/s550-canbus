@@ -984,6 +984,29 @@ Left open the cluster sets P0460-13 / P1346-13 and shows Fuel Level Low.
 - A bare LED across a pair would draw ~38 mA (too much). 4 silicon diodes in series hold ~3.2 - 3.6 V whatever the
   cluster's internal resistance, not tested.
 
+## Fuel needle without the senders (FR33, RAM)
+
+**Status:** Confirmed on the bench (22 Nov 2026)
+
+The FR33 keeps a sweep / hold state for each needle in RAM, and `0x3D` WriteMemoryByAddress reaches it with no session
+or key (the same path as the [odometer](vbf/FR33_NOTES.md#writememorybyaddress-0x3d-app)). Mode 1 holds the needle at a
+position, so the fuel needle can follow a game with no resistors. Layout in `vbf/FR33_NOTES.md` (Gauge motors).
+
+| Gauge | Needle | Base |
+|---|---|---|
+| 0 | Speed | `0x4000881E` |
+| 1 | RPM | `0x40008866` |
+| 2 | Fuel | `0x40008778` |
+| 3 | Coolant temp | `0x400088AE` |
+
+- Position at `base + 6` (u16): `0x0000` = E, `0xFFFF` = F, straight line in between. Then `base + 0x0E` = `01` (hold),
+  `00` gives the needle back to the senders.
+- `s550_cluster.py` sends `value_fuel` (0 - 100 %, -1 = not sent) this way (`FUEL_SYNC`), ATS / SimHub fill it, and
+  `live_test.py` has it as a slider. `python ipc_dtc_test.py needle 2 0 50 100` holds it by hand.
+- Only the needle: the Fuel Level Low lamp and message still follow the senders, so keep the resistors (or the P0460
+  / P1346 codes and the warning come back).
+- Not saved. The hold is gone after a power cycle, `s550_cluster.py` writes it again every 5 s.
+
 # IPC As-Built (720)
 
 **Status:** Confirmed on the bench · Written with Forscan, read with UDS `22 DExx` on `0x720` (no security for reads, writes need Forscan's security access)

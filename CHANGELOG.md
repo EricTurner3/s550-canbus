@@ -1,5 +1,59 @@
 # Changelog
 
+## [2.11.0]
+
+**Engine off is a key off, every key on sweeps the needles, and the fuel needle follows the game.** The FR33 keeps a
+sweep / hold state for each needle in RAM, reachable with `0x3D` like the odometer (no session or key). The app only
+sweeps from its self test and hidden test menu, never at key on by itself, so the script starts the same sweep there.
+Mode 1 of that state holds a needle, which drives the fuel gauge with no CAN message or resistors. Details in
+`vbf/FR33_NOTES.md` (Gauge motors and the needle sweep) and `database.md` (Fuel needle without the senders).
+
+### s550_cluster.py
+
+- The game's `engine_on` is the key. Off: `0x3B3` byte 0 `1_` for 3 s like the exit, then `0x3B3` / `0x3B2` stop and
+  the cluster sleeps (`ENGINE_OFF_MUTE`, False keeps them going). Every other frame keeps going. On again: `1_` for
+  1.5 s (after a sleep), then `4_`. ATS refuelling with the engine off now turns the cluster off
+- Needle sweep on every key on (`SWEEP`), `SWEEP_UP` / `SWEEP_HOLD` / `SWEEP_DOWN` 2.0 / 0.5 / 2.0 s like the
+  cluster's self test, `SWEEP_DELAY` 0.5 s
+  - `SWEEP_MODE = 'cluster'` (default): the profile is written into all four gauges' RAM (`SWEEP_RAM`, mode 4), the
+    cluster sweeps speed, RPM, fuel and coolant itself and goes back to the game values after
+  - `SWEEP_MODE = 'script'`: speed and RPM only, swept on `0x202` / `0x204`. Doesn't move the odometer, `0x179`
+    follows `value_speed`
+- Fuel sync (`FUEL_SYNC`): holds the fuel needle at `value_fuel` (mode 1 on gauge 2), on change and every 5 s, waits
+  out the sweep. The Fuel Level Low lamp and message still follow the senders
+- `_diag` is shared by the odometer sync, the sweep and the fuel sync behind a lock
+
+### s550_data.py
+
+- `value_fuel` is 0 - 100 % (0 E, 100 F), -1 (default) = not sent, the needle stays on the cluster's own fuel input
+
+### games/ats.py, games/simhub.py
+
+- ATS / ETS2: `value_fuel` from `fuel` / `fuelCapacity`
+- SimHub: `value_fuel` from `FuelPercent`, or `Fuel` / `MaxFuel`
+
+### live_test.py
+
+- Runs the fuel sync, the `value_fuel` slider goes -1 - 100. The `engine_on` switch keys the cluster off and on
+
+### ipc_dtc_test.py
+
+- `selftest [stop=<s>]`: the FR33 self test, routine `0202` (`10 03` + `31 01 02 02`), polls its results. Sweeps all
+  four needles, also turns the screen white, lights every lamp and chimes. On NRC `22` it reads the start conditions
+  from RAM
+- `needle <gauge> <percent> ...`: holds one needle at each position in turn, then gives it back
+- The heartbeat's needle sweep is off here, its `0x3D` writes would cross this script's requests
+
+### vbf/
+
+- `FR33_NOTES.md`: the stepper motor controller and coil writer, the gauge profile engine and its RAM per gauge
+  (0 speed, 1 RPM, 2 fuel, 3 coolant temp), routine `0202` with its steps and start conditions, the hidden test menu's
+  sweep, and the power state table behind `0x40008B06`
+
+### database.md
+
+- New "Fuel needle without the senders" under the fuel senders: gauge table, `0x0000` E / `0xFFFF` F, limits
+
 ## [2.10.1]
 
 - split notes by cluster for easier readability

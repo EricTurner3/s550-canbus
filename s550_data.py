@@ -40,7 +40,8 @@ class s550_ipc:
                                             # cluster's own counter when they're 2+ km apart. 0 = not sent, no sync
         self.value_boost = 0.0              # psi, negative is vacuum. Gauge is 30 inHg (-14.7 psi) to 20 psi
         self.value_afr = 14.7               # air fuel ratio
-        self.value_fuel = 0.0               # unmapped; fuel is not sent over CAN. This would need a custom device (like arduino) to take the data and send it to different pins
+        self.value_fuel = -1.0              # percent, 0 empty, 100 full. Not CAN: s550_cluster holds the FR33's fuel needle
+                                            # through RAM (FUEL_SYNC). Below 0 = not sent, the cluster's own fuel input
         # warm engine defaults, for games that don't send these (Forza). ATS sends oil and coolant
         self.oil_temp = 100.0               # celsius (212f), gauge 36c - 158c
         self.engine_temp = 110.0            # celsius (230f), the needle sits mid gauge from 106c - 132c

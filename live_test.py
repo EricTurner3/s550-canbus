@@ -82,7 +82,7 @@ FIELDS = {
     'value_rpm':              dict(group='Gauges', kind='range', min=0, max=10000, step=50, unit='rpm'),
     'value_rpm_max':          dict(group='Gauges', kind='range', min=1000, max=12000, step=100, unit='rpm'),
     'value_odometer':         dict(group='Gauges', kind='number', min=0, max=0xFFFFFF, step=1, unit='km'),
-    'value_fuel':             dict(group='Gauges', kind='range', min=0, max=100, step=1, unit='%'),
+    'value_fuel':             dict(group='Gauges', kind='range', min=-1, max=100, step=1, unit='%'),
 
     'value_boost':            dict(group='Engine', kind='range', min=-14.7, max=25, step=0.1, unit='psi'),
     'value_afr':              dict(group='Engine', kind='range', min=6, max=25.5, step=0.1, unit=':1'),
@@ -255,6 +255,8 @@ if __name__ == '__main__':
         cluster.SCHEDULE.extend(cluster.DUMMY_SCHEDULE)
     threading.Thread(target=cluster._scheduler, daemon=True).start()
     threading.Thread(target=_rates, daemon=True).start()
+    if cluster.FUEL_SYNC:
+        threading.Thread(target=cluster._fuel_sync, daemon=True).start() # the value_fuel slider (-1 = the cluster's own)
 
     server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
     url = 'http://127.0.0.1:{}'.format(args.port)

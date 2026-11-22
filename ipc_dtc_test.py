@@ -58,6 +58,12 @@
 #   python ipc_dtc_test.py odo [set=<km>] [session=03]
 #                                          FR33 main counter: read (22 404C + 23 RAM) or set RAM via 3D, up or down.
 #                                          Permanent once the next km of 0x179 counts commits it. Log: fw_odo_<time>.txt
+#   python ipc_dtc_test.py selftest [stop=<s>] [secs=15]
+#                                          FR33 routine 0202 (chime, needle sweep, more steps), polls its results.
+#                                          stop= ends it early (31 02 02 02). Log: fw_selftest_<time>.txt
+#   python ipc_dtc_test.py needle <gauge 0-3> <percent> [<percent> ...] [secs=3]
+#                                          FR33: hold one needle at each position in turn (0x3D to its sweep state,
+#                                          mode 1), then give it back. Log: fw_needle_<time>.txt
 #   python ipc_dtc_test.py trykeys [level=01] [session=02] [start=0] [wait=620]
 #                                          test uds_security.L01_CANDIDATES (Ford LFSR secrets) one fresh seed each;
 #                                          waits out NRC 36/37 lockouts. Seed/key only. Log: fw_trykeys_<time>.txt
@@ -1174,6 +1180,53 @@ def odo(args):
         _odo_read(log)
     tp_on = False
 
+def selftest(args):
+    # FR33 routine 0202 (see vbf/FR33_NOTES.md, Gauge sweep): 10 03, 31 01 02 02, then 31 03 02 02 results every
+    # 0.5 s. The sequence chimes, sweeps the needles (2.0 s up, 0.5 s hold, 2.0 s down) and runs more steps after.
+    # [stop=<s>] sends 31 02 02 02 that long after the start, [secs=<s>] how long to watch. Log: fw_selftest_<time>.txt
+    global tp_on
+    log = open_log('fw_selftest')
+    secs = float(next((a[5:] for a in args if a.startswith('secs=')), 15))
+    stop = next((float(a[5:]) for a in args if a.startswith('stop=')), None)
+    tp_on = True
+    r = uds([0x10, 0x03], timeout=2.0)
+    log('session 03:', 'ok' if r and r[0] == 0x50 else _reply(r))
+    r = uds([0x31, 0x01, 0x02, 0x02], timeout=2.0)
+    log('31 01 02 02 start:', _reply(r))
+    if r and r[0] == 0x7F and r[2] == 0x22:
+        # the start gate 0x166FE: power state 2 (key in run), 0x400081E9 set, and speed < 300 raw or not valid
+        for addr, n, name in ((0x40008B06, 1, 'power state (wants 02)'), (0x400081E9, 1, 'enable (wants non-zero)'),
+                              (0x40007E38, 1, 'speed valid (00 = valid)'), (0x400078F0, 2, 'speed status')):
+            g = uds([0x23, 0x14] + list(addr.to_bytes(4, 'big')) + [n], timeout=2.0)
+            log('  {:08X} {}:'.format(addr, name), g[1:].hex(' ') if g and g[0] == 0x63 else _reply(g))
+    t0 = time.time()
+    last = None
+    while time.time() - t0 < secs:
+        if stop is not None and time.time() - t0 >= stop:
+            log('{:5.1f} s  31 02 02 02 stop:'.format(time.time() - t0), _reply(uds([0x31, 0x02, 0x02, 0x02], timeout=2.0)))
+            stop = None
+        res = _reply(uds([0x31, 0x03, 0x02, 0x02], timeout=2.0))
+        if res != last:
+            log('{:5.1f} s  31 03 02 02 results:'.format(time.time() - t0), res)
+            last = res
+        time.sleep(0.5)
+    tp_on = False
+
+def needle(args):
+    # FR33: hold one needle where we say, through its sweep state in RAM (s550_cluster.SWEEP_RAM, vbf/FR33_NOTES.md):
+    # +6 = position (0xFFFF full scale), +E mode 1 = hold there. `needle <gauge 0-3> <percent> [<percent> ...]
+    # [secs=3]` steps through the positions, then mode 0 gives the gauge back. No session or key (0x3D)
+    log = open_log('fw_needle')
+    secs = float(next((a[5:] for a in args if a.startswith('secs=')), 3))
+    vals = [a for a in args if '=' not in a]
+    base = c.SWEEP_RAM[int(vals[0])]
+    for pct in vals[1:]:
+        pos = round(max(0.0, min(100.0, float(pct))) / 100 * 0xFFFF)
+        ok = c._ram_write(base + 6, pos.to_bytes(2, 'big')) and c._ram_write(base + 0x0E, b'\x01')
+        log('gauge {} ({:08X}) at {}% ({:04X}):'.format(vals[0], base, pct, pos), 'ok' if ok else 'no reply')
+        time.sleep(secs)
+    log('mode 0 (CAN / input value again):', 'ok' if c._ram_write(base + 0x0E, b'\x00') else 'no reply')
+
 def _reply(r):
     return 'nrc ' + _nrc(r[2]) if r and r[0] == 0x7F else (r.hex(' ') if r else 'no reply')
 
@@ -1187,6 +1240,7 @@ if __name__ == '__main__':
     mode = sys.argv[1] if len(sys.argv) > 1 else 'read'
     if mode == 'probe' and len(sys.argv) > 2:
         CANDIDATES = parse_candidates(sys.argv[2:])
+    c.SWEEP = False                                  # its 0x3D writes would cross this script's requests
     if dummy:                                        # same as interactive_brute_force.py --dummydata
         c.SCHEDULE.extend(c.DUMMY_SCHEDULE)
         print('* dummy data: 0x217 0x415 0x85 0x91 0x200 0x82 0x230')
@@ -1231,6 +1285,10 @@ if __name__ == '__main__':
         sblprobe(sys.argv[2:])
     elif mode == 'odo':
         odo(sys.argv[2:])
+    elif mode == 'selftest':
+        selftest(sys.argv[2:])
+    elif mode == 'needle':
+        needle(sys.argv[2:])
     elif mode == 'seeds':
         seeds(sys.argv[2:])
     elif mode == 'seedsniff':
