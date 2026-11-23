@@ -122,10 +122,12 @@ def data():
         formatted_data.outside_temp = air
         formatted_data.intake_temp = air
 
-    if nd.get('FuelPercent') is not None:
-        formatted_data.value_fuel = nd['FuelPercent']
-    elif nd.get('MaxFuel'):
-        formatted_data.value_fuel = 100 * (nd.get('Fuel') or 0.0) / nd['MaxFuel']
+    # FuelPercent can be wrong (ATS reports over 100%), so fall back to Fuel / MaxFuel
+    fuel_pct = nd.get('FuelPercent')
+    if (fuel_pct is None or fuel_pct > 100) and nd.get('MaxFuel'):
+        fuel_pct = 100 * (nd.get('Fuel') or 0.0) / nd['MaxFuel']
+    if fuel_pct is not None:
+        formatted_data.value_fuel = min(fuel_pct, 100)
 
     formatted_data.compass_heading = (COMPASS_SIGN * (nd.get('OrientationYaw') or 0.0) + COMPASS_OFFSET) % 360
     formatted_data.accel_lateral = LAT_SIGN * (nd.get('AccelerationSway') or 0.0) * ACCEL_SCALE
