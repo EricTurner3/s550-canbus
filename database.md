@@ -15,6 +15,10 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
   - **From logs**: found by correlating logs against known signals, not tested on the cluster yet.
   - **Cluster sends**: the cluster transmits it itself. Never send it, two senders on one ID cause bus errors.
   - **APIM sends**: same, for the bench APIM (SYNC). See [APIM (SYNC)](#apim-sync).
+  - **From firmware (2020+ digital, LR3T)**: read out of the 2020+ digital cluster's MCU firmware
+    (LR3T-14C026-JE), not tested on this bench. Each fact carries a label: **exact** (read from the code),
+    **seen** (checked in an emulator running that firmware), **inferred** (likely, not proven). See
+    [2018+ Digital Cluster, 2020 firmware](#2018-digital-cluster-2020-firmware-lr3t-14c026-je).
 - Temperatures `raw - 60 = °C` unless noted.
 
 ## Sources
@@ -28,6 +32,7 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
 | `/can/apim/*.csv` | Bench APIM (SYNC) | HS3 | `apim_capture.py` logs, APIM alone on the bench. See [APIM (SYNC)](#apim-sync) |
 | `cluster_tx.csv` | Bench cluster (2015 analog, FR33) | HS3 | What the cluster transmits on its own, see [Cluster (IPC) Transmits](#cluster-ipc-transmits) |
 | `mustang.c` ([ufnalski's project](https://github.com/ufnalski/ford_mustang_cluster_h503rb/blob/main/Core/Src/mustang.c)) | 2016 Mustang V6, automatic | | Source of `0x3B2` and the `0x76` g meter which enabled TrackApps |
+| customipc firmware trace of the 2020+ digital IPC (LR3T-14C026-JE MCU), November 2026 | 2020+ Mustang digital cluster (firmware, no log) | HS3 | Every receive / transmit field the 2020 MCU reads or packs, followed to the lamp, gauge or message it drives, then checked in an emulator running the real firmware. Labels: **exact** = read from the code, **seen** = in the emulator, **inferred** = likely. GT500 items are from the Shelby GT500 MCU (LR3V-14C026-BF). Not bench tested here. See [2018+ Digital Cluster, 2020 firmware](#2018-digital-cluster-2020-firmware-lr3t-14c026-je) |
 
 The web viewer (`docs/`, built by `build_web.py`) takes the first sample of each ID from every source above that has a
 log, and labels it with the Vehicle column.
@@ -143,6 +148,39 @@ Only `0x18B 0x350 0x3C8 0x3E0 0x430 0x434` show up in the HS1 logs (passed throu
 | `0x430` | | Odometer, see [0x430](#0x430---odometer) |
 | `0x434` | `40 00 10 00 28 FF F0 00` | |
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+The 2020 MCU sends the same list of IDs as this bench cluster. Its transmit table gives each one a fixed period
+(exact). Cyclic frames also go out on a change, at most every 24 ms. The bench rate groups above agree, except that
+this cluster sends `0x318` at ~1 Hz and `0x315` at 5 - 13 Hz (the analog writes `0x315`, the 2020 MCU never does).
+
+| ID | Period (2020) | 2020+ digital firmware (LR3T) |
+|---|---|---|
+| `0x087` | on event | Never written at run time, only its init bytes (exact). Same for `0x190` `0x1F8 - 0x1FC` `0x363` |
+| `0x123` | on event | Byte 0 bits 7 - 6: answer to a language request on `0x191`: 0 idle, 1 changed, 2 not available (exact) |
+| `0x18B` | 1000 ms | Constant `00 00 00 1E ...` on the 2020 MCU. The GT500 MCU fills it with shift-light data, see [GT500 (LR3V) differences](#gt500-lr3v-differences) |
+| `0x193` | on event | Nav buttons (repeat, cancel route / waypoint), phone list buttons, byte 1 bits 7 - 1 = Ford language code (3 = en-US) (exact) |
+| `0x19A` | 1000 ms | MyKey: byte 3 bits 2 - 1 Do Not Disturb (1 not forced, 2 forced), byte 4 bits 7 - 6 911 Assist. The bench `00 00 00 02 40` decodes to "not forced" for both (exact) |
+| `0x220` | 1000 ms | **Chime request, channel 1** (not blind spot). Idle `10 01 00 ...` (byte 1 = 1, byte 0 bits 4 - 3 = 2); `08 01` = a chime playing in repeat mode (byte 0 bits 4 - 3 = 1). While a chime plays, bytes come from that chime's ROM table entry (exact: idle / repeat state; inferred: what the table bytes mean) |
+| `0x225` | 1000 ms | Byte 0 bits 6 - 5 audio mute request (1 none, 2 mute), byte 0 bits 4 - 2 chime level, byte 0 bit 0 chime starting, byte 1 bits 7 - 6 chime request state (2 = not serviceable, i.e. no chime module), byte 1 bits 1 - 0 MyKey volume limit (1 none, 2 limit). That explains the bench `20 81` (inferred) |
+| `0x287` | 200 ms | Phone call buttons to SYNC (exact) |
+| `0x2F4` | 1000 ms | **Chime request, channel 2**, same layout as `0x220` |
+| `0x2FD` | 1000 ms | Settings: language, clock 12/24 h, units, line lock request, exhaust mode request, see [0x2FD](#0x2fd---settings-units-exhaust-request-digital-cluster-tx) |
+| `0x30A` | 200 ms | Blind spot / cross traffic / park aid on-off and the steering feel request. The bench `D7` = blind spot and cross traffic "3" (not configured / module missing) (exact) |
+| `0x313` | 1000 ms | Never written on the 2020 MCU (all zeros). Same for `0x316` `0x353` `0x3FB` `0x45A` (exact) |
+| `0x315` | 1000 ms | Never written on the 2020 MCU |
+| `0x317` | 1000 ms | Only its init bytes `03 FE` (exact) |
+| `0x318` | 100 ms | Byte 5 bits 5 - 0 + byte 6: a trip computer value from the distance to empty / fuel economy task (inferred). On the 2020 MCU this, not `0x353`, is the DTE-like value |
+| `0x346` | 100 ms | Constant: three 2-bit fields at 3 (byte 3 bits 1 - 0, byte 4 bits 1 - 0, byte 6 bits 7 - 6), the bench bytes exactly (exact) |
+| `0x348` | 100 ms | Never written on the 2020 MCU |
+| `0x350` | 1000 ms | Byte 0 bits 7 - 6: echo of the airbag lamp state from `0x4C` (1 on / default, 2 flash). Likely the bench's `0x40` (inferred) |
+| `0x3C8` | 1000 ms | MyColor, ambient, drive mode, launch / damper / rev match requests, see [0x3C8](#0x3c8---drive-mode-mycolor) |
+| `0x3E0` | 1000 ms | Settings read / write request, see [0x3E0](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies) |
+| `0x430` | 100 ms | Odometer and settings out, see [0x430 (digital)](#0x430---ignition-status-digital-cluster-tx) |
+| `0x434` | 100 ms | Fuel senders, fuel level, MyKey max speed, TPMS reset request. The bench `FF F_` in bytes 5 - 6 = MyKey max speed off (exact) |
+| `0x591` | 1000 ms | Network management while awake: byte 0 node `0x91`, byte 1 control 0 (exact) |
+
 # 0x3E0 / 0x3E3 / 0x3E6 - Startup Requests and Replies
 
 **Status:** Confirmed · `interactive_brute_force.py --respond`
@@ -164,6 +202,44 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 - Other IDs in the same family: `0x3DF` `0x3E2` (idle frames), `0x3EB` `02 04 14 00 00 20 ..` (different layout), freeze frame `0x3E1` `80 00 00 07 01 80 00 00`, `0x3DA` `01 64 00 ..` (GT log all zeros).
 - 12 Nov 2026 - from power up the requests go out at 1.14 - 2.39 s when answered and `07 01 00 00 84` from 2.89 s, every 1 s (`can/apim/apim_ignition_20261112_174016.csv`). `07 01` isn't accepted on `0x3E3` (`00 01 07 01 80 ..`, 5 tries) or on `0x3E1` as `80 00 00 07 01 80 00 00`, `00 00 07 01 80 ..` or `00 01 07 01 80 ..` (`interactive_brute_force.py --respond-0701`). A BCM request? No BCM to check against.
 - Answering every request doesn't clear the startup faults (blind spot, cross traffic, steering assist, tire pressure monitor). Those modules' own messages aren't in any log.
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+On the 2020 MCU these requests are **settings reads**. The cluster keeps a 33-entry table of personalization settings
+(the Settings menu items that live in other modules) and asks for each one on `0x3E0`; the module that owns it
+answers with the current value (exact).
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 - 1 | | Setting ID | 16 bit, `04 xx` / `07 01` are setting IDs, see below (exact) |
+| 2 - 3 | | Value to write | `00 00` for a read (exact) |
+| 4 | 7 - 5 | Constant | always 4 (`0x80`) (inferred) |
+| 4 | 4 - 2 | Request type | 0 idle, **1 read** (`0x84` = 4 + read), 2 write (exact) |
+
+Setting IDs from the 2020 firmware's settings table (names are the cluster's own menu items, exact):
+
+| ID | Setting | ID | Setting |
+|---|---|---|---|
+| `04 01` | Remote window open | `04 0D` | Auto lamp delay |
+| `04 03` | Auto lock | `04 10` | (unnamed, a Settings menu config bit) |
+| `04 04` | Auto unlock | `04 11` | Mislock |
+| `04 05` | Remote unlock | **`07 01`** | **Easy Entry / Exit** |
+| `04 07` | Courtesy wipe (wipers) | `08 02` `08 0F` `08 40` | Forward collision warning settings |
+
+- So the bench's `04 07` going to `0x3E6` fits: on the 2020 MCU `0x3E6` is the wiper / rain-sensor settings feed
+  (its timeout sets U0212, the steering column module, which carries the wipers) (inferred).
+- **Reply layout**: byte 0 - 1 = value, byte 2 - 3 = setting ID on `0x3E3` and `0x3E6` (exact for the ID word,
+  inferred for the value word). The bench reply `00 01 04 xx 80` is value 1 for setting `04 xx`.
+- **Byte 1 `0x02 - 0x07` timing out except for `04 0D`**: byte 1 is the low byte of the value. The cluster keeps
+  asking until it gets a value that is valid for that setting; auto lamp delay has many valid values (inferred).
+- **`07 01` is Easy Entry / Exit** in the 2020 settings table. Which feed carries its answer is open. The 2020 MCU
+  has more feeds of the same kind: `0x3DD`, `0x3DE` (timeout sets U0199, door module), `0x3DF`, `0x3E1` and `0x3E7`
+  (timeouts set U0256, front controls interface module), `0x3E5` (U023A, image processing module). On `0x3E1` the
+  two words sit one byte later: value in bytes 1 - 2, ID in bytes 3 - 4, so a reply there would look like
+  `00 00 01 07 01 00 00 00` (layout exact, module inferred). The bench tries on `0x3E1` put `07 01` in bytes 3 - 4
+  with value 0, or the ID in the wrong bytes.
+- `0x3E3` missing sets U0140 (BCM) on the 2020 MCU (exact).
 
 ---
 
@@ -190,6 +266,29 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 - The g meter is the red dot on the Track Apps accelerometer screen. Encoding from `mustang.c` (commented "tested for JR3T"), confirmed on this cluster with the `gx` / `gy` presets.
 - Lateral shows the force the driver feels: a hard right turn puts the dot on the left, so game lateral acceleration goes in with its sign flipped. Longitudinal follows the acceleration: speeding up moves the dot to accel (both tested in Forza).
 - Every 2015 - 2017 log has `C0 00 80` in bytes 2 - 4 (`drive.csv` also `80` / `40` in byte 2, `00` in byte 4), off that scale. The old fixed frame `3E 83 C0 00 00 ..` pinned the dot in the top left corner.
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+The 2020 MCU reads the same two g meter values as 10 bit fields, value = `raw - 511` (`0x3FE` / `0x3FF` invalid),
+which is the `mustang.c` encoding above seen bit by bit. It also reads a speed:
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 2 | 4 - 0, + byte 3 bits 7 - 3 | G meter axis A | 10 bit, `raw - 511` (exact); which axis is which is inferred |
+| 3 | 2 - 0, + byte 4 bits 7 - 1 | G meter axis B | 10 bit, `raw - 511` (exact) |
+| 2 | 5 (`0x20`) | Speed valid | **`1`** or the speed below doesn't count (exact) |
+| 5 - 6 | | Track Apps speed | 0.01 km/h per count, `0xFFFE` / `0xFFFF` invalid. Runs the 0-60 / 0-100 timers, the brake test and the lap timer (exact) |
+
+- The g meter page needs EEPROM option 206 (Accelerometer Display) and both axes valid and fresh (exact).
+- Axes timing out set U0121-00 (ABS); the speed timing out (no frames, or the speed valid bit clear) sets U0415-82 (exact).
+
+Example frames, built from the 2020 field table (not captured; DLC 7):
+
+```
+G meter centred, 60 mph (9656), speed valid   00 00 2F FB FE 25 B8
+G meter centred, stopped, speed valid         00 00 2F FB FE 00 00
+```
 
 # 0x77 - Vehicle Speed / Yaw
 
@@ -238,6 +337,48 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 - `s550_cluster.py` now sends `0x77` in the base schedule (50 Hz): this frame while `steering_warning_fix` is 1 (the
   default, a switch in live_test.py), the real speed frame above at 0.
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+On HS3 the 2020 MCU reads this frame as cruise / steering / hill start status, not as the DBC's ABS speed. It has
+five signal groups, each with its own valid bit and its own 5 s deadline (exact, steering messages seen in the
+emulator):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 4 (`0x10`) | Valid, set speed group (byte 4) | `1` = valid. Group timing out sets U0401-82 |
+| 0 | 5 (`0x20`) | Valid, steering lamp group (byte 6 bits 5 - 4) | `1` = valid. `0`: after 5 s the steering lamp is forced to state 1, and with EEPROM option 51 (EPAS) set **U0420-82** is logged |
+| 4 | | Set speed | `0` none, `0x01 - 0xFD` speed in the cluster's unit, `0xFE` / `0xFF` invalid |
+| 5 | 0 (`0x01`) | Valid, second cruise group | `1` = valid |
+| 5 | 1 (`0x02`) | ACC set speed style | only used in adaptive cruise modes (inferred) |
+| 6 | 0 (`0x01`) | Valid, hill start group (byte 6 bits 3 - 1) | `1` = valid. Group timing out sets U0415-82 |
+| 6 | 3 - 1 | Hill start lamp | **`6` = Hill Start Assist Not Available**, every other value off |
+| 6 | 5 - 4 | **Steering lamp** | `0` off, `1` Steering Assist Fault Service Required, `2` Steering Fault Service Now, `3` Steering Loss Stop Safely (seen) |
+| 6 | 6 (`0x40`) | Valid, fifth group | `1` = valid (no visible use) |
+
+- That fits the bench results above bit for bit: `EC` in byte 6 = hill start value 6 (shown), `E6` = 3 (hidden).
+  The logged frame `18 3B 08 00 7F F7 E5 E5` / `1B ...` has byte 0 bit 5 clear and byte 6 = `E5` / `E6`, steering
+  value 2 (Steering Fault Service Now). The fix frame `FF FF FF FF FF FF 00 FC` has byte 0 bit 5 set and steering
+  value 0.
+- **U0420-82**: on the 2020 MCU it comes only from the steering lamp group timing out (byte 0 bit 5 clear, or no
+  frame), and only with option 51 (EPAS) set. So both bench fixes act on the same check: the fix frame keeps the
+  group valid, and EPAS off in the as-built removes it (exact for the 2020 MCU, likely the same on the analog).
+- Speed doesn't take part in it on the 2020 MCU; bytes 0 - 1 hold a 12 bit value nothing reads.
+- The fix frame has byte 6 bit 0 clear, so on the 2020 MCU the hill start group would time out (U0415-82)
+  (inferred from the DTC map). A clean frame with every group valid and no warnings, seen in the emulator:
+  **`70 00 00 00 00 85 41 00`** (put the set speed in byte 4).
+
+Example frames, built from the 2020 field table (not captured):
+
+```
+Clean, every group valid, no set speed         70 00 00 00 00 85 41 00
+Set speed 65                                   70 00 00 00 41 85 41 00
+Hill Start Assist Not Available                70 00 00 00 00 85 4D 00
+Steering Assist Fault Service Required         70 00 00 00 00 85 51 00
+Steering Fault Service Now                     70 00 00 00 00 85 61 00
+Steering Loss Stop Safely                      70 00 00 00 00 85 71 00
+```
+
 # 0x81 - Steering Wheel Buttons
 
 **Sample:** `00 00 00 00 00 00 00 00` · **Status:** Confirmed
@@ -249,6 +390,10 @@ About 0.8 s after start the cluster asks the other modules on HS3 to answer, one
 | 1 | `0x04` | Right |
 | 1 | `0x08` | Up |
 | 1 | `0x10` | OK |
+
+- From the 2020+ digital cluster firmware (LR3T): the digital cluster reads byte 0 / 1 / 2 as in
+  [0x081 (digital)](#0x081---steering-wheel--menu-buttons-digital-byte-0-is-a-bitmask), with the full key list,
+  hold timing and the GT500 keys there.
 
 # 0x82 - Power Steering Info (EPAS_INFO)
 
@@ -357,6 +502,9 @@ in the 2019 digital, `0x14C` callback in the 2019 analog), not in any of our log
 - Not sent at all before 14 Nov 2026, and every zeros test had byte 3 bit 0 clear. That's why no scan ever found it.
 - The analog firmware also watches byte 0 bits 3 / 4, byte 3 bit 1, byte 5 bits 0 / 1 and byte 6 bit 6 of this
   frame (per-signal monitors). Leave them `0`, untested.
+- From the 2020+ digital cluster firmware (LR3T, exact): the same two bits. Byte 2 bit 0 lights the wrench (lamp
+  slot 6), byte 3 bit 0 is the qualifier. The message timing out, or frames with byte 3 bit 0 clear, light the
+  wrench and set U0401-82 (invalid data from the PCM). On the 2020 MCU EEPROM option 2 gates it.
 
 # 0x156 - Coolant & Oil Temp Gauge
 
@@ -370,6 +518,27 @@ in the 2019 digital, `0x14C` callback in the 2019 analog), not in any of our log
 
 - The mid gauge hold is likely intended, Ford buffers the coolant needle across the normal range.
 - Never in the GT350 logs, the car seems to send coolant temp on `0x422` byte 3 instead.
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+Byte 4 is two fields, which explains the `03` / `08` values above (exact):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 1 | | Oil temp | `raw - 60 = °C`, `0xFE` / `0xFF` invalid |
+| 4 | 1 - 0 | Coolant valid | **must be `3`**. `0 - 2`: after 5 s the coolant reads invalid (hot lamp on, needle to its fault position) |
+| 4 | 4 - 3 | Engine fail-safe cooling | `1` or `2` = fail-safe active (overheat message). `08` = value 1 |
+
+- `03` = valid, no fail-safe. `0B` would be valid plus fail-safe 1 (untested here).
+- `0x156` missing sets U0100-00 (lost communication with the PCM) on the 2020 MCU.
+
+Example frames, built from the 2020 field table (not captured):
+
+```
+Coolant 90 C, oil 100 C, coolant valid         96 A0 00 00 03 00 00 00
+Same, engine fail-safe cooling 1               96 A0 00 00 0B 00 00 00
+```
 
 # 0x165 - Brake Pedal
 
@@ -446,6 +615,19 @@ cluster's car). In the 2019 analog firmware's receive table.
 
 - Bytes 5 & 7 track temperature in the GT350 logs, but sweeping them changed nothing on the cluster (outside temp and inlet air temp included, the IAT gauge is `0x42D`).
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 7 - 5 | Launch control state | `0` off, `1` / `2` active, `3` off / idle, `4` active + launch lamp (likely ready / engaged), `5 - 7` fault (exact). `0x2_` = 1, `0x8_` = 4, `0xA_` = 5 |
+| 0 | 3 - 2 | Speed limiter state | `0` off, `1` limiter on, `2` / `3` active with a set speed (inferred) |
+| 2 | 6 - 4 | Lamp request | `1` / `2` = a lamp in two states, other values off (exact; which lamp is open) |
+| 4 | 7 | Speed limiter flag | (inferred) |
+
+- Needs EEPROM option 226 (launch control) on the 2020 MCU. Missing frame: launch control shows "not active" and
+  both lamps go off (exact).
+
 # 0x179 - Warning Suppression, Distance Counter
 
 **Sample:** `00 00 00 00 96 00 02 C8` · **Status:** Confirmed
@@ -460,6 +642,26 @@ cluster's car). In the 2019 analog firmware's receive table.
 - Sending this frame turns off warnings like fuel service inlet, change oil soon and oil change required. Which bit does which isn't known.
 - The distance counter drives the odometer. Replaying the GT log made it count up by tenths and the cluster saved it. Mileage only goes up, the trip meters can be reset from the menu to track game distance.
 - Not in the GT350 logs (HS1).
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 7 - 5 | Shift indicator (manual) | `0` off, `1 - 3` upshift arrow (option 123), `4` downshift arrow (option 312), `5 - 7` off (exact) |
+| 2 | | Four single bits | inputs to the wrench logic on the 2020 MCU (inferred, see [Wrench](#wrench--see-manual-powertrain-malfunction-rtt)) |
+| 4 | 0 (`0x01`) | Lamp request | `1` lights one telltale (exact; which one is open) |
+| 5 | | Distance counter | as above; `0xFF` = invalid (exact) |
+| 6 - 7 | 1 - 0 of byte 6, byte 7 | 10 bit value | fed with the distance count into the fuel economy model, likely fuel used (inferred). Fits the "second counter" above |
+
+- Missing frame: the odometer stops counting and the shift arrow goes off (exact).
+
+Example frames, built from the 2020 field table (not captured; byte 4 `10` as in the emulator's healthy car):
+
+```
+Shift arrow up                                 20 00 00 00 10 00 00 00
+Shift arrow down                               80 00 00 00 10 00 00 00
+```
 
 # 0x200 - Engine Torque
 
@@ -484,6 +686,27 @@ cluster's car). In the 2019 analog firmware's receive table.
 | 4 | | Upper nibble must be `6` or the gauge doesn't work |
 | 6 - 7 | Speed | `MPH * 175` |
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 4 | 6 - 5 | Speed quality | `2` or `3` = good, speed accepted; `0` or `1` = bad, speed held and after 5 s faulted (exact, seen). So `0x6_` and `0x4_` should both work |
+| 0 | 4 - 2 | Gear range code | `3` = reverse: backup chime and reverse flag (exact) |
+| 0 | 7 - 5 | Warning code | values 2 / 4 / 5 / 6 each light one bit of a warning slot (exact; which message is open) |
+| 6 - 7 | | Speed | the 2020 MCU scales it as 0.01 km/h per count (`MPH * 160.9`) (exact) |
+
+- On the 2020 cluster `0x202` missing sets U0100-00 (lost communication with the PCM) and speed reads 0.
+- A check for the scale: send `27 10` (10000 = 100.00 km/h) and read the digital speed.
+
+Example frames, built from the 2020 field table (not captured):
+
+```
+0 km/h, quality good                           00 00 00 00 40 00 00 00
+100.00 km/h, quality good                      00 00 00 00 40 00 27 10
+Reverse (backup chime), 0 km/h                 0C 00 00 00 40 00 00 00
+```
+
 # 0x204 - RPM Gauge
 
 **Sample:** `C0 00 7D 01 4B 00 00 00` · **Status:** Confirmed (RPM), from logs (pedal)
@@ -492,6 +715,17 @@ cluster's car). In the 2019 analog firmware's receive table.
 |---|---|---|
 | 0 - 1 | Accelerator pedal | 10 bit (mask byte 0 with `0x03`). `0x000` off throttle, max seen `0x2C0` (704), possibly 0.1% per bit |
 | 3 - 4 | RPM | Half the actual RPM, gauge 0 - 4000. 5000 RPM → 2500 (`09 C4`) |
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+- The 2020 MCU reads only byte 3 bits 4 - 0 + byte 4, 13 bits, 2 rpm per count (the same half-RPM value). It
+  doesn't read the pedal bytes (exact).
+- It is the tach source **only while EEPROM option 279 (Tach Signal, as-built byte `0x07F` bit 3) is clear**. With
+  option 279 set the cluster takes the tach from `0x42F` instead (exact). That fits the 2018 digital bench below
+  (`0x204` dead, `0x42F` works) if that cluster has option 279 set (inferred).
+- Below 190 counts (~380 rpm) the chime logic treats the engine as not running; below 200 (~400 rpm) the
+  engine-not-running warning path runs (exact).
 
 # 0x217 - Wheel Speeds
 
@@ -516,6 +750,9 @@ cluster's car). In the 2019 analog firmware's receive table.
 - Alive frames don't do it: `b0 = ID low byte, 00, FF ...` on every unsent ID `0x400 - 0x5FF` (`0x427` included) left U0184 set.
 - `s550_cluster.py` sends it (`send_radio_present`). With `0x42C` byte 0 `10` and `0x46A` that is every DTC on the bench cleared by CAN: U0401-82, U0146, U0184.
 - The wrench stays on with U0184 gone, so it isn't the radio either.
+- From the 2020+ digital cluster firmware (LR3T): the content is chime-module feedback. Byte 0 bits 5 - 4 = chime
+  path status (`1` = available), bytes 2 and 4 = channel 1 / 2 status (`1` = done). All zeros reads as "nothing
+  playing", which is why zeros work (exact). The 2020 DTC table has no U0184 (exact).
 
 # 0x230 - Gear Position
 
@@ -541,6 +778,9 @@ cluster's car). In the 2019 analog firmware's receive table.
 | 7 | | `4` / `2` with ambient light or headlights on / off (per v-ivanyshyn) |
 
 - Bytes 0, 1, 6 constant in the log. Not in the GT350 logs, likely only on cars with automatic climate control.
+- From the 2020+ digital cluster firmware (LR3T): the cluster reads only **byte 4 bits 7 - 5, a key warning code**:
+  `1`, `2`, `3` = three pop-ups, **`3` = Key Battery Low Replace Soon** (seen in the emulator). The logged `02` in
+  byte 4 is code 0, no warning (exact). Other modules may read the rest of the frame.
 
 # 0x38D - Key / Start Messages, Track Apps
 
@@ -570,6 +810,28 @@ Ford DBC `Body_Info_6_FD1`, sent by the gateway. Sending `0x38D` at all (any pay
 - v-ivanyshyn saw byte 4 spike on engine start, which fits a start message showing briefly.
 - Other message fields per the DBC, untested: byte 4 bits 3 - 0 perimeter alarm (`PrmtrAlrmEvnt_D_Stat`), byte 3 bits 1 - 0 steering lock (`SteWhlLckMsgTxt_D_Rq`), byte 5 bits 3 - 1 door latch (`DrLatchMsgTxt_D_Rq`), byte 5 bits 7 - 6 security (`SecurityMsgTxt_D_Rq`).
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+The 2020 MCU's byte 4 codes line up with the table above. The four codes not in it yet, from the firmware:
+
+| Byte 4 | 2020 firmware |
+|---|---|
+| `0x20` | A key / start message of its own (not in the table above) |
+| `0x50` | A key message shown **only while the power mode is not on** (try with `0x3B2` / `0x3B3` byte 0 `1_`) |
+| `0xD0` | A key / start message of its own |
+| `0xF0` | A key message shown **only while the power mode is not on** |
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 3 | 1 - 0 | Two warnings | `1` / `2` each light one message (exact); likely the steering lock messages the DBC names (inferred) |
+| 3 | 3 - 2 | Keyless backup slot status | with EEPROM option 100 (keyless) (exact) |
+| 5 | 5 - 4 | MyKey in use | `1` = MyKey in use (exact) |
+
+- The cluster waits for this frame's MyKey state before it trusts the key type from `0x3B2`. While `0x38D` is
+  missing the MyKey state is unknown, and with EEPROM option 239 drive mode selection is blocked (inferred). That
+  fits "sending `0x38D` at all shows Track Apps".
+
 # 0x3B2 - Track Apps, Turn Signals
 
 **Sample:** `40 00 00 12 10 00 00 02` · **Status:** Confirmed
@@ -588,6 +850,11 @@ Sending this alongside `0x3B3` makes Track Apps show on this 2015 cluster (FR33)
 
 - `mustang.c` splits its code by cluster part number prefix: FR33 (this cluster) gets `0x3B3` then `0x3B2`, GR3T / JR3T get `0x3B2` alone (byte 0 `0x40` activates them).
 - Bit `0x08` in `0x3B3` byte 4 does nothing, the turn signals only work here. `s550_cluster.py` sends them on `0x3B2` and `0x3B3` byte 4 as `0x10` like the logs.
+- From the 2020+ digital cluster firmware (LR3T): byte 4 bits 7 - 4 are the **key type**, `1` (`0x10`) = admin
+  key, `2` (`0x20`) = MyKey (exact). Track Apps hides while a restricted MyKey is in use, so `0x20` should hide it
+  with MyKey configured (as-built option 80) (inferred). Byte 0 bits 7 - 4 are the power mode, and on the digital
+  cluster this frame also carries the doors, hood, trunk and fog lamps, at the same byte / bit as the analog `0x3B3`
+  (byte 7, byte 0 bit 0). Full table: [0x3B2 (digital)](#0x3b2---boot--activation-digital).
 
 # 0x3B3 - Cluster On, Doors, Lights, Parking Brake
 
@@ -645,6 +912,20 @@ Ford DBC `Tire_Pressure_Status` (CGEA 1.2 2011). Not in the GT350 logs, v-ivanys
 
 - The lamp and system status are separate fields: the system messages show with the lamp bits at 0.
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 7 - 4 | Message code | `1`, `2`, `3`, `5`, `6`, `7`, `10`, `13`, `14` each pick their own pop-up; **`4` = sensor relearn / training active** (only below a low speed); other values none (exact). Code 1 is also what a missing frame shows |
+| 0 | 3 - 2 | Lamp | `1` solid, `2` flashing, `3` invalid (after 5 s the lamp flashes, then stays solid) (exact) |
+| 0 | 1 - 0 | Reset / relearn status | shown in Settings; forced to `3` while the frame is missing (exact) |
+| 1 - 2 | | Tire status nibbles | `1 - 4` valid, `2` and `4` = warning colour; `0` or `5 - 15` start a 5 s fault debounce (the last good value is kept) (exact) |
+| 4 | | Placard pressure, front | psi, valid `25 - 115` (exact range, inferred unit). The logged `20` = 32 psi |
+| 5 | | Placard pressure, rear | same |
+
+- Needs EEPROM option 133 (TPMS) on the 2020 MCU.
+
 # 0x3B5 - Tire Pressure
 
 **Sample:** `00 CE 00 CE 00 CE 00 CE` · **Status:** Confirmed · Credit [v-ivanyshyn](https://github.com/v-ivanyshyn/parse_can_logs/blob/master/Ford%20CAN%20IDs%20Summary.md)
@@ -673,6 +954,30 @@ Ford DBC `Tire_Pressure_Status` (CGEA 1.2 2011). Not in the GT350 logs, v-ivanys
 | 3 | | Parking brake on / brake fluid level low warning |
 | 6 | | `0x00` / `0x80`, unknown |
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 1 (`0x02`) | High beams | `1` on (with EEPROM option 319 = 0) (exact). `0x_E` has it set, `0x_C` not |
+| 2 | 4 (`0x10`) | Brake lamp request | `1` brake telltale on (parking brake applied, inferred) (exact bit) |
+| 2 | 3 - 2 | Perimeter alarm status | `2` / `3` = the two menu states, `0` / `1` = none (exact) |
+| 3 | 3 (`0x08`) | Key in ignition | key-in chime (EEPROM option 68) (inferred) |
+| 3 | 5 (`0x20`) | Lamps-on reminder | chime in power mode Off (inferred) |
+| 4 | 0 (`0x01`) | LED low beam fault | `1` fault telltale (EEPROM option 153) (exact) |
+
+- Bytes 1 and 6 aren't read by the 2020 MCU (exact).
+- Missing frame: the brake telltale and the LED low beam fault telltale go on, and U0140-00 (BCM) is logged (exact).
+
+Example frames, built from the 2020 field table (not captured):
+
+```
+All off                                        00 00 00 00 00 00 00 00
+High beams on (option 319 = 0)                 02 00 00 00 00 00 00 00
+Brake telltale request                         00 00 10 00 00 00 00 00
+LED low beam fault                             00 00 00 00 01 00 00 00
+```
+
 # 0x3C8 - Drive Mode, MyColor
 
 **Sample:** `55 32 00 01 53 20 00 00` (GT log), `05 11 70 00 11 15 3C 00` (this cluster) · **Rate:** ~1 Hz · **Status:** Cluster sends
@@ -683,6 +988,21 @@ The cluster is the source of the MyColor / drive mode settings. Don't send it.
 |---|---|---|
 | 0, 4, 5 | MyColor RGB | per v-ivanyshyn |
 | 2 | Drive mode | `0` normal, `1` sport, `2` snow, `3` track (per v-ivanyshyn). `0x70` from this cluster on the bench |
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: Cluster sends, from firmware (2020+ digital, LR3T)
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 2 | 2 - 0 | Drive mode selected | `0` Normal, `1` Sport+, `2` Snow / Wet (inferred), `3` Track, **`4` Drag Strip** (exact) |
+| 2 | 7 - 4 | Ambient light preset | `0` ambient off, `1 - 7` preset colour (exact). The bench `0x70` = preset 7, drive mode Normal |
+| 3 | 1 - 0 | MyColor primary is custom | `0` preset, `1` custom (exact) |
+| 5 | 3 - 0 | MyColor primary preset | `0 - 7` (exact) |
+| 4 - 5 | | MyColor custom colour | three 4 bit levels: byte 5 bits 7 - 4, byte 4 bits 3 - 0, byte 4 bits 7 - 4 (inferred) |
+| 0 - 1 | | Ambient custom colour + dim | byte 0 bits 7 - 6 custom flag, byte 0 bits 1 - 0 dim level, colour levels in byte 1 and byte 0 bits 5 - 2 (inferred) |
+| 6 | | Launch control rpm | `raw * 50` rpm (exact). This cluster's `3C` would read 3000 rpm |
+| 7 | 7 - 6 | Launch control on / off | `1` on (exact) |
+| 7 | 5 - 3 | Damper (MagneRide) request | `0` Normal, `1` Sport, `3` Track, `4` Drag (exact) |
+| 7 | 2 - 1 | Rev match request | (inferred) |
 
 # 0x40A - VIN / Vehicle Config
 
@@ -735,6 +1055,34 @@ Sent by the body control module (BCM), it's the vehicle config the other modules
 
 - In v-ivanyshyn's GT log bytes 0 and 2 change every frame (rolling counter, e.g. `50 00 FE` / `51 00 FD`). `s550_cluster.py` sends it frozen.
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 1 | 5 (`0x20`) | Brake system warning | `1` red BRAKE lamp (exact) |
+| 1 | 6 (`0x40`) | Stability (RSC / AdvanceTrac) warning | `1` warning lamp and chime (EEPROM options 52 / 130) (exact) |
+| 4 | 1 - 0 | Hill start assist status | `0 - 3`, shown in Settings; forced to `3` when missing (EEPROM option 321) (exact) |
+| 5 | 2 - 1 | Traction / stability (IVD / ESC) lamp | `0` off, `1` steady, `2` slow flash (2048 ms period), `3` fast flash (512 ms) (exact) |
+| 6 | 7 - 6 | ABS lamp | `0` off, `1` steady, `2` fast flash (512 ms period), `3` slow flash (2048 ms) (exact) |
+
+- The ABS lamp only works in power mode Run / Start. Missing frame: ABS, traction and brake lamps on steady, and
+  U0121-00 (ABS) is logged (exact).
+- On the 2020 MCU the TC OFF telltale comes from `0x46A` byte 2 bits 7 - 6, not from this frame (exact). The other
+  bytes (0, 2, 3, 7) aren't read.
+
+Example frames, built from the 2020 field table (not captured; DLC 7):
+
+```
+All lamps off                                  00 00 00 00 00 00 00
+ABS steady + IVD / ESC steady                  00 00 00 00 00 02 40
+ABS fast flash                                 00 00 00 00 00 00 80
+ABS slow flash                                 00 00 00 00 00 00 C0
+IVD / ESC slow flash                           00 00 00 00 00 04 00
+IVD / ESC fast flash                           00 00 00 00 00 06 00
+Red BRAKE request                              00 20 00 00 00 00 00
+```
+
 # 0x421 - Oil Pressure Status, Check Engine Light, Engine Shutdown Messages
 
 **Sample:** `00 00 50 00 00 00 4D 00` · **Rate:** ~5 Hz · **Status:** Confirmed
@@ -749,6 +1097,20 @@ Sent by the body control module (BCM), it's the vehicle config the other modules
 - Sending this at all changes Gauge Mode > Oil Pressure from "Low" (with a warning) to "Normal", missing `0x421` is treated as a fault. Flipping each of the 64 bits never changed it off Normal.
 - The GT has an oil pressure switch, not a sender, so there's no radial gauge, only the status text.
 - Not in the GT350 logs.
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 3 - 2 | Lamp request (check engine) | `0` off, `1` / `3` steady, `2` flashing (exact bits, inferred name) |
+| 1 | 1 - 0 | Auto stop status | `1` / `2` = the two auto start-stop indications (EEPROM options 6 / 7) (exact) |
+| 2 | 2 (`0x04`) | Warning (oil pressure) | `1` = warning after a debounce of about 1625 + 875 timer counts; **forced on when `0x421` is missing** (exact bit, inferred name) |
+| 7 | | Fuel economy / range model input | `0xFF` invalid (the model then uses 100) (exact) |
+
+- That is why a missing `0x421` reads as Oil Pressure Low. The logged byte 2 `0x50` / `0x58` have bit 2 clear (no
+  warning), `FF` sets it.
+- Missing frame: check engine lamp on, auto stop lamp off (exact).
 
 # 0x422 - Coolant Temp
 
@@ -780,6 +1142,41 @@ Logged values: GT350 `8C 00 00 00 9C 60 00 00` in every log (`84 ..` and `8C 04 
 - A 2018 GWM on a bench sends `10 00 00 00 FE 00 00 00` on HS3 with nothing but key-on behind it (datechnerd's `gwm_hs3_keyon_30s.csv`, every frame in it is static), the same byte 0 found here.
 - With U0401-82 gone the only code left asking for a lamp is U0146-00 (lost communication with the GWM, status `8A`; U0184 is `0A`, no lamp), so the wrench is most likely U0146's. `0x168` zeros (the digital cluster's wrench fix) changes nothing here.
 - The wrench / See Manual stays on with U0401-82 gone and with all 8 bytes `FF`, so it isn't this frame or that code. `FF` in each of `0x421 0x167 0x200 0x204 0x230 0x202 0x156 0x43E 0x42D 0x178 0x431` (one at a time, 14 s each) doesn't move it or any DTC either.
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+Every signal group in this frame has its own **update bit**. A frame with the bit clear doesn't refresh that
+group, so it times out after 5 s even while frames arrive (exact):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 4 (`0x10`) | Update bit, cruise / ACC state | **`1`**, as found above |
+| 0 | 7 - 5 | Cruise / ACC state | `0` / `1` off, `2` / `3` standby (grey, SET), `4` / `5` engaged (green), `6` / `7` invalid (exact). Matches the `10 30 / 50 70 / 90 B0 / D0` results |
+| 0 | 2 (`0x04`) | Update bit for byte 0 bit 3 | `1` (`8C` has it, `88` doesn't) |
+| 0 | 3 (`0x08`) | Warning (Occupant Sensor Blocked) | `1` on (exact bit, name from this bench) |
+| 2 | 7 (`0x80`) | **Update bit for the byte 1 warning code** | **`1`**. Clear: after 5 s the code times out and its lamp is **forced on** |
+| 1 | 3 - 0 | Warning code | `1`, `2`, `4`, `5`, `8` light that lamp (2, 4, 5, 8 add a second slot); `3`, `9`, `6`, `13`, `14` other lamps (exact) |
+| 1 | 4 (`0x10`) | Update bit for byte 3 bits 0 - 1 | |
+| 2 | 2 (`0x04`) | Update bit for byte 6 bits 7 - 5 | (no lamp) |
+| 6 | 2 (`0x04`) | Update bit for byte 6 bit 3 | |
+| 6 | 3 (`0x08`) | Warning (spin out message) | `1` on (exact bit, name from this bench) |
+
+- **The battery icon (TODO "which bits of byte 2"): byte 2 bit 7.** "`FF` turns it off within 2 s, `00` brings it back
+  6 s later" is this update bit: with it clear the byte 1 code times out and the lamp it drives is forced on. So the
+  lamp is very likely the red battery / charging lamp (mechanism exact, name inferred). Sweeping only `0x80` would
+  confirm it.
+- `FF` in byte 6 sets both bit 2 and bit 3, which is why it shows the spin out message.
+- On the 2020 MCU U0401-82 comes from other frames (`0x77`, `0x14C`, `0x20A`, `0x274`, `0x432`, `0x46A`, `0x46B`,
+  `0x470`); `0x42C` isn't mapped to it there (exact). The bench result above stands for the analog cluster.
+
+Example frames, built from the 2020 field table (not captured; DLC 7, every update bit set):
+
+```
+Cruise off, no warnings                        14 B0 84 30 00 00 15
+Cruise standby (grey SET)                      54 B0 84 30 00 00 15
+Cruise engaged (green)                         94 B0 84 30 00 00 15
+```
 
 # 0x42D - Inlet Air Temp
 
@@ -853,6 +1250,46 @@ Messages found by flipping one bit at a time (only one bit changed from the base
 - Byte 4's messages appeared from the freeze frame base only. The GT350's idle frame has byte 4 `0x97` (= freeze with bit 5 cleared), which is unlikely to mean overheat at idle, so byte 4 may depend on byte 3 or the other bytes. Untested: replay the idle frame.
 - Every other bit of both frames: nothing visible. Byte 3 or byte 6 = `FF` shows Transmission Limited Function (2018-2023_S550_Digital_Cluster bench).
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+Byte 3 and byte 4 each hold a **message number**, each with its own update bit (exact). The 2020 firmware numbers
+the messages only as bits of one warning slot, so the names in the last column come from the bench table above:
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 3 | 2 (`0x04`) | Update bit for the byte 3 code | `1` = the code counts |
+| 3 | 6 - 3 | Message code A | see below |
+| 3 | 1 (`0x02`) | Update bit for the byte 4 code | `1` = the code counts |
+| 4 | 7 - 5 | Message code B | see below |
+| 5 | 2 - 0 | Steering mode status | for Info on Demand and the drive mode check, update bit byte 5 bit 3 (exact) |
+
+| Code A (byte 3 bits 6 - 3) | Slot bit | Bench name | Code B (byte 4 bits 7 - 5) | Slot bit | Bench name |
+|---|---|---|---|---|---|
+| `0`, `3`, `4`, `8` | none | (nothing, `04`) | `0`, `7` | none | |
+| `1` | 0 | Transmission Malfunction (`0C`) | `1` | 8 | Transmission Too Hot, Press Brake (`37`) |
+| `2`, `5`, `9` | 1 | Transmission Service Required (`14`) | `2` | 9 | untested |
+| `6`, `7` | 2 | untested | `3` | 10 | untested |
+| `10` | 3 | untested | `4` | 11 | Transmission Overheat, Stop (`97`) |
+| `11` | 13 | same bit as code B 5 | `5` | 13 | Transmission Warming Up (`B7`) |
+| `12` | 4 | Transmission Adapt Mode (`E3`) | `6` | 12 | untested |
+| `13` | 5 | Transmission Indicator Mode Lockup (`EF`) | | | |
+| `14`, `15` | 6, 7 | untested | | | |
+
+- `EB` / `EA` in byte 3 are code 13 too, but with bit 2 clear: on the 2020 MCU that code wouldn't count, and the
+  Warming Up message comes from byte 4 = `B7` (code 5, with byte 3 bit 1 set). That also explains `EA` showing no
+  change. `E3` has bit 2 clear as well, yet showed Adapt Mode on the bench, so the analog cluster may not check
+  this update bit.
+
+Example frames, built from the 2020 field table (not captured; every update bit set):
+
+```
+No message, steering mode Normal               00 00 A0 87 08 C8 00 86
+Code A 1 (Transmission Malfunction)            00 00 A0 8F 08 C8 00 86
+Code B 5 (Transmission Warming Up)             00 00 A0 87 A8 C8 00 86
+```
+- A value stays until its group times out (5 s) (exact).
+
 # 0x43E - Air Fuel Ratio, Cylinder Head Temp, Boost / Vacuum
 
 **Sample:** `00 93 10 8B 9D 31 30 00` · **Rate:** ~13 Hz · **Status:** Confirmed
@@ -882,6 +1319,18 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - v-ivanyshyn reads it as engine load %, `(b5 << 8 | b6) / 72 - 140`.
 - Not in the GT350 logs.
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 3 | | Air fuel ratio | `raw / 10`, gauge with EEPROM option 213 (exact) |
+| 4 | | Cylinder head temp | `raw - 60 = °C`, option 216 (exact) |
+| 5 - 6 | byte 5, byte 6 bits 7 - 3 | Boost / vacuum | 13 bit, 0.1 kPa per count, **zero at 2068** (below = vacuum, above = boost) (exact). The readout uses 0.2961 inHg / 0.145 psi per kPa |
+| 6 - 7 | byte 6 bits 1 - 0, byte 7 | **Engine oil pressure** | **10 bit** (not only byte 7), gauge with option 228; the scale lives in the gauge curve table (inferred) |
+
+- Missing frame: the gauges go to their fallback positions; with a gauge enabled it counts toward U0100-00 (exact).
+
 # 0x46A - GWM Present
 
 **Sample:** `00 00 00 08 00 00 00 00` · **Rate:** 1 s from a 2018 GWM, 100 ms here (must arrive at least every 5 s) · **Status:** Confirmed (U0146, wrench)
@@ -899,6 +1348,40 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - All zeros is what the GWM sends with nothing behind it. With a car's frames on HS1 it packs status in (datechnerd's `gwm_map`): byte 5 bit 4 follows `0x179`, byte 6 bit 5 follows `0x230`, byte 3 is `08` or `80` in different captures. Untested here.
 - **Wrench / See Manual: solved 14 Nov 2026**, needs byte 3 `08` here plus `0x14C`, see [Wrench / See Manual](#wrench--see-manual-powertrain-malfunction-rtt). Before that it stayed on through every zeros / `FF` test (all-zero `0x46A` never counts as received).
 - Zeros on an ID in `0x14D - 0x194` shows "Collision detection unavailable" and sets U0405-56 while held (not narrowed down).
+  - From the 2020+ digital cluster firmware (LR3T): the first candidate is **`0x18A`**, the adaptive cruise /
+    forward collision warning status and the only collision warning message in that range on the 2020 MCU. Its
+    byte 0 bits 7 - 5 = `2` lights the FCW lamp and locks the FCW menu items (exact). See
+    [0x18A](#0x18a---adaptive-cruise--forward-collision-warning-digital). Second candidate `0x167`, which gates the FCW lamp
+    (inferred).
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+On the 2020 MCU `0x46A` is the **selectable damper (MagneRide) status**. The 2019 digital and this analog cluster
+read bytes 3 and 5 (above); the 2020 MCU doesn't read them, and its DTC table has no U0146 (exact). The TCS OFF lamp
+in byte 2 agrees with the 2018 digital bench.
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 7 - 5 | Damper mode | `0` Normal, `1` Sport, `2` shown as Normal, `3` Track, `4` Drag, `7` invalid. Confirms drive mode changes with EEPROM option 210 (Selectable Dampers) (exact) |
+| 0 | 4 (`0x10`) | Update bit, damper mode | `1` = counts. Group timing out sets U0401-82 (exact) |
+| 1 | 7 - 3 | Damper warning | `1 - 5` each one message, other values none (exact) |
+| 1 | 2 (`0x04`) | Update bit, damper warning | |
+| 2 | 7 - 6 | **TC OFF lamp** | `0` off, `1` steady, `2` slow flash (2048 ms), `3` fast flash (512 ms) (exact) |
+| 2 | 5 (`0x20`) | Update bit, TC OFF lamp | |
+
+- The 2018 bench's "byte 1 bit 3 TCS off message" is damper warning value 1 on the 2020 MCU.
+
+Example frames, built from the 2020 field table (not captured; DLC 6, update bits set):
+
+```
+Dampers Normal, no warning, TC OFF lamp off    19 04 22 09 80 00
+TC OFF lamp steady                             19 04 62 09 80 00
+TC OFF lamp slow flash                         19 04 A2 09 80 00
+TC OFF lamp fast flash                         19 04 E2 09 80 00
+Dampers Sport                                  39 04 22 09 80 00
+Dampers Track                                  79 04 22 09 80 00
+```
 
 # 0x453 - Seat Occupant Sensor Serial Number
 
@@ -963,6 +1446,23 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 | [`0x46A`](#0x46a---gwm-present) | `00 00 00 08 00 00 00 00` | byte 3 bit 3 (`0x08`): valid | byte 5 bit 4 (`0x10`): service | Yes, `send_gwm_present` |
 | [`0x3B2`](#0x3b2---track-apps-turn-signals) | `40 00 00 12 10 00 00 02` | (any frame counts) | byte 1 bit 2 (`0x04`): body service | Yes |
 | [`0x179`](#0x179---warning-suppression-distance-counter) | `00 00 00 00 96 00 02 C8` | (any frame counts) | byte 2 bit 3 (`0x08`): engine service | Yes |
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+The wrench inputs differ by firmware. On the 2020 MCU they are (each must arrive at least every 5 s):
+
+| ID | 2020 firmware | Label |
+|---|---|---|
+| `0x14C` | byte 2 bit 0 = 0, byte 3 bit 0 = 1 (qualifier) | exact |
+| `0x3B2` | byte 1 bit 2 = 0 | exact |
+| `0x179` | byte 2 bits clear | inferred |
+| `0x168` / `0x169` | byte 2 bit 7 / byte 2 bit 3 clear | inferred |
+| `0x263` | only expected with EEPROM option 5 = 4x4 / AWD | inferred |
+
+- `0x46A` is not a wrench input on the 2020 MCU (it is the damper message there), unlike the 2019 digital
+  (`vbf/KL3T_NOTES.md`) and this analog cluster (inferred: the wrench routine was traced, not fully decompiled).
+- In the 2020 firmware the wrench is lamp slot 6. Its name comes from this bench, not from the firmware.
 
 
 # Fuel Level Senders (wired, C220)
@@ -1281,6 +1781,71 @@ On the digital (JR3T) cluster `0x3B2` **alone** boots and keeps the cluster awak
 `0x3B2` alone. Byte 0 upper nibble must be `4` (key on); any other value = key off and the display dies in ~2-10 s.
 Byte 0 low nibble bit 0 = Trunk Ajar. Layout is Ford `BodyInfo_3` (door/lamp/turn bits per the analog `0x3B2`/`0x3B3`).
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+**Byte 0 bits 7 - 4 are the power mode** (exact). The whole cluster's power state comes from it:
+
+| Byte 0 high nibble | Power mode | What the cluster does |
+|---|---|---|
+| `1` (`0x1_`) | Off | Gauges and most telltales inactive. Turn arrows only as hazards (both bits set). Message timeouts aren't checked |
+| `2` (`0x2_`) | Accessory | As Off for gauges and timeouts; hazards only |
+| **`4` (`0x4_`)** | **Run** | Gauges and lamps work, every message's 5 s timeout is checked, lost-comm DTCs can set, each turn arrow shows on its own |
+| `8` (`0x8_`) | Start (crank) | Treated as Run with a "starting" flag once a timer runs out (the timer restarts whenever the value isn't 8) |
+| anything else | Off | |
+
+- Until the first `0x3B2` arrives the cluster stays Off. If `0x3B2` stops, the power mode signal times out after
+  5 s and the cluster goes to Off (exact). That fits "display dies in ~2 - 10 s" above.
+- The ABS lamp only works in Run / Start (exact); most other telltales and gauges too (inferred from the timeout rule).
+
+The rest of the frame on the 2020 MCU (on the digital cluster every body bit comes from `0x3B2`; `0x3B3` only carries
+the outside temperature):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 0 (`0x01`) | Trunk ajar | `1` open (seen) |
+| 0 | 1 (`0x02`) | Rear fog lamp | `1` on (EEPROM option 107) (exact) |
+| 0 | 3 - 2 | Park / position lamps | `0` off, `1` on, `2` / `3` invalid (telltale with option 119) (exact) |
+| 1 | 2 (`0x04`) | Wrench input | keep `0` (inferred, see [Wrench](#wrench--see-manual-powertrain-malfunction-rtt)) |
+| 1 | 3 (`0x08`) | Remote start active | (inferred) |
+| 1 | 7 - 6 | Day / night | `1` day (fallback brightness 18), other night (12) (inferred). Bench `0x48` = 1, `0x88` = 2 |
+| 2 | 2 - 1 | Dimmer switch activity | a change pops up the dimming level (inferred) |
+| 3 | | Dimming step | `0` none (day / night fallback), **`1 - 12` night, `13 - 18` day**, `19+` invalid (then 12) (exact). Bench `0B` night, `10` day |
+| 4 | 3 (`0x08`) | Right turn arrow | `1` on. In Off / Accessory only shown when both arrows are on (hazard) (exact, seen) |
+| 4 | 7 - 4 | Key type | `1` admin key, `2` MyKey (option 80) (exact) |
+| 6 | 0, 1 | Two more closure switches | chime inputs, which door is open (inferred) |
+| 6 | 5 - 2 | Vehicle life mode | **keep `0`**. `1` shows Factory Mode Contact Dealer (seen); `3` another special mode that mutes chimes (exact) |
+| 6 | 6 (`0x40`) | Left turn arrow | as the right one (exact, seen) |
+| 7 | 0 (`0x01`) | Front fog lamps | `1` on (option 55) (exact) |
+| 7 | 1 (`0x02`) | Closure change detector | the real car sends `1` (bench `02`) (meaning open) |
+| 7 | 2 (`0x04`) | One more closure switch | (inferred) |
+| 7 | 3 (`0x08`) | Hood ajar | `1` open (seen) |
+| 7 | 4 (`0x10`) | Passenger door ajar | `1` open (seen) |
+| 7 | 5 (`0x20`) | Driver door ajar | `1` open (seen) |
+
+- Doors, hood and trunk sit at the same byte / bit as in the analog `0x3B3` byte 7 / byte 0 table, so on a digital
+  cluster send them on `0x3B2` (exact for the 2020 MCU).
+- Not read by the 2020 MCU: byte 5, byte 6 bit 7 (parking brake comes from `0x3C3` byte 2 bit 4 / `0x213`), byte 1
+  bits 1 - 0, byte 7 bits 7 - 6 (exact).
+- Missing frame: all door, fog and mode lamps clear, and U0140-00 (BCM) is logged (exact).
+- Minimal Run frame, all closed, day, admin key: `40 40 00 10 10 00 00 02` (built from the table).
+
+Example frames, built from the 2020 field table (not captured; dimming step 15, admin key):
+
+```
+Power mode Off                                 10 00 00 0F 10 00 00 00
+Power mode Accessory                           20 00 00 0F 10 00 00 00
+Power mode Run                                 40 00 00 0F 10 00 00 00
+Power mode Start (crank)                       80 00 00 0F 10 00 00 00
+Driver door ajar (Run)                         40 00 00 0F 10 00 00 20
+Driver + passenger + hood + trunk ajar         41 00 00 0F 10 00 00 38
+Left turn arrow (Run)                          40 00 00 0F 10 00 40 00
+Right turn arrow (Run)                         40 00 00 0F 18 00 00 00
+Hazards (Run)                                  40 00 00 0F 18 00 40 00
+Hazards (Off, the only arrows shown in Off)    10 00 00 0F 18 00 40 00
+Front fog + park lamps, night dimming 6        44 00 00 06 10 00 00 01
+```
+
 ## 0x42F - Tachometer (digital)
 
 **Sample:** `C0 00 7D 00 00 00 1F 40` (8000 rpm) - **Status:** Confirmed
@@ -1294,6 +1859,9 @@ Ford `EngAout_N_Dsply`, a 13-bit field in bytes 6-7, **rpm = raw x 2**.
 - Sweeps the needle cleanly 0 -> 8000 -> 0. The analog `0x204` RPM (bytes 3-4) does **nothing** on the digital cluster.
 - Note `b6` bit 4 alone = raw bit 12 = 4096 -> x2 = 8192 rpm (redline), which is why setting byte 6 alone snaps to redline
   (an old "launch control" red herring).
+- From the 2020+ digital cluster firmware (LR3T, exact): the same 13 bit field, 2 rpm per count. The cluster uses
+  `0x42F` **only when EEPROM option 279 (Tach Signal, as-built byte `0x07F` bit 3) is set**; with it clear the tach
+  comes from `0x204` bytes 3 - 4. A missing `0x42F` (in use) sets U0100-00.
 
 ## 0x171 - Gear / PRND S (digital automatic)
 
@@ -1328,6 +1896,38 @@ The digital cluster Gauge Mode / engine-data page adds readouts the analog does 
 - G-meter page (`0x76`) on the digital cluster would not take a dot from `0x76`, `0x92`, `0x77` or `0x416`; it appears
   computed internally from ABS + RCM data with live counters - still open on the digital unit.
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+- **G meter (the open question above): `0x76` is its source on the 2020 MCU.** Both 10 bit axes (`raw - 511`) must
+  be in range (not `0x3FE` / `0x3FF`) and fresh, and **EEPROM option 206 (Accelerometer Display, as-built byte
+  `0x070` bit 5) must be on**. The `mustang.c` encoding is the right one. See [0x76](#0x76---steering-angle-track-apps-g-meter) (exact).
+- **TOT (`0x470`)**: only **byte 2 bit 6 (`0x40`)** is needed, it is the update bit of the temperature. `0xFF` works
+  because it includes that bit. `0xFE` / `0xFF` in byte 3 = invalid. Gauge with option 220 (exact).
+- **Axle oil temp (`0x432`)**: byte 1 bit 6 is the update bit of the value, as found above; option 223 (exact).
+- **Engine oil pressure (`0x43E`)** is 10 bit: byte 6 bits 1 - 0 + byte 7 (exact), option 228.
+- **`0x17E`**: received by the 2020 MCU but nothing reads it there. The GT500 MCU reads it, see
+  [GT500 (LR3V) differences](#gt500-lr3v-differences) (exact).
+
+The other fields of `0x470` and `0x432` on the 2020 MCU (each signal group has its own update bit and 5 s timeout):
+
+| ID | Byte | Bits | Signal | Values |
+|---|---|---|---|---|
+| `0x470` | 2 | 5 - 3 | Line lock state | `0` ready, `1` holding (brake percent shown), `2 - 4` other line lock screens. Update bit byte 2 bit 2. Option 209 (exact) |
+| `0x470` | 6 - 7 | byte 6 bits 4 - 0, byte 7 | Line lock held brake pressure | 13 bit, `0x1FFE` / `0x1FFF` invalid. Update bit byte 6 bit 5 (exact) |
+| `0x432` | 1 | 5 (`0x20`) | Brake Applied Power Reduced | `1` shows the message. Update bit byte 1 bit 4 (exact) |
+| `0x432` | 3 | 3 (`0x08`) | Axle Over Temperature Reduce Speed | `1` shows the message. Update bit byte 3 bit 2 (exact) |
+| `0x432` | 5 | 3 (`0x08`) | MyKey traction control message | `1` shows the "traction control on" MyKey message. Update bit byte 5 bit 2 (inferred name) |
+
+- The line lock group timing out (option 209) sets U0401-82, as do the `0x432` groups (exact).
+
+Example frames, built from the 2020 field table (not captured; update bits set):
+
+```
+0x470 line lock ready, TOT group valid         00 00 C6 00 01 19 20 00
+0x432 no requests                              00 51 11 14 18 37 00 01
+```
+
 ## 0x3B3 byte 4 - Outside temperature (digital)
 
 **Status:** Confirmed
@@ -1336,6 +1936,11 @@ On the digital cluster the outside-air temp reads from **`0x3B3` byte 4, C = raw
 `FE`/`FF` ignored). `0x3B3 = 00 00 00 00 78 00 00 00` boots reading 68 F (20 C). Reads "--" while lost-comm DTCs are
 active, blank with none + no source.
 
+- From the 2020+ digital cluster firmware (LR3T, exact): `0x3B3` carries only byte 4 and **byte 6 bit 0, the
+  update flag of the temperature**. With it clear the value isn't refreshed in Run, so send byte 6 = `01`. The
+  frost / ice warning comes on at **+4 °C or below** (raw `0x58` or less) and is sent out on `0x430` byte 5 bits
+  5 - 4 = 2. `0xFE` = sensor fault, `0xFF` = invalid (each logs its own outside temp DTC with options 94 / 85).
+
 ## 0x191 - Display units + distance-to-empty (digital)
 
 **Status:** Confirmed
@@ -1343,6 +1948,22 @@ active, blank with none + no source.
 Byte 0 is a packed units field (**stored** - survives a key cycle, reset only by an IPC power cycle). Temperature and
 distance units are separate: temp `0x10` = F, `04/08/40/80` = C. b0 `01`/`04` also pops "0 mi to E", so `0x191`
 is the fuel-range / distance-to-empty frame. Distance-unit bits not fully mapped; send with care.
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+A 3 byte settings request, most likely from SYNC. On each new frame the cluster adopts it into its own settings
+(that is why it is stored) (exact):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 3 - 2 | Distance / fuel economy unit | `0` metric (from Miles & Gallons it switches to l/100 km or km/l, by EEPROM option 14), `1` Miles & Gallons, `2` / `3` ignored |
+| 0 | 5 - 4 | Temperature unit | `0` and `1` are the two units, `2` / `3` ignored. The bench `0x10` = 1; `04` `08` `40` `80` = 0 |
+| 2 | 7 - 1 | Language | language slot number (e.g. 2 English UK, 3 English US); `0` / `1` = no request. Taken only if this cluster has that language |
+
+- The units are echoed on `0x2FD` byte 2 bits 7 / 6, and a language change is answered on `0x123` byte 0 bits
+  7 - 6 (exact).
+- Missing frame: nothing changes, the cluster keeps its units and language (exact).
 
 ## 0x3B4 - TPMS telltale lamp (digital)
 
@@ -1361,6 +1982,10 @@ All-zeros = lamp off. Pressures themselves are `0x3B5` as on the analog cluster.
 
 **Presence-gated:** broadcasting `0x38D` at all - any payload, even all-zero, at ~50 ms - makes the **TrackApps** menu
 entry appear; dropping it removes the entry.
+
+- From the 2020+ digital cluster firmware (LR3T): the cluster waits for `0x38D`'s MyKey state (byte 5 bits 5 - 4)
+  before it trusts the key type; Track Apps hides while a restricted MyKey is in use (inferred). Byte layout in
+  [0x38D](#0x38d---key--start-messages-track-apps).
 
 ## 0x081 - Steering-wheel / menu buttons (digital, byte 0 is a bitmask)
 
@@ -1384,6 +2009,53 @@ The digital menu is 1-D: Up / Down / OK / Menu / Back only (no left/right), whic
 to it. On the S550 wheel the physical packs are media on the left spoke, menu+voice on the right (18+; believed flipped
 on 15-17) - so the "ignored" bits are real buttons the IPC simply does not act on.
 
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: From firmware (2020+ digital, LR3T), not yet
+confirmed on this bench
+
+**Sample:** `00 00 00` (built from the 2020 firmware field table, all keys released), `10 00 00` (OK), `08 00 00` (Up), `01 00 00` (Down), `00 40 00` (Back), `00 01 00` (Menu / Settings), `00 08 00` (Media), `00 04 00` (Navi), `00 00 80` (Cobra / Pony menu)
+
+The keys the 2020 MCU passes to the display, with the display program's own name for each (exact):
+
+| Byte | Bits | Key | Display name |
+|---|---|---|---|
+| 0 | `0x10` | OK | `vehicle_hk_ok` |
+| 0 | `0x08` | Up | `vehicle_hk_up` |
+| 0 | `0x01` | Down | `vehicle_hk_down` |
+| 1 | `0x40` | Back | `vehicle_hk_back` |
+| 1 | `0x01` | Menu / Settings | `vehicle_hk_settings` |
+| 1 | `0x08` | Media | `vehicle_hk_media` |
+| 1 | `0x04` | Navi | `vehicle_hk_navi` |
+| 1 | `0x20` | HUD | `vehicle_hk_hud`: forwarded by the cluster, no visible effect on an S550 (no HUD) |
+| 2 | `0x80` | Cobra menu (Pony menu on non-Shelby cars) | `vehicle_hk_view` |
+
+- Byte 0 `0x02` / `0x04` reach the MCU but it has no key for them, so the display never sees them (exact). Matches
+  "ignored by the digital menu" above.
+- On the 2020 firmware Media is byte 1 `0x08`; byte 1 `0x02` isn't one of its keys (exact). The music page above
+  may come from another path on the 2018 unit.
+- **Phone** doesn't come from `0x081`: it is built from `0x2A1` (four slots of an ASCII tag in bytes 0 - 3 plus a
+  4 bit state in bytes 4 - 5; tag `E` (`0x45`) with state `1 - 4` = Phone held) (exact). **Voice** has no field in
+  the MCU.
+- `0x081` missing sets U0212-00 (steering column module) (exact).
+
+**Holding a key.** The MCU turns each held key into a hold level the display reads (short press vs long press,
+e.g. hold OK to reset a trip). Counts are exact; the ms assume the 4 ms timer tick (inferred):
+
+| Level | After (counts) | About |
+|---|---|---|
+| 1 | press | 0 ms |
+| 2 | 37 | 148 ms |
+| 3 | +87 (124) | 0.5 s |
+| 4 | +125 (249) | 1.0 s |
+| 5, 6, 7, 8 | +250 each (499, 749, 999, 1249) | 2.0, 3.0, 4.0, 5.0 s |
+| 9 | +750 (1999) | 8.0 s |
+
+- Auto repeat while held: first repeat after 75 counts (~300 ms), then every 37 (~148 ms). Release resets the
+  level to 0. A bench tool only needs to keep the bit set; it doesn't have to repeat frames faster.
+
+**GT500 (LR3V) keys.** The GT500 MCU reads the same bits plus two real keys: **byte 0 `0x20` = steering feel** and
+**byte 1 `0x80` = MagneRide (damper mode)**, each with its selection pop-up (exact). On a non-GT500 cluster these
+two show the "Steering Feel / Damper Mode Selection Not Available" pop-ups, as the 2018 bench table above found.
+
 ## Fault / lamp suppression
 
 The digital cluster latches more than the analog. Confirmed on the bench:
@@ -1397,9 +2069,389 @@ The digital cluster latches more than the analog. Confirmed on the bench:
 | ABS / TCS / red BRAKE | `0x416` lamp fields 0 (a healthy ABS also clears them) |
 | Lost-comm U-codes | module-presence frames held at zeros: `0x076`->U0121 (ABS), `0x168`->U0103 (GSM), `0x223`->U0193 (DACM), `0x2E3`->U0253 (APIM); pair `0x2A1`+`0x3E6`->U0212 (SCCM) |
 
+- From the 2020+ digital cluster firmware (LR3T): which message sets which DTC on the 2020 MCU is in
+  [2018+ Digital Cluster, 2020 firmware](#2018-digital-cluster-2020-firmware-lr3t-14c026-je) (DTC map). Its table
+  has no U0146 and no U0184 (exact). Zeros work as presence frames because a frame resets its message's timeout and
+  zero values mostly mean "nothing to show" (inferred).
+
 
 ## 0x430 - Ignition status (digital, cluster TX)
 
 On the digital cluster `0x430` is a **cluster output**, byte 0 = `05` Run / `04` Off-Acc (echoes `0x3B2` ignition) -
 not the odometer. The digital odometer is `0x179` byte 5 `OdoCount` (as the analog `0x179` distance-counter note describes).
 Other digital cluster-TX detectors: `0x225` b3 = displayed speed (whole mph), `0x318` b5 bit7 = a popup is on screen.
+
+**From the 2020+ digital cluster firmware (LR3T-14C026-JE)** · Status: Cluster sends, from firmware (2020+ digital, LR3T)
+
+On the 2020 MCU `0x430` follows the DBC `Cluster_Info1` layout of the analog [0x430](#0x430---odometer): the
+odometer is in bytes 1 - 3 (exact field, inferred unit). Byte 0 `05` / `04` decodes as below (byte 0 bit 2 is
+always 1, bit 0 = 1 on automatics):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 0 (`0x01`) | Transmission display flag | `1` on automatics (exact) |
+| 0 | 2 (`0x04`) | Constant | always `1` (exact) |
+| 0 | 3 (`0x08`) | Auto idle shutdown (AEIS) setting | `1` on (exact) |
+| 0 | 6 (`0x40`) | Copy of EEPROM option 1 | cluster type / metric bit (exact) |
+| 1 - 3 | | Odometer | 24 bit (exact) |
+| 4 | 3 (`0x08`) | Adaptive cruise selected | (inferred) |
+| 5 | 5 - 4 | Frost warning | `2` = outside temp at or below +4 °C (or invalid) (exact) |
+| 5 | 1 - 0 | MyKey programming request | `1` create, `2` clear (inferred) |
+| 6 | 6 - 5 | Hill start assist setting | `0` feature absent, `3` reset default (exact) |
+| 6 | 3 - 2 | Perimeter alarm | `1` off, `2` on (exact) |
+| 7 | 5 - 2 | **Drive mode request** | `0` Normal, `1` Sport+ / Track (and Drag Strip on a manual), `7` Drag Strip on an automatic (exact). GT500: Track = `5` |
+
+- Drive mode handshake on the 2020 MCU: the cluster requests a mode here and on `0x3C8` byte 2, then commits it
+  only when every module reports it back (`0x20A`, `0x38A`, `0x431`, `0x46A`, `0x27A`) (exact).
+
+---
+
+# 2018+ Digital Cluster, 2020 firmware (LR3T-14C026-JE)
+
+**Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Read out of the MCU firmware of the 2020+ S550 12.4" digital cluster (**LR3T-14C026-JE**, used by the 2020+ GT,
+EcoBoost, Bullitt and Mach 1) by the customipc project, November 2026. Each received field was followed from the
+code that copies it to whatever it drives (lamp, pop-up, gauge, chime, a frame the cluster sends), then the real
+firmware was run in an emulator and each field set one at a time. GT500 items come from the Shelby GT500 MCU
+(LR3V). Labels: **exact** = read from the code, **seen** = in the emulator, **inferred** = likely. Nothing here
+was tested on this bench, and it may not hold for the analog FR33 / KR3T or the 2018 - 2019 digital (JR3T / KL3T).
+
+Same conventions as above: bytes 0 - 7, big-endian, bit 0 = `0x01`. Additions to IDs this file already has are in
+those sections, under "From the 2020+ digital cluster firmware". This section has the general rules and the IDs
+that had no entry yet.
+
+Which of it should carry over to the analog cluster (inferred, from where the bench results above already agree):
+
+- **Likely the same on the analog** (same ID and Ford signal, and the bench results fit the 2020 layout): `0x4C`,
+  `0x76`, `0x77`, `0x14C`, `0x156`, `0x166`, `0x179`, `0x202` byte 4, `0x204`, `0x223`, `0x331`, `0x38D`, `0x3B4`,
+  `0x3C3`, `0x416` bits, `0x421`, `0x42C`, `0x431`, `0x43E`, the `0x3E0` settings IDs, and the cluster's
+  `0x220` / `0x2F4` / `0x3C8` / `0x434`.
+- **Digital only, or read differently on the analog**: the body bits on `0x3B2` (the analog reads them from
+  `0x3B3`), `0x3B3` (only the outside temp on the digital), `0x46A` (damper message on the 2020 MCU), the
+  `0x42F` / `0x204` choice (option 279), the `0x081` layout, `0x191`, `0x432`, `0x470`, and the new IDs below. The
+  DTC map differs too: U0146 / U0184 don't exist on the 2020 MCU, and U0401-82 comes from other frames than
+  `0x42C`. The `0x416` flash rates and the `0x202` scale may differ.
+
+## Timeouts, update bits, DTCs (2020 firmware)
+
+- **5 s timeout (exact).** Almost every received message, or each signal group inside one, has a deadline of
+  625 ticks x 8 ms = **5.0 s**. Each frame reloads it. The side radars `0x3A6` / `0x3A7` use 200 ticks = **1.6 s** (the same split as the KR3T notes).
+  This matches "must arrive at least every 5 s" found above for `0x14C`, `0x46A` and `0x3B2`.
+- **Only in Run (exact).** Deadlines are only checked while `0x3B2` says Run (and the network is up). In Off or
+  Accessory a missing message usually does nothing.
+- **Bad values (exact).** An out of range value (e.g. `0xFE` / `0xFF` on a temperature) is ignored at once, the
+  last good value stays, and after 1250 ticks x 4 ms = 5 s of bad values the signal is marked faulted.
+- **Update bits (exact).** Many frames carry one update bit per signal group. A frame with the bit clear doesn't
+  reload that group's deadline, so the group times out in Run even while frames arrive. That is the mechanism
+  behind "frames with it clear don't count as received" (`0x14C` byte 3 bit 0, `0x46A` byte 3 bit 3) and
+  `0x42C` byte 0 bit 4. OR these masks (bytes 0 first) into a frame to set every update bit:
+
+| ID | Mask | Covers |
+|---|---|---|
+| `0x76` | `80 00 20 00 00 00 00` | byte 2 bit 5 = Track Apps speed valid |
+| `0x77` | `70 00 00 00 00 85 41 00` | the five group valid bits |
+| `0x14C` | `18 00 00 03 00 03 40 00` | byte 3 bit 0 = valid |
+| `0x20A` | `01 04 00 00 00 00 00 02` | byte 0 bit 0 = drive mode confirm |
+| `0x274` | `00 00 00 05 08 80` | byte 4 bit 3 = rev match state |
+| `0x27A` | `51 00 00 25` | byte 0 bit 0 = exhaust mode |
+| `0x38A` | `40 10 F0 07 08 C7 00 00` | byte 0 bit 6 = lever, byte 2 bit 6 = drive mode, others |
+| `0x3B3` | `00 00 00 00 00 00 01` | byte 6 bit 0 = outside temp |
+| `0x42C` | `14 B0 84 30 00 00 15` | byte 0 bit 4 cruise state, byte 2 bit 7 warning code, others |
+| `0x431` | `00 00 A0 87 08 C8 00 86` | byte 5 bit 3 steering mode, byte 3 bits 2 / 1 message codes, others |
+| `0x432` | `00 51 11 14 18 37 00 01` | byte 1 bit 6 axle temp, byte 1 bit 4, byte 3 bit 2, byte 5 bit 2, others |
+| `0x46A` | `19 04 22 09 80 00` | byte 0 bit 4 damper mode, byte 1 bit 2 damper message, byte 2 bit 5 TC OFF lamp |
+| `0x46B` | `00 00 00 00 00 00 00 53` | byte 7 bits 0 / 4 / 6 |
+| `0x470` | `00 00 C6 00 01 19 20 00` | byte 2 bit 2 line lock, byte 2 bit 6 TOT, byte 6 bit 5 line lock pressure |
+
+Other frames use one plain valid value instead: `0x202` byte 4 bits 6 - 5 = 2 or 3, `0x156` byte 4 bits 1 - 0 = 3.
+
+**Which message sets which DTC on the 2020 MCU** (the timeout of the message or group, unless noted; exact):
+
+| DTC | Set by |
+|---|---|
+| U0100-00 lost comm PCM | `0x156`, the rpm source (`0x204` / `0x42F`), speed, `0x43E` (with a gauge enabled) |
+| U0401-82 invalid data PCM | `0x77` set speed group, `0x14C` (qualifier), `0x20A`, `0x274`, `0x432`, `0x46A` damper group, `0x46B`, `0x470` |
+| U0401-00 invalid data PCM | `0x42D` inlet air `0x3FE` / `0x3FF`, invalid `0x432` / `0x470` values |
+| U0121-00 lost comm ABS | `0x416`; `0x76` g meter axes (option 206) |
+| U0415-82 invalid data ABS | `0x77` hill start group; `0x76` speed |
+| U0420-82 invalid data PSCM | `0x77` steering lamp group, only with option 51 (EPAS) |
+| U0140-00 lost comm BCM | `0x3B2`, `0x3C3`, `0x3E3` |
+| U0151-00 lost comm RCM | `0x4C` |
+| U0212-00 lost comm SCCM | `0x081`, `0x3E6` |
+| U0159-00 lost comm parking aid | `0x3AA`, `0x3AB` |
+| U0199-00 lost comm door module | `0x3DE` |
+| U023A-00 lost comm image processing module | `0x3D8`, `0x3E5` |
+| U0256-00 lost comm FCIM | `0x3E1`, `0x3E7` |
+| U0232-00 / U0233-00 lost comm side obstacle A / B | `0x3A6` / `0x3A7` (pairing inferred) |
+
+- The 2020 table has **no U0146 (GWM) and no U0184 (radio)**, so a 2020 cluster doesn't need `0x46A` / `0x223`
+  for those two (exact).
+
+## 0x76 - Track Apps G Meter And Speed (digital, 2020 firmware frames)
+
+**Sample:** `00 00 2F FB FE 25 B8` (built from the 2020 firmware field table, g meter centred, 60 mph, speed valid), `00 00 2F FB FE 00 00` (g meter centred, stopped) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Example frames only (DLC 7). The fields are in [0x76](#0x76---steering-angle-track-apps-g-meter).
+
+## 0x084 - Date / Time (digital)
+
+**Sample:** `1A 00 01 46 1E 00 0E` (built from the 2020 firmware field table, 2026-11-22 14:30) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+From the head unit / GPS clock. Date stamps Track Apps results (drag / acceleration log, lap timer) and gives the
+hour for the Quiet Start exhaust window.
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | | Year | `2000 + raw`, `0xFF` invalid (exact) |
+| 2 - 3 | | Day of year | `1 - 366` (Jan 1 = 1), else invalid. The cluster works out month / day, leap years included (exact) |
+| 4 | | Minute | `0 - 59` (inferred) |
+| 5 | | Likely seconds | copied, not range checked |
+| 6 | | Hour | `0 - 23`, 24 h (exact) |
+
+- Missing: no date on Track Apps records, and Quiet Start doesn't fire (exact). Nothing visible otherwise.
+
+## 0x166 - Odometer From Another Module (digital)
+
+**Sample:** `00 00 00 FF FF FF 00` (built from the 2020 firmware field table, odometer invalid: safe on a bench) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Answers the TODO "the PCM learn on `0x166`". Likely the same on the analog cluster.
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 3 - 5 | | Odometer | 24 bit count from another module, `0xFFFFFF` invalid (exact). Unit likely km (inferred) |
+| 1 | 3 - 0 | Status | only tested for non-zero, by one EEPROM option 21 check (inferred) |
+
+- With EEPROM option 90 (Odometer Delta) the cluster compares this with its own stored odometer and, when they
+  disagree, **rewrites its stored odometer**, flagged on `0x434` byte 0 bit 2 (exact). **On a bench this can change
+  the cluster's mileage.**
+- Missing or invalid: the odometer check is blocked (exact).
+
+## 0x18A - Adaptive Cruise / Forward Collision Warning (digital)
+
+**Sample:** `00 00 00 00 00 00 00` (built from the 2020 firmware field table, no FCW lamp, no ACC message), `40 00 00 00 00 00 00` (built from the 2020 firmware field table, FCW lamp on, FCW menu locked) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+From the radar / ACC module. The cluster reads about a third of its fields (exact):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 7 - 5 | FCW state | **`2` = FCW lamp on and the FCW menu items locked**; `6` / `7` invalid |
+| 1 | 0 (`0x01`) | Forward collision alert | `1` = alert sound |
+| 3 | 7 - 4 | ACC status / message code | values 1, 3, 7, 9, 10, 14 light ACC messages; 2 = set speed indicator style |
+| 4 | 2 - 0 | ACC gap level | `1 - 4` shown (5 = 4); `6` / `7` invalid |
+| 4 | 4 (`0x10`) | Cruise on | sent on to `0x430` byte 4 bit 3 (inferred) |
+| 4 | 7 - 6 | ACC alert request | `1 - 3` = alert sounds |
+
+- Missing: FCW lamp on (state 2), FCW menu locked, gap level shows 3 (exact). First candidate for the
+  "Collision detection unavailable" at zeros in `0x14D - 0x194` (see [0x46A](#0x46a---gwm-present)) (inferred).
+
+## 0x1E9 - Station Text (digital)
+
+**Sample:** `4B 49 53 53 20 46 4D 20` (built from the 2020 firmware field table, text "KISS FM ") · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Eight ASCII characters, byte 0 first, shown on the cluster's audio page; a `00` byte ends the text early (exact).
+Likely the radio station name (RDS) (inferred). Missing: the last text stays.
+
+## 0x20A - Drive Mode Confirm (digital)
+
+**Sample:** `01 04 00 00 00 00 00 02` (built from the 2020 firmware field table, Normal confirmed) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 0 (`0x01`) | Update bit | `1` = counts |
+| 0 | 7 - 4 | Drive mode from the powertrain | `0` Normal, `1` Sport+ / Track (and Drag Strip on a manual), `2` Snow / Wet (inferred name), `7` Drag Strip on an automatic, `15` invalid (exact) |
+
+- Missing: "Drive Mode Selection Not Available", and U0401-82 (exact). One of the five confirmations a drive mode
+  change waits for, see [0x430 (digital)](#0x430---ignition-status-digital-cluster-tx).
+
+## 0x27A - Exhaust Mode Status (digital)
+
+**Sample:** `55 00 00 25` (built from the 2020 firmware field table, Normal), `53 00 00 25` (Quiet), `57 00 00 25` (Sport), `59 00 00 25` (Track) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 0 (`0x01`) | Update bit, exhaust mode | `1` = counts (exact) |
+| 0 | 3 - 1 | Exhaust mode in effect | `0` not available, `1` Quiet, `2` Normal, `3` Sport, `4` Track, `5 - 7` invalid (exact) |
+| 0 | 4 (`0x10`) | Update bit for byte 3 bit 7 | (exact) |
+| 3 | 7 (`0x80`) | Indicator request | one telltale (inferred) |
+
+- Shown in the Exhaust menu and used to confirm drive mode changes. With an invalid mode the cluster asks again on
+  `0x2FD` (exact).
+
+## 0x2D5 - Radio Frequency (digital)
+
+**Sample:** `00 00 00 00 01 F6 00` (built from the 2020 firmware field table, FM 101.1 with an FM band on 0x2F5), `00 00 00 00 03 59 00` (AM 1010 with an AM band) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 4 - 5 | byte 4 bits 2 - 0, byte 5 | Tuner frequency | 11 bit. **FM: MHz = 76.0 + raw x 0.05** (max 108.0). **AM: kHz = raw + 153** (max 1710) (exact) |
+
+- FM or AM comes from the band on `0x2F5` (exact). Shown on the cluster's radio page.
+
+## 0x2E3 - Infotainment State (digital)
+
+**Sample:** `03` (built from the 2020 firmware field table, link up), `00` (inactive) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 2 - 0 | Infotainment state | **`2 - 4` = link up**: the cluster keeps its entertainment, navigation and phone pages. `0`, `1`, `6`, `7` inactive; `5` inactive for the display, also a chime input (exact) |
+
+- If no frame comes for 5 s, or the state leaves 2 - 4, those pages are cleared (exact). The bench APIM's `02`
+  is "link up".
+
+## 0x2EE - Navigation Guidance (digital)
+
+**Sample:** `00 0C 19 02 03 00` (built from the 2020 firmware field table, guidance on, value 12, 25 min, code 3) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 - 1 | | Distance value | 16 bit, `0xFFFE` / `0xFFFF` invalid (inferred: distance to the next turn or destination) |
+| 2 | 5 - 0 | Minutes | `0 - 60` shown (inferred: ETA / time to go) |
+| 2 | 7 - 6 | Nav state | copied to the screen (exact) |
+| 3 | 0 (`0x01`) | Acknowledge | answers the cluster's nav request on `0x193` (exact) |
+| 3 | 1 (`0x02`) | Route guidance active | (inferred) |
+| 3 | 7 - 3 | Hours | `0 - 24` shown (inferred) |
+| 4 | 3 - 0 | Maneuver code | `0 - 13` shown, `15` invalid (exact; meanings not named) |
+| 4 | 5 - 4 | Guidance suppress | `2` clears the maneuver data (exact) |
+
+## 0x2FD - Settings, Units, Exhaust Request (digital, cluster TX)
+
+**Sample:** `0D 00 C2 38 FC A0 40 00` (2020 firmware boot payload, emulator: en-US, exhaust request Normal) · **Status:** Cluster sends · from the 2020+ digital firmware (LR3T). Don't send it.
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 7 - 2 | Language | Ford language code, `3` = en-US. The bench `0C` = 3 (exact) |
+| 0 | 1 - 0 | Clock | 12 / 24 h (from EEPROM option 47 or `0x090`) (inferred) |
+| 2 | 6 (`0x40`) | Distance unit | `0` miles, `1` km (exact) |
+| 2 | 7 (`0x80`) | Temperature unit | metric flag (inferred) |
+| 2 | 3 - 2 | Line lock request | Track Apps line lock (inferred) |
+| 6 | 7 - 5 | **Exhaust mode request** | `1` Quiet, `2` Normal, `3` Sport, `4` Track. From the Exhaust menu, Quiet Start, drive modes and the FCIM exhaust button (exact) |
+
+## 0x30A - Driver Assist / Steering Requests (digital, cluster TX)
+
+**Sample:** `C7 00 00 00 00 00 00 00` (2020 firmware reset default: blind spot 3, cross traffic 3, rear park aid 1, steering Normal) · **Status:** Cluster sends · from the 2020+ digital firmware (LR3T). Don't send it.
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 7 - 6 | Blind spot on / off | `0` on, `1` off, `3` not configured / module missing (inferred) |
+| 0 | 3 - 2 | Rear park aid | (inferred) |
+| 0 | 1 - 0 | Cross traffic alert on / off | as blind spot (inferred) |
+| 1 | 2 - 0 | **Steering feel request** | `0` Normal, `1` Sport, `2` Comfort, `3` / `4` drive mode steering (Sport+ / Track) (exact) |
+
+- The bench `D7`: byte 0 bits 7 - 6 = 3 and bits 1 - 0 = 3, no blind spot / cross traffic modules.
+- The steering feel request changes from the FCIM button (`0x361`) or the Steering Feel menu (exact).
+
+## 0x361 - Console Buttons (FCIM) (digital)
+
+**Sample:** `00 00 00 00 00 00 00` (built from the 2020 firmware field table, released), `00 00 00 00 00 00 80` (drive mode button held), `00 00 00 00 00 00 40` (steering feel button held), `00 00 00 00 00 00 10` (exhaust button held, GT500 only) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 6 | 7 (`0x80`) | Drive mode button | `1` pressed; a 0 → 1 change is one press (exact) |
+| 6 | 6 (`0x40`) | Steering feel button | `1` pressed, one press per 0 → 1 change (exact) |
+| 6 | 4 (`0x10`) | Exhaust button | read only by the GT500 MCU (exhaust pop-up, option 232); the 2020 MCU ignores it (exact) |
+
+- What the cluster sends back: exhaust mode on [0x2FD](#0x2fd---settings-units-exhaust-request-digital-cluster-tx)
+  byte 6 bits 7 - 5, steering feel on [0x30A](#0x30a---driver-assist--steering-requests-digital-cluster-tx)
+  byte 1 bits 2 - 0, drive mode on [0x430](#0x430---ignition-status-digital-cluster-tx) byte 7 bits 5 - 2 and
+  `0x3C8` byte 2 (exact).
+- Missing: drive mode selection unavailable, a press shows "Drive Mode Selection Not Available" (exact).
+
+## 0x38A - Gear Lever / Drive Mode (automatic) (digital)
+
+**Sample:** `40 10 F0 07 08 C7 00 00` (built from the 2020 firmware field table, lever P, drive mode Normal, update bits set) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Powertrain status on automatics, one update bit per signal (mask in the update bit table above) (exact):
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 | 3 - 0 | Lever position | `0` P (clears Transmission Not in Park), `1` R, `2` N, ...; `12 - 15` invalid. Update bit byte 0 bit 6 |
+| 1 | 7 - 5 | Drive mode from the powertrain | `1` Sport+, `3` Track, `4` Drag Strip; confirms a drive mode change. Update bit byte 2 bit 6 |
+| 3 | 3 (`0x08`) | Warning request | one warning (update bit byte 3 bit 2) |
+| 4 | 4 (`0x10`) | Memory Recall Not Permitted While Driving | (inferred name; update bit byte 4 bit 3) |
+| 2 | 3 - 0 | Warning code | `4` lights a warning (update bit byte 5 bit 7) |
+
+## 0x3A6 / 0x3A7 - Blind Spot / Cross Traffic Radars (digital)
+
+**Sample:** `00 60 03 00 00 00 00` (built from the 2020 firmware field table, both IDs: blind spot and cross traffic on / OK), `00 40 03 00 00 00 00` (both IDs: blind spot active, no alert), `00 48 03 00 00 00 00` (one ID: blind spot alert on that side, the other ID stays on the active frame) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Left / right side radar (which is which inferred). Blind spot needs EEPROM option 118, cross traffic option 37.
+**Timeout 1.6 s**, not 5 s (exact).
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 1 | 7 - 5 | Blind spot status | `3` on / OK, `2` active (alerts from byte 1 bits 4 - 3), `0` off, `4 - 7` fault (exact) |
+| 1 | 4 - 3 | Blind spot alert | `1` alert on this side, `2` / `3` fault (exact) |
+| 1 | 0 (`0x01`) | Cross traffic alert | `1` alert (exact) |
+| 2 | 2 - 0 | Cross traffic status | `3` on / OK, `2` active, `0` off, `4 - 7` fault (exact) |
+| 3 | 1 - 0 | Cross traffic alert state | `1` indication, `2` / `3` fault (exact) |
+
+- The two radars are combined: if the sides disagree, or one is missing for 1.6 s, the system shows a fault (exact).
+- The 2018 bench fix `00 40 02 00 ...` is blind spot status 2 and cross traffic status 2 ("active", no alert).
+
+## 0x416 - ABS / Traction Lamps (digital, 2020 firmware frames)
+
+**Sample:** `00 00 00 00 00 00 00` (built from the 2020 firmware field table, all lamps off), `00 00 00 00 00 02 40` (ABS steady + IVD / ESC steady), `00 00 00 00 00 00 80` (ABS fast flash), `00 00 00 00 00 00 C0` (ABS slow flash), `00 00 00 00 00 04 00` (IVD / ESC slow flash), `00 00 00 00 00 06 00` (IVD / ESC fast flash), `00 20 00 00 00 00 00` (red BRAKE request) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Example frames only (DLC 7). The fields are in [0x416](#0x416---abs--traction-control-icons).
+
+## 0x42C - Cruise / ACC Status (digital, 2020 firmware frames)
+
+**Sample:** `14 B0 84 30 00 00 15` (built from the 2020 firmware field table, every update bit set, cruise off, no warnings), `54 B0 84 30 00 00 15` (cruise standby, grey SET), `94 B0 84 30 00 00 15` (cruise engaged, green) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Example frames only (DLC 7). The fields are in [0x42C](#0x42c---occupant-sensor-blocked-cruise-status).
+
+## 0x434 - Fuel, MyKey (digital, cluster TX)
+
+**Sample:** `40 00 10 00 28 FF F0 00` (bench cluster, from this file: MyKey max speed off) · **Status:** Cluster sends · from the 2020+ digital firmware (LR3T). Don't send it.
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 0 - 1 | byte 0 bits 1 - 0, byte 1 | Fuel level (combined) | 10 bit, `0x3FF` = fuel fault (exact) |
+| 2 - 3 | byte 2 bits 1 - 0, byte 3 | Fuel sender B | 10 bit, after the tank curve (exact) |
+| 6 - 7 | byte 6 bits 1 - 0, byte 7 | Fuel sender A | 10 bit (exact) |
+| 2 | 2 (`0x04`) | TPMS reset request | `1` requested (exact) |
+| 4 | 6 (`0x40`) | MyKey traction control | `0` locked on by MyKey, `1` not locked (exact) |
+| 5 - 6 | byte 5, byte 6 bits 7 - 4 | MyKey max speed | about 0.1 km/h per count, **`0xFFF` = off** (exact) |
+| 0 | 2 (`0x04`) | Odometer delta flag | see [0x166](#0x166---odometer-from-another-module-digital) (inferred) |
+
+- The bench `40 00 10 00 28 FF F0 00`: bytes 5 - 6 `FF F_` = MyKey max speed off.
+
+## 0x46A - Damper Mode / TC OFF Lamp (digital, 2020 firmware frames)
+
+**Sample:** `19 04 22 09 80 00` (built from the 2020 firmware field table, update bits set, dampers Normal, TC OFF lamp off), `19 04 62 09 80 00` (TC OFF lamp steady), `19 04 A2 09 80 00` (TC OFF slow flash), `19 04 E2 09 80 00` (TC OFF fast flash), `39 04 22 09 80 00` (dampers Sport), `79 04 22 09 80 00` (dampers Track) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+Example frames only (DLC 6). The fields are in [0x46A](#0x46a---gwm-present).
+
+## 0x46B - High Beam / Auto High Beam / Park Lock (digital)
+
+**Sample:** `00 00 00 00 00 00 00 53` (built from the 2020 firmware field table, update bits set, all off), `00 00 00 00 00 00 00 73` (high beams on, option 319 = 2), `00 00 00 00 00 00 00 D3` (auto high beam on) · **Status:** From firmware (2020+ digital, LR3T) · not yet confirmed on this bench
+
+| Byte | Bits | Signal | Values |
+|---|---|---|---|
+| 7 | 7 (`0x80`) | Auto high beam active | `1` telltale on (exact) |
+| 7 | 5 (`0x20`) | High beams on | `1` on, used instead of `0x3C3` with EEPROM option 319 = 2 (exact) |
+| 7 | 3 (`0x08`) | Park lock status | with option 167 (inferred) |
+
+- Update bits byte 7 bits 0 / 4 / 6. A timed out auto high beam group counts toward U0401-82 (exact).
+
+## GT500 (LR3V) differences
+
+**Status:** From firmware (Shelby GT500 MCU, LR3V) · not yet confirmed on this bench
+
+The GT500 MCU receives and sends the same IDs as the 2020 one; these are the CAN differences found in its code
+(exact unless noted):
+
+| ID | GT500 (LR3V) | 2020 (LR3T) |
+|---|---|---|
+| `0x081` | adds **byte 0 `0x20` = steering feel key** and **byte 1 `0x80` = MagneRide key**, each with a selection pop-up | no such keys |
+| `0x361` | **byte 6 bit 4 = exhaust button** → exhaust mode pop-up (needs EEPROM option 232) | not read |
+| `0x17E` | **intercooler coolant** (byte 0 bits 7 - 1) and **manifold charge temp** (byte 1 bits 7 - 1) gauges; `0x7E` / `0x7F` invalid. MCT = `(byte 1 >> 1) - 20 °C`, the same as the 2018 bench's `raw x 0.5 - 20`; IC coolant uses `+ 50` in the code (as read) | received, not read |
+| `0x279` | also reads byte 6 bits 3 - 2 and bit 1 (meaning open) | byte 2 only |
+| `0x18B` (TX) | **filled**: byte 2 bits 6 - 0 shift light value (option 211), byte 3 bits 5 - 0 = shift rpm as `(rpm - 2000) / 100` (`1E` = 5000), byte 4 bits 6 - 4 a mode (seen) | constant `00 00 00 1E` |
+| `0x430` (TX) byte 7 bits 5 - 2 | drive mode request Normal `0`, Sport `1`, **Track `5`**, Drag `7` | Normal `0`, Sport+ / Track `1`, Drag `7` (auto) / `1` (manual) |
+| `0x3C8` (TX) byte 2 | drive mode `0` / `1` / `3` / `4` | as in [0x3C8](#0x3c8---drive-mode-mycolor) |
+| `0x30A` (TX) byte 1 bits 2 - 0 | steering feel `0` / `1` / `2` only | adds `3` / `4` (drive mode steering) |
+
+- GT500 drive modes: Normal, Sport, Track, Drag, Slippery, MyMode. One routine sends all the drive mode requests;
+  the 2020 MCU's per-module confirm routines have no match in the GT500 code (exact), how it confirms is open.
