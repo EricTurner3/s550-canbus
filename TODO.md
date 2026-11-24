@@ -4,7 +4,7 @@
 
 No DTC is behind it. Per the workshop manual it defaults on when the transmission, engine or body service required
 message is missing for 5 s, and one missing is enough. The lead and everything tried are in database.md under
-[Wrench / See Manual](database.md#wrench--see-manual-powertrain-malfunction-rtt).
+[Wrench / See Manual](database/database.md#wrench--see-manual-powertrain-malfunction-rtt).
 
 Per the manual it should go out as soon as all three messages arrive, so watch it mid-run first. If it stays, pull
 the cluster's power for 10 s with the candidates still running. Exit with Ctrl+C, not by closing the window (key off
@@ -44,7 +44,7 @@ Full state in `vbf/KR3T_NOTES.md` (analog) and `vbf/KL3T_NOTES.md` (digital); FR
 - [x] **Digital wrench mapped (14 Nov 2026)** with `vbf/vledis.py`: routine `0x0A8A86`, inputs `0x14C` / `0x46A` /
       `0x3B2` always, `0x263` / `0x4A2` / `0x46B` by config. See KL3T_NOTES.md.
 - [ ] What config params 13 / 205 / 245 are (`0x4E836`), and their values on the FR33 (as-built?).
-- [ ] Richer `sample_bytes` in the notes from `/can/*.csv` (`build_web.py` already takes the first sample per ID);
+- [ ] Richer `sample_bytes` in the notes from `canbus_samples/EricTurner3/2016_gt350_car/*.csv` (`build_web.py` already takes the first sample per ID);
       only the freeze frame is used now.
 - [x] **UDS strategy dump of our own cluster (FR33)**: done 18 Nov 2026, `vbf/FR33-14C026-AG.bin` (see `vbf/FR33_NOTES.md`)
 - [ ] Odometer sync on the road: drive 1 km after a sync and confirm the value survives a power cycle (NvM commit at

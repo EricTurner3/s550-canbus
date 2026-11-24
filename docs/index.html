@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>S550 CAN Database</title>
-<meta name="description" content="Ford S550 Mustang CAN IDs, byte layouts and log samples, built from database.md">
+<meta name="description" content="Ford S550 Mustang CAN IDs, byte layouts and log samples, built from database/">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23c2410c'/><text x='8' y='12' font-size='9' text-anchor='middle' fill='white' font-family='monospace'>0x</text></svg>">
 <style>
 :root {
   --bg: #f7f7f5; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e3e2de; --soft: #f0efeb;
   --accent: #c2410c; --link: #1d5fbf;
-  --ok: #2f7d32; --logs: #a06400; --tx: #2b62b8; --digital: #7a3fb0;
+  --ok: #2f7d32; --logs: #a06400; --tx: #2b62b8;
+  --v1: #7a3fb0; --v2: #0f7a6e; --v3: #b0306a; --v4: #6a6f12;
   --b0: hsl(4 68% 47%);  --b1: hsl(26 85% 44%); --b2: hsl(45 90% 36%); --b3: hsl(135 50% 36%);
   --b4: hsl(178 70% 32%); --b5: hsl(212 70% 46%); --b6: hsl(262 52% 52%); --b7: hsl(322 60% 47%);
   --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
@@ -21,7 +22,8 @@
   :root:not([data-theme="light"]) {
     --bg: #151514; --panel: #1d1d1b; --ink: #e9e8e4; --muted: #9a9993; --line: #31302d; --soft: #262624;
     --accent: #f08a4b; --link: #7fb0ff;
-    --ok: #74c178; --logs: #e0a640; --tx: #7ea8ef; --digital: #c099ea;
+    --ok: #74c178; --logs: #e0a640; --tx: #7ea8ef;
+    --v1: #c099ea; --v2: #5cc9b9; --v3: #ee88b4; --v4: #c3c95a;
     --b0: hsl(4 80% 66%);  --b1: hsl(26 90% 62%); --b2: hsl(48 85% 58%); --b3: hsl(135 50% 58%);
     --b4: hsl(178 60% 52%); --b5: hsl(212 85% 68%); --b6: hsl(262 75% 74%); --b7: hsl(322 70% 70%);
     color-scheme: dark;
@@ -30,7 +32,8 @@
 :root[data-theme="dark"] {
   --bg: #151514; --panel: #1d1d1b; --ink: #e9e8e4; --muted: #9a9993; --line: #31302d; --soft: #262624;
   --accent: #f08a4b; --link: #7fb0ff;
-  --ok: #74c178; --logs: #e0a640; --tx: #7ea8ef; --digital: #c099ea;
+  --ok: #74c178; --logs: #e0a640; --tx: #7ea8ef;
+  --v1: #c099ea; --v2: #5cc9b9; --v3: #ee88b4; --v4: #c3c95a;
   --b0: hsl(4 80% 66%);  --b1: hsl(26 90% 62%); --b2: hsl(48 85% 58%); --b3: hsl(135 50% 58%);
   --b4: hsl(178 60% 52%); --b5: hsl(212 85% 68%); --b6: hsl(262 75% 74%); --b7: hsl(322 70% 70%);
   color-scheme: dark;
@@ -66,6 +69,13 @@ nav a .id { font-family: var(--mono); font-weight: 600; }
 nav a .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 nav a .tags { grid-column: 2; font-size: 11px; color: var(--muted); }
 nav a.topic { grid-template-columns: 1fr; }
+nav .grp { display: flex; align-items: baseline; gap: 6px; padding: 8px 14px 2px; font-weight: 600; font-size: 13px;
+  border-left: 3px solid var(--vc, var(--line)); margin-left: 8px; }
+nav .grp small { font-weight: 400; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+nav .grp + a.topic, nav a.topic.sub { margin-left: 8px; padding-left: 26px; border-left: 3px solid transparent;
+  box-shadow: inset 3px 0 var(--vc, var(--line)); }
+nav a.topic.sub.on { border-left-color: var(--accent); }
 nav .empty { padding: 10px 14px; color: var(--muted); }
 
 main { padding: 20px 24px 40px; min-width: 0; }
@@ -84,7 +94,12 @@ aside { border-left: 1px solid var(--line); background: var(--panel); padding: 2
 .pill.ok { color: var(--ok); border-color: currentColor; }
 .pill.logs { color: var(--logs); border-color: currentColor; }
 .pill.tx { color: var(--tx); border-color: currentColor; }
-.pill.digital { color: var(--digital); border-color: currentColor; }
+.see-also { margin: -8px 0 16px; color: var(--muted); }
+.see-also .pill { font-size: 11px; }
+.pill.v1 { color: var(--v1); border-color: currentColor; }
+.pill.v2 { color: var(--v2); border-color: currentColor; }
+.pill.v3 { color: var(--v3); border-color: currentColor; }
+.pill.v4 { color: var(--v4); border-color: currentColor; }
 
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .card + .card, .card + p { margin-top: 14px; }
@@ -213,15 +228,28 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
   const getId = id => IDS.get(id) || (IDS.set(id, { id, entries: [] }), IDS.get(id));
   D.entries.forEach(e => e.ids.forEach(id => getId(id).entries.push(e)));
   Object.keys(D.samples).forEach(getId);
+  D.topics.forEach(t => (t.ids || []).forEach(id => getId(id)));
   for (const rec of IDS.values()) {
     const main = rec.entries.find(e => e.variant !== 'cluster-tx') || rec.entries[0];
     rec.name = main ? main.name : 'Not documented yet';
     rec.status = main ? main.status.replace(/\s*\(.*$/, '').split(/[,·]/)[0].trim() : 'Logs only';
     rec.variants = [...new Set(rec.entries.map(e => e.variant))];
     rec.documented = rec.entries.length > 0;
+    rec.topics = D.topics.filter(t => (t.ids || []).includes(rec.id));
     rec.text = [rec.id, ...rec.entries.map(e => e.title + ' ' + flat(e.blocks))].join(' ').toLowerCase();
   }
   const SORTED = [...IDS.values()].sort((a, b) => idNum(a.id) - idNum(b.id));
+
+  // one variant per database file, colored v1..v4 in file order (the analog base file has no color)
+  const FILES = D.files || [];
+  const variantLabel = { 'cluster-tx': 'cluster transmit' };
+  const variantClass = { 'cluster-tx': 'tx', analog: '' };
+  FILES.forEach((f, i) => {
+    variantLabel[f.variant] = f.label;
+    if (f.variant !== 'analog') variantClass[f.variant] = 'v' + ((i - 1) % 4 + 1);
+  });
+  const pill = v => `<span class="pill ${variantClass[v] || ''}">${esc(variantLabel[v] || v)}</span>`;
+  const extra = v => v !== 'analog' && v !== 'cluster-tx';
   D.topics.forEach(t => t.text = (t.title + ' ' + flat(t.blocks)).toLowerCase());
 
   function flat(blocks) {
@@ -232,6 +260,20 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
 
   // ------------------------------------------------------------ markdown (inline)
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let ctxFile = 'database.md';    // file of the section being rendered, for its relative links
+
+  // "#anchor" or "other_database.md#anchor" -> an ID page, a topic page, or the file on GitHub
+  function link(u) {
+    if (/^[a-z]+:/i.test(u)) return u;
+    const [file, anchor = ''] = u.split('#');
+    const f = file || ctxFile, a = anchor.replace(/-+/g, '-');
+    const t = anchor && D.topics.find(x => x.file === f && x.key.split('/').pop() === a);
+    if (t) return '#t/' + t.key;
+    const m = anchor.match(/^0x(5xx|[0-9a-f]{1,3})(?![0-9a-fx])/i);
+    if (m) return m[1].toLowerCase() === '5xx' ? '#0x5xx' : '#0x' + parseInt(m[1], 16).toString(16).toUpperCase();
+    return D.source ? D.source + f + (anchor ? '#' + anchor : '') : u;
+  }
+
   function md(s) {
     const code = [];
     s = esc(s).replace(/`([^`]+)`/g, (_, c) => {
@@ -240,10 +282,7 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
       return '\u0000' + (code.length - 1) + '\u0000';
     });
     s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, u) => {
-      if (u.startsWith('#')) {
-        const m = u.match(/0x[0-9a-f]{1,3}/i);
-        u = m ? '#0x' + parseInt(m[0], 16).toString(16).toUpperCase() : (D.source ? D.source + u : u);
-      }
+      u = link(u);
       return `<a href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${t}</a>`;
     });
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -253,7 +292,6 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
   const chip = n => `<span class="chip" style="--c:var(--b${n})">B${n}</span>`;
   const byteAttr = b => b && b.length ? ` data-bytes="${b.join(',')}" style="--hc:var(--b${b[0]})"` : '';
   const statusClass = s => /^confirmed/i.test(s) ? 'ok' : /^from logs/i.test(s) ? 'logs' : /cluster sends/i.test(s) ? 'tx' : '';
-  const variantLabel = { analog: '2015-17 analog', digital: '2018+ digital', 'cluster-tx': 'cluster transmit' };
 
   function renderBlocks(blocks, topic) {
     return blocks.map(b => {
@@ -336,11 +374,18 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
     if (term) recs.sort((a, b) => b[1] - a[1] || idNum(a[0].id) - idNum(b[0].id));
     const item = r => `<a href="#${r.id}" class="${r.id === current ? 'on' : ''}">
         <span class="id">${r.id}</span><span class="nm">${esc(r.name)}</span>
-        <span class="tags">${[r.status, ...r.variants.filter(v => v === 'digital').map(v => variantLabel[v])].filter(Boolean).join(' · ')}</span></a>`;
+        <span class="tags">${[r.status, ...r.variants.filter(extra).map(v => variantLabel[v])].filter(Boolean).map(esc).join(' · ')}</span></a>`;
     const docd = recs.filter(x => x[0].documented).map(x => item(x[0]));
     const logs = recs.filter(x => !x[0].documented).map(x => item(x[0]));
-    const topics = D.topics.filter(t => !term || term.split(/\s+/).every(w => t.text.includes(w)))
-      .map(t => `<a class="topic ${'t/' + t.key === current ? 'on' : ''}" href="#t/${t.key}">${md(t.title)}</a>`);
+    const match = D.topics.filter(t => !term || term.split(/\s+/).every(w => t.text.includes(w)));
+    // topics nested under the file they come from
+    const topics = FILES.map(f => {
+      const ts = match.filter(t => t.file === f.file);
+      if (!ts.length) return '';
+      const vc = variantClass[f.variant] ? ` style="--vc:var(--${variantClass[f.variant]})"` : '';
+      return `<div class="grp" data-file="${esc(f.file)}"${vc}>${esc(f.label)} <small>${esc(f.file)}</small></div>` +
+        ts.map(t => `<a class="topic sub ${'t/' + t.key === current ? 'on' : ''}" href="#t/${t.key}"${vc}>${md(t.title)}</a>`).join('');
+    }).filter(Boolean);
     list.innerHTML =
       (topics.length ? `<h3>Topics</h3>` + topics.join('') : '') +
       (docd.length ? `<h3>Documented (${docd.length})</h3>` + docd.join('') : '') +
@@ -364,7 +409,7 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
       bytes: s.d.split(' '), label: D.vehicles[s.v].label + (ids.length > 1 ? ' · ' + id : ''), sub: s.f, doc: false })));
     rec.entries.forEach(e => e.samples.forEach(s => rows.push({
       bytes: s.d.split(' '), doc: true,
-      label: 'database.md' + (e.variant !== 'analog' ? ' (' + variantLabel[e.variant] + ')' : ''), sub: s.label || 'Sample' })));
+      label: e.file + (e.variant !== 'analog' ? ' (' + variantLabel[e.variant] + ')' : ''), sub: s.label || 'Sample' })));
     return rows;
   }
 
@@ -377,7 +422,7 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
     const rate = meta && meta.fields.rate;
     const pills = [
       rec.status && `<span class="pill ${statusClass(rec.status)}">${esc(rec.status)}</span>`,
-      ...rec.variants.filter(v => v !== 'analog' || rec.variants.length > 1).map(v => `<span class="pill ${v === 'digital' ? 'digital' : v === 'cluster-tx' ? 'tx' : ''}">${variantLabel[v]}</span>`),
+      ...rec.variants.filter(v => v !== 'analog' || rec.variants.length > 1).map(pill),
       rate && `<span class="pill">${md(rate)}</span>`,
       rec.entries[0] && rec.entries[0].sentBy && `<span class="pill">s550_cluster.py: ${md(rec.entries[0].sentBy)}</span>`,
     ].filter(Boolean);
@@ -392,6 +437,7 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
     main.innerHTML = `<a class="back" href="#">← All IDs</a>
       <div class="title"><h2><span class="id">${rec.id}</span>${esc(rec.name)}</h2></div>
       <div class="pills">${pills.join('')}</div>
+      ${rec.topics.length ? `<p class="see-also">See also: ${rec.topics.map(t => `<a href="#t/${t.key}">${md(t.title)}</a>${extra(t.variant) ? ' ' + pill(t.variant) : ''}`).join(' · ')}</p>` : ''}
       ${rows.length ? `<div class="card"><div class="grid-wrap"><table class="grid"><thead><tr>
         ${[...Array(8).keys()].map(i => `<th data-col="${i}" style="--c:var(--b${i})" title="Click to highlight notes for byte ${i}">B${i}</th>`).join('')}
         <th class="src">Source</th></tr></thead><tbody>
@@ -401,26 +447,26 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
           <td class="src">${esc(r.label)}<small>${esc(r.sub)}</small></td></tr>`).join('')}
         </tbody></table></div><div class="inspect" id="inspect"></div></div>
         <p class="hint">Bold bytes differ from the most common value in their column. Click a byte or column to highlight its notes; click a note to highlight its bytes.</p>`
-        : '<p class="muted">No samples in the logs or database.md for this ID.</p>'}`;
+        : '<p class="muted">No samples in the logs or database/ for this ID.</p>'}`;
 
     const parts = rec.entries.map(e => splitBlocks(e.blocks));
-    const genHtml = parts.map(p => renderBlocks(p.general));
+    const genHtml = parts.map((p, i) => (ctxFile = rec.entries[i].file, renderBlocks(p.general)));
     const general = rec.entries.map((e, i) => [e, genHtml[i]]).filter(x => x[1]);
     if (general.length) {
       main.insertAdjacentHTML('beforeend', '<div class="general">' + general.map(([e, html]) => `<section>
         <h3>${general.length > 1 || rec.entries.length > 1 ? md(e.title) : 'Notes'}
-        ${e.variant !== 'analog' ? `<span class="pill ${e.variant === 'digital' ? 'digital' : 'tx'}">${variantLabel[e.variant]}</span>` : ''}</h3>
+        ${e.variant !== 'analog' ? pill(e.variant) : ''}</h3>
         ${html}</section>`).join('') + '</div>');
     }
 
-    notes.innerHTML = rec.entries.length ? rec.entries.map((e, i) => `<section>
-        <h3>${md(e.title)} ${e.variant !== 'analog' ? `<span class="pill ${e.variant === 'digital' ? 'digital' : 'tx'}">${variantLabel[e.variant]}</span>` : ''}
-        ${D.source && e.line ? `<a class="src" href="${D.source}#L${e.line}" target="_blank" rel="noopener">database.md:${e.line} ↗</a>` : ''}</h3>
+    notes.innerHTML = rec.entries.length ? rec.entries.map((e, i) => (ctxFile = e.file, `<section>
+        <h3>${md(e.title)} ${e.variant !== 'analog' ? pill(e.variant) : ''}
+        ${D.source && e.line ? `<a class="src" href="${D.source}${e.file}#L${e.line}" target="_blank" rel="noopener">${esc(e.file)}:${e.line} ↗</a>` : ''}</h3>
         ${e.status && e.variant !== 'cluster-tx' ? `<p class="muted"><strong>Status:</strong> ${md(e.status)}</p>` : ''}
         ${renderBlocks(parts[i].bytes) || `<p class="muted">${genHtml[i] ? 'No byte notes, see the notes under the grid.' : 'No notes yet.'}</p>`}
         ${e.topic ? `<p class="muted">From the <a href="#t/${e.topic}">Cluster (IPC) Transmits</a> list.</p>` : ''}
-      </section>`).join('')
-      : '<section><h3>Not documented yet</h3><p class="muted">Seen in the logs only. Add a <code># ' + rec.id + ' - Name</code> section to database.md to document it.</p></section>';
+      </section>`)).join('')
+      : '<section><h3>Not documented yet</h3><p class="muted">Seen in the logs only. Add a <code># ' + rec.id + ' - Name</code> section to <code>database/database.md</code> (or your cluster\'s <code>*_database.md</code>) to document it.</p></section>';
 
     active = []; sel = null;
     main.querySelectorAll('table.grid [data-col]').forEach(c => c.addEventListener('click', () => {
@@ -475,29 +521,96 @@ pre { background: var(--soft); padding: 10px 12px; border-radius: 6px; overflow-
 
   // ------------------------------------------------------------ topic / home pages
   function renderTopic(t) {
+    ctxFile = t.file;
     main.innerHTML = `<a class="back" href="#">← All IDs</a><div class="topic">
-      <div class="title"><h2>${md(t.title)}</h2>${D.source ? `<a href="${D.source}#L${t.line}" target="_blank" rel="noopener">database.md:${t.line} ↗</a>` : ''}</div>
+      <div class="title"><h2>${md(t.title)}</h2>${t.variant !== 'analog' ? pill(t.variant) : ''}
+      ${D.source ? `<a href="${D.source}${t.file}#L${t.line}" target="_blank" rel="noopener">${esc(t.file)}:${t.line} ↗</a>` : ''}</div>
       ${renderBlocks(t.blocks, true)}</div>`;
     notes.innerHTML = '';
   }
 
   function renderHome() {
     const t = D.topics[0];
+    ctxFile = t.file;
+    const ids = f => new Set(D.entries.filter(e => e.file === f.file && e.variant !== 'cluster-tx').flatMap(e => e.ids)).size;
     main.innerHTML = `<div class="topic"><div class="title"><h2>${md(t.title)}</h2></div>
       ${renderBlocks(t.blocks)}
       <p>Pick an ID on the left or search by hex ID or description. Each ID shows the first sample from every vehicle log below,
-      with the notes from <code>database.md</code> beside it, colored by byte.</p>
+      with the notes from <code>database/</code> beside it, colored by byte. Each cluster or firmware has its own file:</p>
+      <div class="tbl"><table><thead><tr><th>Cluster</th><th>File</th><th>IDs</th></tr></thead><tbody>
+      ${FILES.map(f => `<tr><td>${f.variant === 'analog' ? esc(f.label) : pill(f.variant)}</td>
+        <td>${D.source ? `<a href="${D.source}${f.file}" target="_blank" rel="noopener">${esc(f.file)}</a>` : esc(f.file)}</td>
+        <td>${ids(f)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p>Vehicle logs:</p>
       <div class="tbl"><table><thead><tr><th>Vehicle</th><th>Source</th><th>Log files</th></tr></thead><tbody>
       ${D.vehicles.map(v => `<tr><td>${esc(v.label)}</td><td>${md(v.source)}</td><td>${v.files || '<span class="muted">none</span>'}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="muted">${SORTED.filter(r => r.documented).length} documented IDs, ${SORTED.filter(r => !r.documented).length} more seen in logs only.
-      Generated from <a href="${D.source || '#'}" target="_blank" rel="noopener">database.md</a> by <code>build_web.py</code>.</p></div>`;
+      Generated from <a href="${D.source || '#'}" target="_blank" rel="noopener">database/</a> by <code>build_web.py</code>.</p></div>`;
+    notes.innerHTML = '';
+  }
+
+  // ------------------------------------------------------------ self test (test_web.py)
+  // renders every ID and topic page and checks each database section shows up where it should
+  function selftest() {
+    const fail = [];
+    const text = el => el.textContent.replace(/\s+/g, ' ');
+    const plain = s => s.replace(/`|\*\*/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/\s+/g, ' ').trim();
+    const t0 = (msg, fn) => { try { fn(); } catch (e) { fail.push(msg + ': ' + (e && e.message || e)); } };
+    let pages = 0;
+    // every in-site link on the page has to go to an ID or topic that exists
+    const links = where => [main, notes].forEach(el => el.querySelectorAll('a[href^="#"]').forEach(a => {
+      const h = decodeURIComponent(a.getAttribute('href').slice(1));
+      const ok = !h || (h.startsWith('t/') ? D.topics.some(t => t.key === h.slice(2)) : IDS.has(h));
+      if (!ok) fail.push(`${where}: link to missing #${h} ("${a.textContent}")`);
+    }));
+    for (const rec of SORTED) t0(rec.id, () => {
+      renderId(rec); pages++; links(rec.id);
+      const secs = [...notes.querySelectorAll(':scope > section')];
+      if (secs.length !== Math.max(rec.entries.length, 1)) fail.push(`${rec.id}: ${secs.length} note sections for ${rec.entries.length} entries`);
+      rec.entries.forEach((e, i) => {
+        const sec = secs[i];
+        if (!sec) return;
+        if (!text(sec.querySelector('h3')).includes(plain(e.title))) fail.push(`${rec.id}: section ${i} is not "${e.title}"`);
+        if (extra(e.variant) && !sec.querySelector('h3 .pill.' + variantClass[e.variant])) fail.push(`${rec.id}: "${e.title}" has no ${variantLabel[e.variant]} pill`);
+        if (e.line && D.source && !sec.querySelector(`a.src[href$="${e.file}#L${e.line}"]`)) fail.push(`${rec.id}: "${e.title}" source link is not ${e.file}:${e.line}`);
+      });
+      rec.topics.forEach(t => { if (!main.querySelector(`.see-also a[href="#t/${t.key}"]`)) fail.push(`${rec.id}: no See also link to t/${t.key}`); });
+      const want = samplesFor(rec).length, got = main.querySelectorAll('table.grid tbody tr').length;
+      if (want !== got) fail.push(`${rec.id}: ${got} sample rows, expected ${want}`);
+      if (/undefined|\[object Object\]/.test(text(main) + text(notes))) fail.push(`${rec.id}: "undefined" in the page`);
+    });
+    for (const t of D.topics) t0('t/' + t.key, () => {
+      renderTopic(t); pages++; links('t/' + t.key);
+      if (!text(main.querySelector('h2')).includes(plain(t.title))) fail.push(`t/${t.key}: title missing`);
+      if (/undefined|\[object Object\]/.test(text(main))) fail.push(`t/${t.key}: "undefined" in the page`);
+    });
+    t0('home', () => { renderHome(); pages++; });
+    t0('sidebar', () => {
+      q.value = ''; current = ''; renderList();
+      FILES.forEach(f => {
+        const grp = list.querySelector(`.grp[data-file="${f.file}"]`);
+        if (f.topics.length && !grp) { fail.push(`sidebar: no group for ${f.file}`); return; }
+        let a = grp && grp.nextElementSibling;
+        const under = [];
+        while (a && a.matches('a.topic')) { under.push(a.getAttribute('href').slice(3)); a = a.nextElementSibling; }
+        if (under.join() !== f.topics.join()) fail.push(`sidebar: ${f.file} topics are [${under}], expected [${f.topics}]`);
+      });
+      SORTED.filter(r => r.variants.some(extra)).forEach(r => {
+        const a = list.querySelector(`a[href="#${r.id}"] .tags`);
+        r.variants.filter(extra).forEach(v => { if (!a || !a.textContent.includes(variantLabel[v])) fail.push(`sidebar: ${r.id} not tagged ${variantLabel[v]}`); });
+      });
+    });
+    const out = { pages, files: FILES.map(f => f.file), fail };
+    main.innerHTML = `<pre id="selftest">${esc(JSON.stringify(out, null, 1))}</pre>`;
     notes.innerHTML = '';
   }
 
   // ------------------------------------------------------------ routing
   function route() {
     const h = decodeURIComponent(location.hash.slice(1));
+    if (h === 'selftest') return selftest();
     let target = '';
     if (h.startsWith('t/')) {
       const t = D.topics.find(x => x.key === h.slice(2));

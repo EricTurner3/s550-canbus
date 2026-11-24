@@ -2,10 +2,13 @@
     build_web.py
     8 Nov 2026
 
-    Builds docs/data.js for the database viewer (docs/index.html) from database.md and the logs it lists.
-    database.md stays the only source of truth, this just parses it:
+    Builds docs/data.js for the database viewer (docs/index.html) from database/ and the logs it lists.
+    The markdown stays the only source of truth, this just parses it:
 
-      - Each "# 0xNNN - Name" or "## 0xNNN - Name" heading is an ID entry (digital under the 2018+ heading).
+      - database/database.md is the 2015-17 analog cluster. Every database/*_database.md is another cluster or
+        firmware, one variant per file, labelled by its "**Label:**" line. database/README.md is not read.
+      - In each file: the first "# Title" (its "##" sections are intro topics), then one "# 0xNNN - Name" section per
+        ID, then "# Topics" with a "## Name" per topic. A topic heading can name several IDs, those ID pages link to it.
       - Tables with a Byte / Bytes / Bits column (or "Byte N" columns) tag each row with the byte(s) it describes,
         prose that says "byte 3" / "bytes 4 - 5" / "b2" gets tagged too. The viewer colors notes by those bytes.
       - The Sources table's Vehicle column labels the sample rows. Every source whose path exists on disk is read
@@ -13,6 +16,7 @@
 
     Standard library only. Usage:
         python build_web.py            then open docs/index.html
+        python build_web.py --check    only check the format of database/*.md, exit 1 on problems
 '''
 
 import base64
@@ -26,7 +30,8 @@ import sys
 from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-DB_MD = os.path.join(ROOT, 'database.md')
+DB_DIR = os.path.join(ROOT, 'database')
+DB_MAIN = 'database.md'
 OUT = os.path.join(ROOT, 'docs', 'data.js')
 
 SAMPLES_PER_VEHICLE = 1     # distinct payloads kept per ID per vehicle, first ones seen
@@ -103,7 +108,7 @@ def byte_columns(head):
 # ---------------------------------------------------------------- markdown parsing
 
 def parse_blocks(lines, start_line):
-    '''Body lines of one section -> list of blocks. Line numbers are 1-based for links back to database.md.'''
+    '''Body lines of one section -> list of blocks.'''
     blocks = []
     i = 0
     while i < len(lines):
@@ -174,7 +179,7 @@ def parse_blocks(lines, start_line):
             para.append(lines[i].strip())
             i += 1
         md = ' '.join(para)
-        if re.match(r'\*\*(Sample|Status|Rate):\*\*', md):
+        if re.match(r'\*\*(Sample|Status|Rate|Label):\*\*', md):
             blocks.append(parse_meta(md))
         else:
             blocks.append({'t': 'p', 'md': md, 'bytes': bytes_from_prose(md)})
@@ -209,8 +214,16 @@ def code_samples(blocks):
     return out
 
 
-def parse_database(path):
-    lines = open(path, encoding='utf-8').read().split('\n')
+def db_files():
+    '''-> [(variant, file name)], the analog base file first'''
+    extra = sorted(os.path.basename(p) for p in glob.glob(os.path.join(DB_DIR, '*_database.md')))
+    return [('analog', DB_MAIN)] + [(f[:-len('_database.md')], f) for f in extra]
+
+
+def read_sections(path):
+    '''-> (lines, sections) split on # / ## headings outside code fences'''
+    with open(path, encoding='utf-8') as f:
+        lines = f.read().split('\n')
 
     # split into sections on # / ## headings, outside code fences
     sections = []
@@ -228,14 +241,57 @@ def parse_database(path):
             sections.append(cur)
         elif cur:
             cur['body'].append(line)
+    return lines, sections
 
-    entries, topics, index, sources = [], [], {}, []
-    for sec in sections:
+
+def file_label(sections):
+    '''The **Label:** field of a file's first section'''
+    meta = next((b for b in parse_blocks(sections[0]['body'], 0) if b['t'] == 'meta'), None) if sections else None
+    return meta['fields'].get('label', '') if meta else ''
+
+
+def parse_database():
+    files, entries, topics, index, sources = [], [], [], {}, []
+    for variant, fname in db_files():
+        _, sections = read_sections(os.path.join(DB_DIR, fname))
+        f = {'variant': variant, 'file': fname, 'topics': [], 'label': file_label(sections) or variant}
+        files.append(f)
+        parse_file(f, sections, entries, topics, index, sources)
+
+    # Index-only IDs (no section of their own yet)
+    have = {i for e in entries for i in e['ids'] if e['variant'] != 'cluster-tx'}
+    for i, row in index.items():
+        if i not in have:
+            entries.append({'ids': [i], 'title': '%s - %s' % (i, row['name']), 'name': row['name'], 'line': 0,
+                            'file': DB_MAIN, 'variant': 'analog', 'status': row['status'], 'samples': [], 'blocks': []})
+    for e in entries:
+        for i in e['ids']:
+            if i in index:
+                e['sentBy'] = index[i]['sentBy']
+    return files, entries, topics, sources
+
+
+def sources_from(blocks):
+    '''Rows of a Sources table: the log path in backticks in the first column, Vehicle labels its samples'''
+    out = []
+    for b in blocks:
+        if b['t'] == 'table' and 'Vehicle' in b['head']:
+            vi = b['head'].index('Vehicle')
+            for r in b['rows']:
+                m = re.search(r'`([^`]+)`', r['cells'][0])
+                out.append({'path': m.group(1).lstrip('/') if m else '', 'label': r['cells'][vi], 'md': r['cells'][0]})
+    return out
+
+
+def parse_file(f, sections, entries, topics, index, sources):
+    variant, fname = f['variant'], f['file']
+    for k, sec in enumerate(sections):
         title = sec['title']
         blocks = parse_blocks(sec['body'], sec['line'] + 1)
-        digital = sec['h1'].startswith('2018+')
         head, _, name = title.partition(' - ')
-        ids = find_ids(head) if name else []
+        ids = find_ids(head) if name and k and sec['level'] == 1 else []
+        if title == TOPICS and sec['level'] == 1 and not blocks:
+            continue
 
         if title == 'Index':
             for b in blocks:
@@ -247,26 +303,24 @@ def parse_database(path):
             continue
 
         if title == 'Sources':
-            for b in blocks:
-                if b['t'] == 'table' and 'Vehicle' in b['head']:
-                    vi = b['head'].index('Vehicle')
-                    for r in b['rows']:
-                        m = re.search(r'`([^`]+)`', r['cells'][0])
-                        sources.append({'path': m.group(1).lstrip('/') if m else '', 'label': r['cells'][vi],
-                                        'md': r['cells'][0]})
+            sources += sources_from(blocks)
 
         if ids:
             meta = next((b for b in blocks if b['t'] == 'meta'), None)
             entries.append({
-                'ids': ids, 'title': title, 'name': name.strip(), 'line': sec['line'],
-                'variant': 'digital' if digital else 'analog',
+                'ids': ids, 'title': title, 'name': name.strip(), 'line': sec['line'], 'file': fname,
+                'variant': variant,
                 'status': (meta['fields'].get('status', '') if meta else ''),
                 'samples': (meta['samples'] if meta else []) + code_samples(blocks),
                 'blocks': blocks,
             })
             continue
 
-        topics.append({'key': slug(title), 'title': title, 'line': sec['line'], 'blocks': blocks})
+        # base file keys stay plain so old #t/ links keep working
+        key = slug(title) if variant == 'analog' else variant + '/' + slug(title)
+        topics.append({'key': key, 'title': title, 'line': sec['line'], 'file': fname, 'variant': variant,
+                       'ids': find_ids(title), 'blocks': blocks})
+        f['topics'].append(key)
 
         # Cluster TX tables list one ID per row, give each one an entry so it shows up on that ID's page
         if title.startswith('Cluster (IPC) Transmits'):
@@ -278,27 +332,144 @@ def parse_database(path):
                             d = c[1].strip('`').upper()
                             entries.append({
                                 'ids': [i], 'title': '%s - Cluster transmit' % i, 'name': 'Cluster transmit',
-                                'line': sec['line'], 'variant': 'cluster-tx', 'status': 'Cluster sends',
+                                'line': sec['line'], 'file': fname, 'variant': 'cluster-tx', 'status': 'Cluster sends',
                                 'samples': [{'d': d, 'label': 'bench cluster'}] if HEX_FRAME.match(d) else [],
                                 'blocks': [{'t': 'p', 'md': c[2], 'bytes': bytes_from_prose(c[2])}] if c[2] else [],
-                                'topic': slug(title),
+                                'topic': key,
                             })
-
-    # Index-only IDs (no section of their own yet)
-    have = {i for e in entries for i in e['ids'] if e['variant'] != 'cluster-tx'}
-    for i, row in index.items():
-        if i not in have:
-            entries.append({'ids': [i], 'title': '%s - %s' % (i, row['name']), 'name': row['name'], 'line': 0,
-                            'variant': 'analog', 'status': row['status'], 'samples': [], 'blocks': []})
-    for e in entries:
-        for i in e['ids']:
-            if i in index:
-                e['sentBy'] = index[i]['sentBy']
-    return entries, topics, sources
 
 
 def slug(s):
     return re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')
+
+
+# ---------------------------------------------------------------- format check
+
+TOPICS = 'Topics'
+SAMPLES_DIR = 'canbus_samples'
+# keep in step with the Status values table in database/README.md (test_web.py checks)
+STATUSES = ('Confirmed', 'From logs', 'From firmware', 'Cluster sends', 'APIM sends')
+STATUS_RE = re.compile(r'(?:%s)(?=$|[\s,(.;:-])' % '|'.join(map(re.escape, STATUSES)))
+
+
+def bad_status(status):
+    return ('Status has to start with one of: %s, see "Status values" in database/README.md (got "%s")'
+            % (', '.join(STATUSES), status[:40]))
+
+
+def check_topic_status(sec, err):
+    '''Topics don't need a Status, but one they have uses the same list'''
+    meta = next((b for b in parse_blocks(sec['body'], 0) if b['t'] == 'meta'), None)
+    status = meta['fields'].get('status', '') if meta else ''
+    if status and not STATUS_RE.match(status):
+        err(sec['line'], bad_status(status))
+
+
+def check_sources(sec, err):
+    '''Logs in canbus_samples/ have to exist and have frames build_web can read'''
+    for src in sources_from(parse_blocks(sec['body'], sec['line'] + 1)):
+        if not src['path'].startswith(SAMPLES_DIR + '/'):
+            continue
+        files = source_files(src['path'])
+        if not files:
+            err(sec['line'], 'Sources: no log at `%s`' % src['path'])
+            continue
+        n, why = 0, ''
+        for path in files:
+            try:
+                n += sum(1 for _ in read_frames(path))
+            except Exception as e:
+                why = ' (%s: %s)' % (os.path.basename(path), e)
+        if not n:
+            err(sec['line'], 'Sources: no CAN frames read from `%s`%s, see database/README.md for the formats'
+                % (src['path'], why))
+
+
+def check():
+    '''Problems the parser would silently get wrong, see database/README.md. -> exit code'''
+    problems = []
+    labels = {}
+    for variant, fname in db_files():
+        lines, sections = read_sections(os.path.join(DB_DIR, fname))
+        err = lambda n, msg: problems.append('database/%s:%d: %s' % (fname, n, msg))
+
+        fence = 0
+        for n, line in enumerate(lines, 1):
+            if line.strip().startswith('```'):
+                fence = 0 if fence else n
+            elif not fence and re.match(r'#{3,} ', line):
+                err(n, 'only # and ## headings are read, this one gets merged into the section above it')
+        if fence:
+            err(fence, 'code block (```) is never closed, everything after it is skipped')
+
+        first = next((l for l in lines if l.strip()), '')
+        if not sections or not first.startswith('# ') or sections[0]['title'].startswith('0x'):
+            err(1, 'must start with a "# Title" heading for the file, before any ID')
+            continue
+        intro = sections[0]['title']
+        check_topic_status(sections[0], err)
+        label = file_label(sections)
+        if not label:
+            err(sections[0]['line'], 'the title section needs a "**Label:** short name" line (shown on the site)')
+        elif label.lower() in labels:
+            err(sections[0]['line'], 'label "%s" is already used by %s' % (label, labels[label.lower()]))
+        labels[label.lower()] = fname
+
+        seen, topics_at = {}, 0
+        for sec in sections[1:]:
+            title = sec['title']
+            head, _, name = title.partition(' - ')
+            if title == 'Sources':
+                check_sources(sec, err)
+            if sec['level'] == 2 or title == TOPICS:
+                check_topic_status(sec, err)
+            if sec['level'] == 2:
+                if sec['h1'] not in (intro, TOPICS):
+                    err(sec['line'], '## inside an ID section is not part of it. Use **bold** text, or make it a '
+                                     'topic: "## %s" under "# %s"' % (title, TOPICS))
+                continue
+            if title == TOPICS:
+                if topics_at:
+                    err(sec['line'], 'second "# %s", the first is at line %d' % (TOPICS, topics_at))
+                topics_at = sec['line']
+                continue
+            if re.match(r'0x', title) and not name:
+                err(sec['line'], 'ID heading needs " - Name" after the ID, e.g. "# 0x3B3 - Cluster On"')
+                continue
+            ids = find_ids(head) if name else []
+            if not ids:
+                err(sec['line'], '"# %s" is not an ID. Topics go under "# %s" as "## %s"' % (title, TOPICS, title))
+                continue
+            if len(ids) > 1:
+                err(sec['line'], 'one ID per section (%s). Give each its own "# 0xNNN - Name" section, notes about '
+                                 'them together go in a topic under "# %s"' % (' '.join(ids), TOPICS))
+                continue
+            for i in ids:
+                if i in seen:
+                    err(sec['line'], '%s already has a section at line %d, keep one section per ID per file' % (i, seen[i]))
+                seen[i] = sec['line']
+
+            blocks = parse_blocks(sec['body'], sec['line'] + 1)
+            meta = next((b for b in blocks if b['t'] == 'meta'), None)
+            status = meta['fields'].get('status', '') if meta else ''
+            if not status:
+                err(sec['line'], 'needs a "**Sample:** .. · **Rate:** .. · **Status:** .." line (Status at least)')
+            elif not STATUS_RE.match(status):
+                err(sec['line'], bad_status(status))
+            if meta:
+                for d in re.findall(r'`([^`]*)`', meta['fields'].get('sample', '')):
+                    if not HEX_FRAME.match(d.strip()):
+                        err(sec['line'], 'sample `%s` is not 1 - 8 hex bytes like `40 48 02 0A`, it is dropped' % d)
+            for b in blocks:
+                if b['t'] == 'table' and b['byteCol'] >= 0:
+                    for r in b['rows']:
+                        if not r['bytes']:
+                            err(sec['line'], 'byte table row "%s": no byte number in the %s column'
+                                % (' | '.join(r['cells'])[:50], b['head'][b['byteCol']]))
+    for p in problems:
+        print(p)
+    print('%d problem%s in database/' % (len(problems), '' if len(problems) == 1 else 's'))
+    return 1 if problems else 0
 
 
 # ---------------------------------------------------------------- logs
@@ -384,12 +555,14 @@ def repo_url():
             repo = m.group(1) if m else ''
         except OSError:
             repo = ''
-    return 'https://github.com/%s/blob/HEAD/database.md' % repo if repo else ''
+    return 'https://github.com/%s/blob/HEAD/database/' % repo if repo else ''
 
 
 def main():
-    print('parsing database.md')
-    entries, topics, sources = parse_database(DB_MD)
+    if '--check' in sys.argv:
+        sys.exit(check())
+    print('parsing database/')
+    files, entries, topics, sources = parse_database()
     print('  %d ID entries, %d topics, %d sources' % (len(entries), len(topics), len(sources)))
     print('reading logs')
     vehicles, samples = collect_samples(sources)
@@ -397,6 +570,7 @@ def main():
     data = {
         'generated': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'),
         'source': repo_url(),
+        'files': files,
         'vehicles': vehicles,
         'entries': entries,
         'topics': topics,
@@ -404,7 +578,7 @@ def main():
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, 'w', encoding='utf-8') as f:
-        f.write('// generated by build_web.py from database.md - do not edit\n')
+        f.write('// generated by build_web.py from database/ - do not edit\n')
         f.write('window.S550 = ')
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
         f.write(';\n')

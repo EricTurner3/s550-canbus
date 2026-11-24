@@ -22,7 +22,7 @@
    "firmware": "KR3T-14C026-AC_com.json (authoritative for this cluster)",
    "database_md": "names / bench status",
    "dbc": "other_refs/VehicleCAN.dbcx (2018+ arch, names only)",
-   "freeze_frame": "other_refs/2015GTPremium_FreezeFrame.csv"
+   "freeze_frame": "canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_FreezeFrame.csv"
   },
   "wrench": [
    {

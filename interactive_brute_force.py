@@ -82,7 +82,7 @@
     Each module answers on its own ID in the 0x3Dx / 0x3Ex range (idle 00 00 00 00 80 ..). The GT350 (start.csv) answers
     04 07 on 0x3E6 7ms after the request, so 04 07 goes out on 0x3E6, everything else on 0x3E3
 
-    --freeze sends the freeze frame from the car this cluster came out of (other_refs/2015GTPremium_FreezeFrame.csv) for
+    --freeze sends the freeze frame from the car this cluster came out of (canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_FreezeFrame.csv) for
     every ID nothing else sends, one static frame each at the GT log's rate (1 Hz if the GT log doesn't have it).
     With --gt, the GT log's live frames win (rolling counters), the freeze frame fills the rest
         python interactive_brute_force.py cht --dummydata --respond --freeze
@@ -105,7 +105,7 @@ import s550_data
 import replay
 
 GT_LOG = 'other_refs/v-ivanyshyn_parse_can_logs/log Mustang S550.txt'
-FREEZE_FRAME = 'other_refs/2015GTPremium_FreezeFrame.csv'
+FREEZE_FRAME = 'canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_FreezeFrame.csv'
 
 def temp(v):
     c = v - 60
@@ -589,9 +589,9 @@ def on_press(key):
         set_value(value_range[0])
 
 cluster_tx = {} # IDs the cluster itself transmits, filled in by _listen
-CLUSTER_TX_LOG = 'cluster_tx.csv'
+CLUSTER_TX_LOG = 'canbus_samples/EricTurner3/bench_cluster/cluster_tx.csv'
 cluster_tx_log = {} # id -> {data: count}, every distinct frame the cluster has sent this run
-CLUSTER_TX_CHANGES = 'cluster_tx_changes.csv'
+CLUSTER_TX_CHANGES = 'canbus_samples/EricTurner3/bench_cluster/cluster_tx_changes.csv'
 cluster_tx_changes = [] # (seconds, id, data) each time a cluster ID changes value, plus key presses
 rx_count = 0 # frames received since the last status line
 rx_errors = 0

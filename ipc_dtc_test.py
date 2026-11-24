@@ -102,7 +102,7 @@ CANDIDATES = {
 extra_on = False
 
 # PSCM SteeringPinion_Data, wheel straight (drive.csv). Counter = b5 high nibble,
-# b4 = 0xFF - (b0 + b1 + counter + b6 + b7): matches all 10696 frames in can/drive.csv. 100 Hz in the car
+# b4 = 0xFF - (b0 + b1 + counter + b6 + b7): matches all 10696 frames in 2016_gt350_car/drive.csv. 100 Hz in the car
 def pscm_roller():
     cnt = 0
     def roll():
@@ -136,7 +136,7 @@ ROLLERS = {'085roll': (0x085, pscm_roller(), 0.01),
            '202roll': (0x202, None, 0.02)}             # filled in below (needs the heartbeat's speed)
 
 # 0x202 speed with the real car's counter: b2 bits 6-3, b1 = 0xFF - (counter + Qf 3 + b6 + b7)
-# (checked against can/drive.csv). The heartbeat's 0x202 has neither; this replaces it while on.
+# (checked against 2016_gt350_car/drive.csv). The heartbeat's 0x202 has neither; this replaces it while on.
 # The counter goes up by 2 every frame at 50 Hz (14137 of 14559 GT350 steps; ivan's log drops frames, steps 2/4/6)
 # and is always odd (b2 bit 3 = 1) in both the GT350 and ivan's GT log. The first version counted 2, 4 .. 0 (bit 3 = 0)
 # and didn't clear U0401-82. b0 is 04 in the GT (00 in the GT350, not in the checksum)

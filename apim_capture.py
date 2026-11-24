@@ -23,8 +23,9 @@
     bus, that's the APIM. With the cluster plugged in too, --hide-ipc leaves the cluster's IDs out of the summary.
     The adapter still has to ACK, without another node to ACK the APIM's frames it repeats the first one forever.
 
-    Saves can/apim/apim_<mode>_<time>.csv (python-can CSV like the other logs, replay.py / decode_can_log.py read it)
-    and can/apim/apim_<mode>_<time>_summary.csv. Its own folder, the web viewer reads can/*.csv as the GT350's logs.
+    Saves canbus_samples/EricTurner3/bench_apim/apim_<mode>_<time>.csv (python-can CSV like the other logs, replay.py / decode_can_log.py read it)
+    and canbus_samples/EricTurner3/bench_apim/apim_<mode>_<time>_summary.csv. Its own folder, the web viewer reads
+    canbus_samples/EricTurner3/2016_gt350_car/*.csv as the GT350's logs.
     --ignition / --forscan also write _tx.csv / _changes.csv (interactive_brute_force.py's cluster_tx.csv /
     cluster_tx_changes.csv, kept apart so the cluster's copies aren't overwritten)
 '''
@@ -62,8 +63,8 @@ args, rest = parser.parse_known_args()
 
 args.ignition = args.ignition or args.probe
 mode = 'forscan' if args.forscan else 'probe' if args.probe else 'ignition' if args.ignition else 'listen'
-os.makedirs(os.path.join('can', 'apim'), exist_ok=True)
-base = os.path.join('can', 'apim', 'apim_{}_{}'.format(mode, time.strftime('%Y%m%d_%H%M%S')))
+os.makedirs(os.path.join('canbus_samples', 'EricTurner3', 'bench_apim'), exist_ok=True)
+base = os.path.join('canbus_samples', 'EricTurner3', 'bench_apim', 'apim_{}_{}'.format(mode, time.strftime('%Y%m%d_%H%M%S')))
 start = time.time()
 
 if args.ignition or args.forscan:

@@ -11,7 +11,7 @@ REPO = os.path.dirname(HERE)
 COM  = os.path.join(HERE, "KR3T-14C026-AC_com.json")
 DB   = os.path.join(REPO, "database.md")
 DBC  = os.path.join(REPO, "other_refs", "VehicleCAN.dbcx")              # Ford signal DB (2018+/FD1 arch)
-FF   = os.path.join(REPO, "other_refs", "2015GTPremium_FreezeFrame.csv")  # one real sample per ID, this car
+FF   = os.path.join(REPO, "canbus_samples", "EricTurner3", "2015_gt_premium_car", "2015GTPremium_FreezeFrame.csv")  # one real sample per ID, this car
 JOUT = os.path.join(HERE, "KR3T-14C026-AC_CAN_Notes.json")
 MOUT = os.path.join(HERE, "KR3T-14C026-AC_CAN_Notes.md")
 HAND = ("required_bytes", "notes")   # hand-filled, preserved on re-run
@@ -141,7 +141,7 @@ def main():
                     "Edit required_bytes / notes here; everything else is regenerated.",
         sources=dict(firmware="KR3T-14C026-AC_com.json (authoritative for this cluster)",
                      database_md="names / bench status", dbc="other_refs/VehicleCAN.dbcx (2018+ arch, names only)",
-                     freeze_frame="other_refs/2015GTPremium_FreezeFrame.csv"),
+                     freeze_frame="canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_FreezeFrame.csv"),
         wrench=com["wrench"],
         generated_by="vbf/make_can_notes.py")
     json.dump(dict(meta=meta, messages=messages), open(JOUT, "w", encoding="utf-8"), indent=1)

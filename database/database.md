@@ -1,18 +1,31 @@
 # Ford S550 Mustang CAN Database
 
-Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-10890-AA) · 2016 Mustang GT350 (6-speed manual, the `/can` logs)
+**Label:** 2015-17 analog
+
+Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-10849-GF) · 2016 Mustang GT350 (6-speed manual, the `2016_gt350_car` logs)
+
+This is the original database that was sourced from my own mustangs, and other public logs I found online. The main goal was to test all messages against my benched FR33-10849-GF cluster. Other contributors have their own `*_database.md` file in this
+folder to document findings for their full can bus networks or specific benched modules. Each module year and trim can have subtle variations that should be documented cleanly.
 
 > [IMPORTANT]
 > **`0x3B3` must be sent first and kept going.** It wakes the cluster: without it the cluster stays off and ignores
 > every other message. Byte 0's upper nibble has to be `4` (e.g. `40 48 02 0A 10 05 00 02`). If it stops, the
 > cluster goes back to sleep shortly after. See [0x3B3](#0x3b3---cluster-on-doors-lights-parking-brake).
 
+## Modules
+
+| Module | Part number | Notes |
+|---|---|---|
+| IPC (cluster) | FR33-10890-AA | Bench, out of the 2015 GT Premium. App `FR33-14C026-AG`. What this file marks Confirmed was tested on it |
+| APIM (SYNC 2) | FR3T-14F239-CE | Bench. Strategy `EM5T-14D205-AD`. See [APIM (SYNC)](#apim-sync) |
+
 ## Conventions
 
 - Bytes are numbered 0 - 7. Values are hex, multi-byte values are big-endian.
-- **Status** on each ID:
+- **Status** on each ID (the full list, in every database file, is in [README.md](README.md#status-values)):
   - **Confirmed**: tested on the bench cluster.
   - **From logs**: found by correlating logs against known signals, not tested on the cluster yet.
+  - **From firmware**: read out of a cluster's firmware, not tested on a cluster yet.
   - **Cluster sends**: the cluster transmits it itself. Never send it, two senders on one ID cause bus errors.
   - **APIM sends**: same, for the bench APIM (SYNC). See [APIM (SYNC)](#apim-sync).
 - Temperatures `raw - 60 = °C` unless noted.
@@ -21,12 +34,12 @@ Vehicles: 2015 Mustang GT Premium (6-speed manual, this cluster's car, FR33-1089
 
 | Source | Vehicle | Bus | Notes |
 |---|---|---|---|
-| `/can/*.csv` | 2016 Mustang GT350, 6MT | HS1 (OBD port, through the gateway) | Missing 37 IDs the GT has (`0x156 0x166 0x171 0x179 0x331 0x3B5 0x421 0x42D 0x43E` ...), so replaying them on this GT cluster throws warnings |
+| `canbus_samples/EricTurner3/2016_gt350_car/*.csv` | 2016 Mustang GT350, 6MT | HS1 (OBD port, through the gateway) | Cluster probably FR3V-10849-AC. Missing 37 IDs the GT has (`0x156 0x166 0x171 0x179 0x331 0x3B5 0x421 0x42D 0x43E` ...), so replaying them on this GT cluster throws warnings |
 | `other_refs/v-ivanyshyn_parse_can_logs` | 2016 Mustang GT, 6R80 | HS1 + HS3 merged | |
-| `other_refs/2015GTPremium_FreezeFrame.csv` | 2015 Mustang GT Premium, 6MT | HS-CAN / HS-CAN2 | One sample per ID from this cluster's car |
-| `other_refs/2015GTPremium_cantact_log` | 2015 Mustang GT Premium, 6MT (key on, engine off) | HS1 (at the gateway) | CANtact log from this cluster's car, 54 s from key on (`0x3B3` byte 0 `10` → `44`), engine never started (`0x167` byte 0 `00`). 55 IDs, none new. Lossy, about a quarter of the frames (`0x204` at ~27 Hz), so use it for values, not rates. No `0x156 0x179 0x421 0x42D 0x43E` here either: the only log with those is v-ivanyshyn's automatic |
-| `/can/apim/*.csv` | Bench APIM (SYNC) | HS3 | `apim_capture.py` logs, APIM alone on the bench. See [APIM (SYNC)](#apim-sync) |
-| `cluster_tx.csv` | Bench cluster (2015 analog, FR33) | HS3 | What the cluster transmits on its own, see [Cluster (IPC) Transmits](#cluster-ipc-transmits) |
+| `canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_FreezeFrame.csv` | 2015 Mustang GT Premium, 6MT | HS-CAN / HS-CAN2 | One sample per ID from this cluster's car |
+| `canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_cantact_log` | 2015 Mustang GT Premium, 6MT (key on, engine off) | HS1 (at the gateway) | CANtact log from this cluster's car, 54 s from key on (`0x3B3` byte 0 `10` → `44`), engine never started (`0x167` byte 0 `00`). 55 IDs, none new. Lossy, about a quarter of the frames (`0x204` at ~27 Hz), so use it for values, not rates. No `0x156 0x179 0x421 0x42D 0x43E` here either: the only log with those is v-ivanyshyn's automatic |
+| `canbus_samples/EricTurner3/bench_apim/*.csv` | Bench APIM (SYNC 2, FR3T-14F239-CE) | HS3 | `apim_capture.py` logs, APIM alone on the bench. See [APIM (SYNC)](#apim-sync) |
+| `canbus_samples/EricTurner3/bench_cluster/cluster_tx.csv` | Bench cluster (2015 analog, FR33) | HS3 | What the cluster transmits on its own, see [Cluster (IPC) Transmits](#cluster-ipc-transmits) |
 | `mustang.c` ([ufnalski's project](https://github.com/ufnalski/ford_mustang_cluster_h503rb/blob/main/Core/Src/mustang.c)) | 2016 Mustang V6, automatic | | Source of `0x3B2` and the `0x76` g meter which enabled TrackApps |
 
 The web viewer (`docs/`, built by `build_web.py`) takes the first sample of each ID from every source above that has a
@@ -98,74 +111,36 @@ lead, not proof, for the FR33. Generated by `vbf/kr3t_com_extract.py` + `vbf/mak
 
 ---
 
-# Cluster (IPC) Transmits
+# 0x048 - Power Mode
 
-**Status:** Cluster sends · captured on the bench with `interactive_brute_force.py` (`cluster_tx.csv`, `cluster_tx_changes.csv`)
+**Sample:** `00 00 00 00 07 00 E0 00` · **Rate:** 10 Hz (ours) · **Status:** Confirmed (byte 4)
 
-Only `0x18B 0x350 0x3C8 0x3E0 0x430 0x434` show up in the HS1 logs (passed through the gateway), the rest are HS3 only. `replay.py` skips all of these unless `--include-ipc`.
+Sent to the APIM (SYNC), it won't boot without it. See [APIM (SYNC)](#apim-sync).
 
-8 Nov 2026 - `other_refs/VehicleCAN.dbcx` (powertrain bus view) tags 90 frames with `FrameGatewayNetwork`, the network the GWM copies them from. The 29 `HS3_CAN` ones are the cluster / APIM's outputs and match this list: `0x18B 0x225 0x2FD 0x30A 0x317 0x318 0x3C8 0x3E0 0x430 0x434 0x45A` (`0x318` = `IPC_Send_Signals_2`, `0x430` = `Cluster_Info1`, `0x434` = `Cluster_Info_3`), the rest are APIM / nav / trailer. So the cluster sits on HS3 behind the GWM. The DBC only describes traffic onto the powertrain bus, so it doesn't list what the GWM sends the cluster on HS3. That gateway-built traffic is the likely home of the missing steering / U0146 data.
-
-**Once at power up** (all zeros unless noted), possibly wake up / enable requests to other modules:
-`0x087` `0x123` `0x190` (`00 00 00 00 FF 00 00 00`) `0x193` `0x195` `0x1EE` `0x1F2` `0x1F8` `0x1F9` `0x1FA` `0x1FB` `0x1FC` `0x363` (`00 3C 00 ...`)
-
-**~1 Hz**
-
-| ID | Data | Notes |
-|---|---|---|
-| `0x18B` | `00 00 00 1E 00 00 00 00` | GT350 log: `00 00 0A 0A ...` |
-| `0x19A` | `00 00 00 02 40 00 00 00` | |
-| `0x220` | `10 01 00 00 00 00 00 00` | Changes to `08 01 ...` in step with `0x2F4`. Same payload twice, left / right blind spot sensors? (the service manual says the cluster sends them an enable request) |
-| `0x2F4` | `10 01 00 00 00 00 00 00` | See `0x220` |
-| `0x225` | `20 81 00 00 00 00 00 00` | Byte 2 `0x80` for the first 5 s after power up |
-| `0x2FD` | `0C 00 C2 00 00 00 00 00` | |
-| `0x313` | `00 ...` | v-ivanyshyn: byte 5 grows with speed, odometer? |
-| `0x316` | `00 ...` | |
-| `0x317` | `03 FE 00 00 00 00 00 00` | |
-| `0x318` | `00 ...` | v-ivanyshyn: bytes 5 & 6 slowly decrease during a drive, fuel in tank? |
-| `0x350` | `00 ...` | Byte 0 `0x40` at times (also in `start.csv`) |
-| `0x353` | `00 00 00 00 00 05 10 13` | Bytes 4 & 5 `0x03E7` (999) once, then 5 → 0. Distance to empty? (seen before the bench had [fuel sender resistors](#fuel-level-senders-wired-c220)) |
-| `0x3C8` | | MyColor / drive mode, see [0x3C8](#0x3c8---drive-mode-mycolor) |
-| `0x3E0` | `00 00 00 00 80 00 00 00` | Startup requests, see [0x3E0](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies) |
-| `0x3FB` | `00 ...` | |
-| `0x45A` | `00 ...` | |
-| `0x591` | `91 00 FF FF FF FF FF FF` | The cluster's own "module alive" frame, same pattern as the other `0x5xx` |
-
-**~5 - 13 Hz**
-
-| ID | Data | Notes |
-|---|---|---|
-| `0x287` | `00 ...` | |
-| `0x30A` | `D7 00 00 00 00 00 00 00` | |
-| `0x315` | | Bytes 6 & 7 `0x08xx`, change every frame. v-ivanyshyn: follows the pedal with some delay |
-| `0x346` | `00 00 00 03 03 00 C0 00` | |
-| `0x348` | `00 ...` | |
-| `0x430` | | Odometer, see [0x430](#0x430---odometer) |
-| `0x434` | `40 00 10 00 28 FF F0 00` | |
-
-# 0x3E0 / 0x3E3 / 0x3E6 - Startup Requests and Replies
-
-**Status:** Confirmed · `interactive_brute_force.py --respond`
-
-About 0.8 s after start the cluster asks the other modules on HS3 to answer, one request at a time on `0x3E0`. Each module answers on its own ID. Idle frames on all of these are `00 00 00 00 80 00 00 00`.
-
-| Frame | Layout |
+| Byte | Value |
 |---|---|
-| Request (`0x3E0`) | `04 xx 00 00 84 00 00 00`, `xx` = `01 03 04 05 07 0D 10 11` in that order |
-| Reply | `00 01 04 xx 80 00 00 00` on the module's ID. Byte 1 `0x01` = OK / present |
+| 4 bits 4 - 0 | Power mode, see below |
+| 4 bits 7 - 5 | Not part of the power mode: `27` (bit 5 + running) still boots. Unknown |
+| 6 | `E0`, untested |
+| 0 - 3, 5, 7 | `00`, untested |
 
-| Request | Answered on | Notes |
+Byte 4 swept `00 - 1F`, 30 s each (`interactive_brute_force.py apimpower`). Names are a guess from Ford's usual power
+mode list, but they match what a car does: the radio comes on in accessory and drops out while cranking.
+
+| Byte 4 | Name (guess) | APIM |
 |---|---|---|
-| `04 01` `04 03` `04 04` `04 05` `04 0D` `04 10` `04 11` | `0x3E3` | HS3 only (v-ivanyshyn's GT log, freeze frame `00 01 04 11 80 01 64 00`). `0x3E3` takes all of them on the bench |
-| `04 07` | `0x3E6` | `start.csv`: answered 7 ms after the request, then held. Power steering module? A one off STEERING FAILURE showed while sweeping its byte 1 |
+| `00` | Key out | not tested (the sweep stepped past it at once) |
+| `01` `02` `03` | Key recently out / key approved / post accessory | Off |
+| **`04`** | **Accessory** | **On** - `0x2E3` → `02` in 0.3 s, `0x290` → `7F` 5.5 s later |
+| **`05`** | **Post ignition** | **On** (stays on from `04`, bit flip test: no change either way) |
+| **`06`** | **Ignition on** | **On** |
+| **`07`** | **Running** | **On** (what `s550_cluster.py` sends) |
+| `08` | ? | Off, `0x290` → `01` within 0.5 s |
+| `09` | Crank | Off |
+| `0A - 1F` | - | Off (`17` off too, so bit 4 is part of the field) |
 
-- In a car each request is held ~40 - 60 ms. Unanswered, the cluster repeats it every ~1 - 2 s and gives up after 5 s, then sends `07 01` (never seen in a car).
-- Byte 1 `0x02 - 0x07` time out for every request except `04 0D`, which takes anything.
-- Other IDs in the same family: `0x3DF` `0x3E2` (idle frames), `0x3EB` `02 04 14 00 00 20 ..` (different layout), freeze frame `0x3E1` `80 00 00 07 01 80 00 00`, `0x3DA` `01 64 00 ..` (GT log all zeros).
-- 12 Nov 2026 - from power up the requests go out at 1.14 - 2.39 s when answered and `07 01 00 00 84` from 2.89 s, every 1 s (`can/apim/apim_ignition_20261112_174016.csv`). `07 01` isn't accepted on `0x3E3` (`00 01 07 01 80 ..`, 5 tries) or on `0x3E1` as `80 00 00 07 01 80 00 00`, `00 00 07 01 80 ..` or `00 01 07 01 80 ..` (`interactive_brute_force.py --respond-0701`). A BCM request? No BCM to check against.
-- Answering every request doesn't clear the startup faults (blind spot, cross traffic, steering assist, tire pressure monitor). Those modules' own messages aren't in any log.
-
----
+- Off → on takes 5 - 25 s (`0x290` `01` → `7F`), on → off under a second.
+- In "off" the APIM keeps listening: `0x290` stays at 5 Hz with ~19 IDs, so a later valid power mode still boots it.
 
 # 0x4C - Airbag / Seatbelt Indicators
 
@@ -512,7 +487,7 @@ cluster's car). In the 2019 analog firmware's receive table.
 **Sample:** `00 00 00 00 00 00 00 00` · **Rate:** 100 ms here · **Status:** Confirmed (U0184)
 
 - Sending it keeps the cluster's U0184-00 (lost communication with the radio) away (11 Nov 2026, `ipc_dtc_test.py scan dummy batch=64 000-3FF`, zeros on every ID we don't send, confirmed on the repeat). Not in the GT350 or GT logs (HS1) or in the bench GWM capture (no radio behind it), so it is a frame the GWM builds on HS3 from the radio on MS-CAN. Bytes untested.
-- The same frame at zeros stops U0193 (digital audio module) on the 2018 digital cluster, see [Fault / lamp suppression](#fault--lamp-suppression-digital-standalone--no-gwm).
+- The same frame at zeros stops U0193 (digital audio module) on the 2018 digital cluster, see [Fault / lamp suppression](2018_digital_database.md#fault--lamp-suppression).
 - Alive frames don't do it: `b0 = ID low byte, 00, FF ...` on every unsent ID `0x400 - 0x5FF` (`0x427` included) left U0184 set.
 - `s550_cluster.py` sends it (`send_radio_present`). With `0x42C` byte 0 `10` and `0x46A` that is every DTC on the bench cleared by CAN: U0401-82, U0146, U0184.
 - The wrench stays on with U0184 gone, so it isn't the radio either.
@@ -605,7 +580,7 @@ Sending this alongside `0x3B3` makes Track Apps show on this 2015 cluster (FR33)
 | 0 | Cluster on / headlamps | Upper nibble must be `4` or the cluster turns off. `40` headlamps off, `44` on, `41` trunk ajar |
 | 1 | Light mode | `48` DRL, `88` night, `4A` hazard |
 | 3 | Backlight | `0x00` off, `0x0A` on (MyColor), `0x10` on (white), `0x0_` dims / `0x9_` brightens. In the logs the dash dimmer, `0x01 - 0x0C` (`run_light_dim_up` / `_down`) |
-| 4 | Outside temp (APIM) | `raw * 0.5 - 40 = °C`, same as the [digital cluster](#0x3b3-byte-4---outside-temperature-digital). The bench APIM (SYNC 2) shows it (10 Nov 2026, `apimtemp`). The GT350 logs only have `10` (-32 °C / -26 °F, likely "no sensor": the GT350 has no outside temp, only the GT does), `18` with the right turn signal, `E0` / `E6` at shutdown. v-ivanyshyn's GT log and this car's freeze frame are `10` too, unexplained. `s550_cluster.py` sends `outside_temp` from `s550_data`, kept under `E0` |
+| 4 | Outside temp (APIM) | `raw * 0.5 - 40 = °C`, same as the [digital cluster](2018_digital_database.md#0x3b3-byte-4---outside-temperature-digital). The bench APIM (SYNC 2) shows it (10 Nov 2026, `apimtemp`). The GT350 logs only have `10` (-32 °C / -26 °F, likely "no sensor": the GT350 has no outside temp, only the GT does), `18` with the right turn signal, `E0` / `E6` at shutdown. v-ivanyshyn's GT log and this car's freeze frame are `10` too, unexplained. `s550_cluster.py` sends `outside_temp` from `s550_data`, kept under `E0` |
 | 6 | Parking brake | `0x80` / `0xC0` on, `0x00` off |
 | 7 | Doors | First digit `0` closed, `1` passenger ajar, `2` driver ajar, `3` both. Second digit `2` closed, `A` hood ajar. `02` all closed, `32` both doors open, `2A` driver + hood |
 
@@ -683,6 +658,55 @@ The cluster is the source of the MyColor / drive mode settings. Don't send it.
 |---|---|---|
 | 0, 4, 5 | MyColor RGB | per v-ivanyshyn |
 | 2 | Drive mode | `0` normal, `1` sport, `2` snow, `3` track (per v-ivanyshyn). `0x70` from this cluster on the bench |
+
+# 0x3E0 - Startup Requests
+
+**Sample:** `04 01 00 00 84 00 00 00` (first request) · **Status:** Cluster sends · confirmed with `interactive_brute_force.py --respond`
+
+About 0.8 s after start the cluster asks the other modules on HS3 to answer, one request at a time. Each module answers
+on its own ID (`0x3E3`, `0x3E6`). The whole exchange is in [Startup Requests and Replies](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies).
+
+| Byte | Signal | Values |
+|---|---|---|
+| 0 | Request | `04`, then `07` once it gives up |
+| 1 | Module asked | `01 03 04 05 07 0D 10 11` in that order |
+| 4 | | `84` in a request, `80` idle |
+
+- Idle frame `00 00 00 00 80 00 00 00`.
+- In a car each request is held ~40 - 60 ms. Unanswered, the cluster repeats it every ~1 - 2 s and gives up after 5 s,
+  then sends `07 01` (never seen in a car).
+
+# 0x3E3 - Startup Replies
+
+**Sample:** `00 01 04 11 80 01 64 00` (freeze frame) · **Status:** Confirmed · `interactive_brute_force.py --respond`
+
+Answers the cluster's [`0x3E0`](#0x3e0---startup-requests) requests `04 01` `04 03` `04 04` `04 05` `04 0D` `04 10`
+`04 11`. HS3 only (v-ivanyshyn's GT log, freeze frame). `0x3E3` takes all of them on the bench. See
+[Startup Requests and Replies](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies).
+
+| Byte | Signal | Values |
+|---|---|---|
+| 1 | Reply | `01` = OK / present. `02 - 07` time out for every request except `04 0D`, which takes anything |
+| 2 - 3 | Request being answered | `04 xx` |
+| 4 | | `80` |
+
+- Idle frame `00 00 00 00 80 00 00 00`.
+- `07 01` isn't accepted here (`00 01 07 01 80 ..`, 5 tries).
+
+# 0x3E6 - Startup Reply (request 04 07)
+
+**Sample:** `00 01 04 07 80 00 00 00` (reply layout) · **Status:** Confirmed · `interactive_brute_force.py --respond`
+
+Answers the cluster's [`0x3E0`](#0x3e0---startup-requests) request `04 07`. See [Startup Requests and Replies](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies).
+
+| Byte | Signal | Values |
+|---|---|---|
+| 1 | Reply | `01` = OK / present |
+| 2 - 3 | Request being answered | `04 07` |
+| 4 | | `80` |
+
+- `start.csv`: answered 7 ms after the request, then held.
+- Power steering module? A one off STEERING FAILURE showed while sweeping its byte 1.
 
 # 0x40A - VIN / Vehicle Config
 
@@ -882,6 +906,30 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - v-ivanyshyn reads it as engine load %, `(b5 << 8 | b6) / 72 - 140`.
 - Not in the GT350 logs.
 
+# 0x466 - GPS Compass / Time
+
+**Sample:** `78 34 D4 28 12 A0 80 00` (15:13:53 UTC, 10 Nov 2026, north) · **Rate:** 1 Hz (ours) · **Status:** Confirmed (compass, on the cluster), the rest from the DBC
+
+`0x466 compass: v = (b3 & 0x07) * 2 + (b4 >> 7)` (datechnerd, digital cluster) is `GPS_Compass_direction 26|4` of the
+DBC's `APIMGPS_Data_Nav_2_FD1` (`0x463`), so the rest of that layout is assumed. See [APIM (SYNC)](#apim-sync) for the compass on the bench:
+
+| Byte | Bits | Signal |
+|---|---|---|
+| 0 | 7 - 3 | UTC hours |
+| 0 | 2 | GPS fault (`Gps_B_Falt`) |
+| 1 | 7 - 2 | UTC minutes |
+| 2 | 7 - 2 | UTC seconds |
+| 3 | 7 - 3 | PDOP, `raw * 0.2` |
+| 3 - 4 | b3 2 - 0, b4 7 | Compass: `0` N, `1` NE, `2` E, `3` SE, `4` S, `5` SW, `6` W, `7` NW |
+| 4 | 6 | Inferred (not actual) position |
+| 4 | 5 - 1 | Day - 1 |
+| 5 | 7 - 4 | Month - 1 |
+| 6 | 7 - 3 | Year - 2010 |
+
+- `s550_cluster.py` `send_gps_nav` sends it from `compass_heading` (degrees, rounded to 8 directions) and the PC's UTC
+  clock. The cluster shows the bearing. The bench APIM ignores it (its compass needs the nav SD card and GPS antenna).
+  In a car with nav the APIM probably sends this itself.
+
 # 0x46A - GWM Present
 
 **Sample:** `00 00 00 08 00 00 00 00` · **Rate:** 1 s from a 2018 GWM, 100 ms here (must arrive at least every 5 s) · **Status:** Confirmed (U0146, wrench)
@@ -949,9 +997,80 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 - Faking all of `0x500 - 0x5FF` (`--nm`) changed nothing.
 - 8 Nov 2026 - `other_refs/VehicleCAN.dbcx` names them AutoSar network management frames: `0x59E` GWM, `0x5B5` PSCM, `0x596` ABS. Byte 0 is the node ID, byte 1 the control byte. We already send `0x59E` and `0x5B5` and the cluster still sets U0146 (GWM) and U0420 (PSCM), so it wants more than these alive frames.
 
-# Wrench / See Manual (Powertrain Malfunction RTT)
+---
 
-**Status:** **Solved, 14 Nov 2026.** Off with the frames below, and stays off through a power pull mid-run.
+# Topics
+
+## Cluster (IPC) Transmits
+
+**Status:** Cluster sends · captured on the bench with `interactive_brute_force.py` (`cluster_tx.csv`, `cluster_tx_changes.csv`)
+
+Only `0x18B 0x350 0x3C8 0x3E0 0x430 0x434` show up in the HS1 logs (passed through the gateway), the rest are HS3 only. `replay.py` skips all of these unless `--include-ipc`.
+
+8 Nov 2026 - `other_refs/VehicleCAN.dbcx` (powertrain bus view) tags 90 frames with `FrameGatewayNetwork`, the network the GWM copies them from. The 29 `HS3_CAN` ones are the cluster / APIM's outputs and match this list: `0x18B 0x225 0x2FD 0x30A 0x317 0x318 0x3C8 0x3E0 0x430 0x434 0x45A` (`0x318` = `IPC_Send_Signals_2`, `0x430` = `Cluster_Info1`, `0x434` = `Cluster_Info_3`), the rest are APIM / nav / trailer. So the cluster sits on HS3 behind the GWM. The DBC only describes traffic onto the powertrain bus, so it doesn't list what the GWM sends the cluster on HS3. That gateway-built traffic is the likely home of the missing steering / U0146 data.
+
+**Once at power up** (all zeros unless noted), possibly wake up / enable requests to other modules:
+`0x087` `0x123` `0x190` (`00 00 00 00 FF 00 00 00`) `0x193` `0x195` `0x1EE` `0x1F2` `0x1F8` `0x1F9` `0x1FA` `0x1FB` `0x1FC` `0x363` (`00 3C 00 ...`)
+
+**~1 Hz**
+
+| ID | Data | Notes |
+|---|---|---|
+| `0x18B` | `00 00 00 1E 00 00 00 00` | GT350 log: `00 00 0A 0A ...` |
+| `0x19A` | `00 00 00 02 40 00 00 00` | |
+| `0x220` | `10 01 00 00 00 00 00 00` | Changes to `08 01 ...` in step with `0x2F4`. Same payload twice, left / right blind spot sensors? (the service manual says the cluster sends them an enable request) |
+| `0x2F4` | `10 01 00 00 00 00 00 00` | See `0x220` |
+| `0x225` | `20 81 00 00 00 00 00 00` | Byte 2 `0x80` for the first 5 s after power up |
+| `0x2FD` | `0C 00 C2 00 00 00 00 00` | |
+| `0x313` | `00 ...` | v-ivanyshyn: byte 5 grows with speed, odometer? |
+| `0x316` | `00 ...` | |
+| `0x317` | `03 FE 00 00 00 00 00 00` | |
+| `0x318` | `00 ...` | v-ivanyshyn: bytes 5 & 6 slowly decrease during a drive, fuel in tank? |
+| `0x350` | `00 ...` | Byte 0 `0x40` at times (also in `start.csv`) |
+| `0x353` | `00 00 00 00 00 05 10 13` | Bytes 4 & 5 `0x03E7` (999) once, then 5 → 0. Distance to empty? (seen before the bench had [fuel sender resistors](#fuel-level-senders-wired-c220)) |
+| `0x3C8` | | MyColor / drive mode, see [0x3C8](#0x3c8---drive-mode-mycolor) |
+| `0x3E0` | `00 00 00 00 80 00 00 00` | Startup requests, see [0x3E0](#0x3e0--0x3e3--0x3e6---startup-requests-and-replies) |
+| `0x3FB` | `00 ...` | |
+| `0x45A` | `00 ...` | |
+| `0x591` | `91 00 FF FF FF FF FF FF` | The cluster's own "module alive" frame, same pattern as the other `0x5xx` |
+
+**~5 - 13 Hz**
+
+| ID | Data | Notes |
+|---|---|---|
+| `0x287` | `00 ...` | |
+| `0x30A` | `D7 00 00 00 00 00 00 00` | |
+| `0x315` | | Bytes 6 & 7 `0x08xx`, change every frame. v-ivanyshyn: follows the pedal with some delay |
+| `0x346` | `00 00 00 03 03 00 C0 00` | |
+| `0x348` | `00 ...` | |
+| `0x430` | | Odometer, see [0x430](#0x430---odometer) |
+| `0x434` | `40 00 10 00 28 FF F0 00` | |
+
+## 0x3E0 / 0x3E3 / 0x3E6 - Startup Requests and Replies
+
+**Status:** Confirmed · `interactive_brute_force.py --respond`
+
+About 0.8 s after start the cluster asks the other modules on HS3 to answer, one request at a time on `0x3E0`. Each module answers on its own ID. Idle frames on all of these are `00 00 00 00 80 00 00 00`.
+
+| Frame | Layout |
+|---|---|
+| Request (`0x3E0`) | `04 xx 00 00 84 00 00 00`, `xx` = `01 03 04 05 07 0D 10 11` in that order |
+| Reply | `00 01 04 xx 80 00 00 00` on the module's ID. Byte 1 `0x01` = OK / present |
+
+| Request | Answered on | Notes |
+|---|---|---|
+| `04 01` `04 03` `04 04` `04 05` `04 0D` `04 10` `04 11` | `0x3E3` | HS3 only (v-ivanyshyn's GT log, freeze frame `00 01 04 11 80 01 64 00`). `0x3E3` takes all of them on the bench |
+| `04 07` | `0x3E6` | `start.csv`: answered 7 ms after the request, then held. Power steering module? A one off STEERING FAILURE showed while sweeping its byte 1 |
+
+- In a car each request is held ~40 - 60 ms. Unanswered, the cluster repeats it every ~1 - 2 s and gives up after 5 s, then sends `07 01` (never seen in a car).
+- Byte 1 `0x02 - 0x07` time out for every request except `04 0D`, which takes anything.
+- Other IDs in the same family: `0x3DF` `0x3E2` (idle frames), `0x3EB` `02 04 14 00 00 20 ..` (different layout), freeze frame `0x3E1` `80 00 00 07 01 80 00 00`, `0x3DA` `01 64 00 ..` (GT log all zeros).
+- 12 Nov 2026 - from power up the requests go out at 1.14 - 2.39 s when answered and `07 01 00 00 84` from 2.89 s, every 1 s (`canbus_samples/EricTurner3/bench_apim/apim_ignition_20261112_174016.csv`). `07 01` isn't accepted on `0x3E3` (`00 01 07 01 80 ..`, 5 tries) or on `0x3E1` as `80 00 00 07 01 80 00 00`, `00 00 07 01 80 ..` or `00 01 07 01 80 ..` (`interactive_brute_force.py --respond-0701`). A BCM request? No BCM to check against.
+- Answering every request doesn't clear the startup faults (blind spot, cross traffic, steering assist, tire pressure monitor). Those modules' own messages aren't in any log.
+
+## Wrench / See Manual (Powertrain Malfunction RTT)
+
+**Status:** Confirmed, **solved 14 Nov 2026.** Off with the frames below, and stays off through a power pull mid-run.
 
 > [!IMPORTANT]
 > **Keep the wrench off: send all of these, each at least every 5 s (100 ms here).** The cluster times out each
@@ -964,8 +1083,7 @@ Boost / vacuum gauge is 30 inHg vacuum (raw ~`0x20E8`) to 0, then 0 to 20 psi (r
 | [`0x3B2`](#0x3b2---track-apps-turn-signals) | `40 00 00 12 10 00 00 02` | (any frame counts) | byte 1 bit 2 (`0x04`): body service | Yes |
 | [`0x179`](#0x179---warning-suppression-distance-counter) | `00 00 00 00 96 00 02 C8` | (any frame counts) | byte 2 bit 3 (`0x08`): engine service | Yes |
 
-
-# Fuel Level Senders (wired, C220)
+## Fuel Level Senders (wired, C220)
 
 Fuel level isn't on CAN, the cluster reads two resistive senders (saddle tank) on C220 pins **1 + 9** and **2 + 10**.
 Left open the cluster sets P0460-13 / P1346-13 and shows Fuel Level Low.
@@ -989,7 +1107,7 @@ Left open the cluster sets P0460-13 / P1346-13 and shows Fuel Level Low.
 **Status:** Confirmed on the bench (22 Nov 2026)
 
 The FR33 keeps a sweep / hold state for each needle in RAM, and `0x3D` WriteMemoryByAddress reaches it with no session
-or key (the same path as the [odometer](vbf/FR33_NOTES.md#writememorybyaddress-0x3d-app)). Mode 1 holds the needle at a
+or key (the same path as the [odometer](../vbf/FR33_NOTES.md#writememorybyaddress-0x3d-app)). Mode 1 holds the needle at a
 position, so the fuel needle can follow a game with no resistors. Layout in `vbf/FR33_NOTES.md` (Gauge motors).
 
 | Gauge | Needle | Base |
@@ -1007,7 +1125,7 @@ position, so the fuel needle can follow a game with no resistors. Layout in `vbf
   / P1346 codes and the warning come back).
 - Not saved. The hold is gone after a power cycle, `s550_cluster.py` writes it again every 5 s.
 
-# IPC As-Built (720)
+## IPC As-Built (720)
 
 **Status:** Confirmed on the bench · Written with Forscan, read with UDS `22 DExx` on `0x720` (no security for reads, writes need Forscan's security access)
 
@@ -1057,9 +1175,9 @@ All six blocks as read on 12 Nov 2026 (original values, `DE06` and up don't answ
 | `DE04` | `720-05` | `00 00 00 00 00 00 00 00` |
 | `DE05` | `720-06` | `6C 7F 00 00 98 00 00 00` |
 
-# IPC Data IDs (720)
+## IPC Data IDs (720)
 
-**Status:** From a full sweep on the bench, 12 Nov 2026 · `ipc_dtc_test.py dids dummy` asks `22 0000` - `22 FFFF` on `0x720` (18 min), 83 answer
+**Status:** Confirmed, full sweep on the bench, 12 Nov 2026 · `ipc_dtc_test.py dids dummy` asks `22 0000` - `22 FFFF` on `0x720` (18 min), 83 answer
 
 Read with no security access. The meanings are guesses from the values unless they say otherwise. Three passes were compared:
 the full sweep, a repeat of the ranges that answer, and the same with `0x46A` muted (U0146 set).
@@ -1104,9 +1222,9 @@ the full sweep, a repeat of the ranges that answer, and the same with `0x46A` mu
   ```
 - **Nothing readable tracks the wrench / See Manual.** It was on for all three passes and the only ID that changed with a fault (`D137`) reads `00`.
 
-# IPC Supported DTCs (720)
+## IPC Supported DTCs (720)
 
-**Status:** From the bench, 12 Nov 2026 · `ipc_dtc_test.py supported dummy` (UDS `19 0A`)
+**Status:** Confirmed on the bench, 12 Nov 2026 · `ipc_dtc_test.py supported dummy` (UDS `19 0A`)
 
 Every code the cluster can set, 38 of them. All read status `00` (tested, passed) but the three marked not run (`40`, never tested
 this power cycle). None asks for a lamp. The last byte is the failure type: `00` none, `11` short to ground, `13` open,
@@ -1141,10 +1259,10 @@ this power cycle). None asks for a lamp. The last byte is the failure type: `00`
 | `U3003-16`, `-17` | Battery voltage low / high |
 | `U300A-64` | Ignition switch |
 
-# APIM (SYNC)
+## APIM (SYNC)
 
 **Status:** Confirmed on the bench (10 Nov 2026) · APIM alone on the bench bus (500k, no cluster), captured with
-`apim_capture.py`. Logs: `can/apim/`
+`apim_capture.py`. Logs: `canbus_samples/EricTurner3/bench_apim/`
 
 The APIM lives on HS3 with the cluster. It wakes up on any CAN traffic, but only stays on and boots with a valid power
 mode in **`0x048`**. `s550_cluster.py` already sends it (`APIM_2`, `00 00 00 00 07 00 E0 00`), from
@@ -1155,7 +1273,7 @@ mode in **`0x048`**. `s550_cluster.py` already sends it (`APIM_2`, `00 00 00 00 
 - **No diagnostics on HS3.** Booted (`0x290` `7F`), it doesn't answer `10 01` on any request ID `0x700 - 0x7F7` or
   `0x7DF`, nor `10 01` / `3E 00` / `22 F190` / `22 F188` / `22 0200` / `10 03` on `0x7D0` (`apim_capture.py --probe`),
   so Forscan doesn't find it on the bench.
-- Bench unit is a **SYNC 2** APIM (the GT350 in the `/can` logs had SYNC 3).
+- Bench unit is a **SYNC 2** APIM (the GT350 in the `2016_gt350_car` logs had SYNC 3).
 - **Outside temp** comes from [`0x3B3` byte 4](#0x3b3---cluster-on-doors-lights-parking-brake) (`raw * 0.5 - 40 = °C`). The fixed `10` we used to send (copied from the GT350 logs, which has no outside temp) showed -26 °F.
 - **Compass**: in a car the heading comes from the GPS antenna on the APIM's GPS cable, with ABS wheel speed / direction
   ([SYNC primer](https://www.mustang6g.com/forums/attachments/s550-mustang-sync-system-and-tech-a-primer-pdf.892066/)).
@@ -1170,59 +1288,6 @@ mode in **`0x048`**. `s550_cluster.py` already sends it (`APIM_2`, `00 00 00 00 
   or unplugged (P0460-13, P1346-13, U0146, U0184, U0401-82). U0184 (lost comm radio) stays with the APIM there, so it's
   the audio module (ACM), not the APIM. This analog cluster never sets U0253 (APIM), so there's nothing to spoof.
 - `0x109` per v-ivanyshyn (HS3): RPM `(b0<<8 + b1) / 4`, gear (`b2` 1 P, 17 R, 33 N, 49 D, 65 S), speed `(b4<<8 + b5) / 100`, `b6` 1 in reverse. Likely the APIM's speed / reverse input. `0x044` unknown.
-
-## 0x048 - Power Mode
-
-**Sample:** `00 00 00 00 07 00 E0 00` · **Rate:** 10 Hz (ours) · **Status:** Confirmed (byte 4)
-
-| Byte | Value |
-|---|---|
-| 4 bits 4 - 0 | Power mode, see below |
-| 4 bits 7 - 5 | Not part of the power mode: `27` (bit 5 + running) still boots. Unknown |
-| 6 | `E0`, untested |
-| 0 - 3, 5, 7 | `00`, untested |
-
-Byte 4 swept `00 - 1F`, 30 s each (`interactive_brute_force.py apimpower`). Names are a guess from Ford's usual power
-mode list, but they match what a car does: the radio comes on in accessory and drops out while cranking.
-
-| Byte 4 | Name (guess) | APIM |
-|---|---|---|
-| `00` | Key out | not tested (the sweep stepped past it at once) |
-| `01` `02` `03` | Key recently out / key approved / post accessory | Off |
-| **`04`** | **Accessory** | **On** - `0x2E3` → `02` in 0.3 s, `0x290` → `7F` 5.5 s later |
-| **`05`** | **Post ignition** | **On** (stays on from `04`, bit flip test: no change either way) |
-| **`06`** | **Ignition on** | **On** |
-| **`07`** | **Running** | **On** (what `s550_cluster.py` sends) |
-| `08` | ? | Off, `0x290` → `01` within 0.5 s |
-| `09` | Crank | Off |
-| `0A - 1F` | - | Off (`17` off too, so bit 4 is part of the field) |
-
-- Off → on takes 5 - 25 s (`0x290` `01` → `7F`), on → off under a second.
-- In "off" the APIM keeps listening: `0x290` stays at 5 Hz with ~19 IDs, so a later valid power mode still boots it.
-
-## 0x466 - GPS Compass / Time
-
-**Sample:** `78 34 D4 28 12 A0 80 00` (15:13:53 UTC, 10 Nov 2026, north) · **Rate:** 1 Hz (ours) · **Status:** Compass confirmed on the cluster, the rest from the DBC
-
-`0x466 compass: v = (b3 & 0x07) * 2 + (b4 >> 7)` (datechnerd, digital cluster) is `GPS_Compass_direction 26|4` of the
-DBC's `APIMGPS_Data_Nav_2_FD1` (`0x463`), so the rest of that layout is assumed:
-
-| Byte | Bits | Signal |
-|---|---|---|
-| 0 | 7 - 3 | UTC hours |
-| 0 | 2 | GPS fault (`Gps_B_Falt`) |
-| 1 | 7 - 2 | UTC minutes |
-| 2 | 7 - 2 | UTC seconds |
-| 3 | 7 - 3 | PDOP, `raw * 0.2` |
-| 3 - 4 | b3 2 - 0, b4 7 | Compass: `0` N, `1` NE, `2` E, `3` SE, `4` S, `5` SW, `6` W, `7` NW |
-| 4 | 6 | Inferred (not actual) position |
-| 4 | 5 - 1 | Day - 1 |
-| 5 | 7 - 4 | Month - 1 |
-| 6 | 7 - 3 | Year - 2010 |
-
-- `s550_cluster.py` `send_gps_nav` sends it from `compass_heading` (degrees, rounded to 8 directions) and the PC's UTC
-  clock. The cluster shows the bearing. The bench APIM ignores it (its compass needs the nav SD card and GPS antenna).
-  In a car with nav the APIM probably sends this itself.
 
 ## What the APIM sends
 
@@ -1239,167 +1304,7 @@ DBC's `APIMGPS_Data_Nav_2_FD1` (`0x463`), so the rest of that layout is assumed:
 | ID | Data | Notes |
 |---|---|---|
 | `0x290` | `01 00 ...` | **Byte 0 = APIM state:** `01` starting / off, `7F` booted, `4F` was on and lost `0x048` |
-| `0x2E3` | `01 00 ...` | Byte 0 `01` starting / off, `02` on. Held at zeros it clears the digital cluster's U0253 (lost comm APIM), see [Fault / lamp suppression](#fault--lamp-suppression-digital-standalone--no-gwm). The analog cluster never sets U0253 |
+| `0x2E3` | `01 00 ...` | Byte 0 `01` starting / off, `02` on. Held at zeros it clears the digital cluster's U0253 (lost comm APIM), see [Fault / lamp suppression](2018_digital_database.md#fault--lamp-suppression). The analog cluster never sets U0253 |
 | `0x2D0` | `77 04 10 07 00 ...` | Byte 1 `04` → `24` and byte 2 `10` / `20` change around boot |
 | `0x229` | `00 00 03 00 00 ...` | Byte 1 counts `10 30 20 00` for a few seconds after boot |
 | `0x103` `0x222` | `00 ...` | Short pulses after boot (`0x103` `01 01 ...` every 5 s, `0x222` `40` / `10`) |
-
----
-
-# 2018+ Digital Cluster (S550 refresh, 12.4" digital IPC)
-
-**Status:** Confirmed on a bench **2018 digital cluster** (part `MR3V-14C026-DC`, JR3T family) unless noted.
-Contributed by [datechnerd / 2018-2023_S550_Digital_Cluster](https://github.com/datechnerd/2018-2023_S550_Digital_Cluster).
-Everything above in this file is the **2015-2017 analog** cluster (FR33/GR3T); the digital refresh shares the same
-HS3 bus and many IDs but differs on several. This section lists only what is **new or different** on the digital unit;
-where an ID behaves the same (e.g. `0x156`, `0x3B5`, `0x42D`, `0x466` compass) the entry above applies.
-
-Same conventions: HS3 (DLC 12/13), 500 kbps, big-endian, bytes 0-7, temps `raw - 60 = C` unless noted.
-
-| ID | Name | vs analog |
-|---|---|---|
-| `0x3B2` | Boot/activate (alone) | digital boots on `0x3B2` alone; `0x3B3` not required |
-| `0x42F` | Tachometer | **digital tach** - analog `0x204` RPM is dead here |
-| `0x171` | Gear / PRND S | automatic selector (analog uses `0x230` for manual gear) |
-| `0x470` | Trans oil temp (TOT) | new |
-| `0x17E` | Manifold charge temp (MCT) | new |
-| `0x432` | Rear diff / axle oil temp (DT) | new |
-| `0x43E` | adds Eng oil pressure (b7) | analog has AFR/CHT/boost only |
-| `0x3B3` | Outside temp = byte 4 | confirmed byte for digital |
-| `0x191` | Display units + distance-to-empty | new |
-| `0x3B4` | TPMS telltale lamp | new |
-| `0x38D` | TrackApps menu gate (presence) | new |
-| `0x081` | menu keys b1/b2 | adds menu/music/back/cobra |
-| `0x430` | ignition status (cluster TX) | analog uses `0x430` as odometer; digital odometer is `0x179` |
-
-## 0x3B2 - Boot / Activation (digital)
-
-**Sample:** `40 00 00 0B 10 00 00 02` @ ~16 ms - **Status:** Confirmed
-
-On the digital (JR3T) cluster `0x3B2` **alone** boots and keeps the cluster awake - `0x3B3` is **not** required
-(the opposite of the analog FR33, which needs `0x3B3`). This confirms the `mustang.c` note that GR3T/JR3T use
-`0x3B2` alone. Byte 0 upper nibble must be `4` (key on); any other value = key off and the display dies in ~2-10 s.
-Byte 0 low nibble bit 0 = Trunk Ajar. Layout is Ford `BodyInfo_3` (door/lamp/turn bits per the analog `0x3B2`/`0x3B3`).
-
-## 0x42F - Tachometer (digital)
-
-**Sample:** `C0 00 7D 00 00 00 1F 40` (8000 rpm) - **Status:** Confirmed
-
-Ford `EngAout_N_Dsply`, a 13-bit field in bytes 6-7, **rpm = raw x 2**.
-
-| Bytes | Signal | Encoding |
-|---|---|---|
-| 6 - 7 | Tachometer | `raw = (b6 & 0x1F) << 8 OR b7`, rpm = raw x 2. So `b6 = (rpm/2 >> 8) & 0x1F`, `b7 = (rpm/2) & 0xFF` |
-
-- Sweeps the needle cleanly 0 -> 8000 -> 0. The analog `0x204` RPM (bytes 3-4) does **nothing** on the digital cluster.
-- Note `b6` bit 4 alone = raw bit 12 = 4096 -> x2 = 8192 rpm (redline), which is why setting byte 6 alone snaps to redline
-  (an old "launch control" red herring).
-
-## 0x171 - Gear / PRND S (digital automatic)
-
-**Sample:** `14 60 00 00 00 00 00 00` (Drive) - **Status:** Confirmed
-
-| Byte | Signal | Values |
-|---|---|---|
-| 0 | enable | `0x14` for P/N |
-| 1 | Gear | `0x00` P, `0x20` R, `0x40` N, `0x60` D, `0x80` S |
-
-Park = `14 00`, Reverse = `14 20`. (The analog manual gear readout is `0x230`.) Full DBC layout and the SelectShift gear
-digit (byte 0 bit 0 on): [0x171](#0x171---transmission-display-selectshift-gear-prnds) above, confirmed on the analog.
-
-## 0x470 / 0x17E / 0x432 / 0x43E - Gauge-mode readouts (digital)
-
-The digital cluster Gauge Mode / engine-data page adds readouts the analog does not. All latch their last value
-(a hit in a fast sweep can show one step late). Confirmed on the bench by driving each byte and reading the screen:
-
-| Readout | Frame / field | Scale |
-|---|---|---|
-| Engine oil temp (EOT) | `0x156` b1 `EngOil_Te_Actl` | C = raw - 60 (same as analog) |
-| **Trans oil temp (TOT)** | `0x470` b3 (set b2 = `0xFF` to enable) | C = raw - 60 |
-| **Eng oil pressure (EOP)** | `0x43E` b7 | 1 kPa / count |
-| Air fuel ratio (AFR) | `0x43E` b3 | raw / 10 (same as analog) |
-| **Vac / boost** | `0x43E` b5 | psi = `0.4628 x raw - 30.08`; vacuum shown in inHg (digital drove this via byte 5 alone; analog uses the 13-bit b5:b6 above) |
-| Inlet air temp (IAT) | `0x42D` b1[1:0]:b2 | raw x 0.25 - 128 C (same as analog) |
-| **Manifold charge temp (MCT)** | `0x17E` b1 | C = raw x 0.5 - 20 |
-| **Rear diff / axle oil temp (DT)** | `0x432` 9-bit b0[7:0] + b1.7; **enable = b1 bit6 (`0x40`)** | C = raw - 40 |
-| Voltage | none - cluster measures its own 12 V supply | reads the bench PSU |
-
-- Low oil-pressure warning telltale = `0x421` b2 (FF = warning, 0 = normal), consistent with the analog `0x421`.
-- G-meter page (`0x76`) on the digital cluster would not take a dot from `0x76`, `0x92`, `0x77` or `0x416`; it appears
-  computed internally from ABS + RCM data with live counters - still open on the digital unit.
-
-## 0x3B3 byte 4 - Outside temperature (digital)
-
-**Status:** Confirmed
-
-On the digital cluster the outside-air temp reads from **`0x3B3` byte 4, C = raw x 0.5 - 40** (range -40..+80 C;
-`FE`/`FF` ignored). `0x3B3 = 00 00 00 00 78 00 00 00` boots reading 68 F (20 C). Reads "--" while lost-comm DTCs are
-active, blank with none + no source.
-
-## 0x191 - Display units + distance-to-empty (digital)
-
-**Status:** Confirmed
-
-Byte 0 is a packed units field (**stored** - survives a key cycle, reset only by an IPC power cycle). Temperature and
-distance units are separate: temp `0x10` = F, `04/08/40/80` = C. b0 `01`/`04` also pops "0 mi to E", so `0x191`
-is the fuel-range / distance-to-empty frame. Distance-unit bits not fully mapped; send with care.
-
-## 0x3B4 - TPMS telltale lamp (digital)
-
-**Sample:** `00 00 00 00 00 00 00 00` (lamp off) - **Status:** Confirmed - layout from opendbc `ford_cgea1_2_ptcan_2011.dbc`
-
-| Bits | Signal | Values |
-|---|---|---|
-| b0[7:4] | System status | `0` OK (lamp off), `2` sensor fault, `3` low (+ shows all four pressures), `5`/`6` train LF/RF |
-| b0[3:2] | Telltale | `1` solid, `2` flashing |
-
-All-zeros = lamp off. Pressures themselves are `0x3B5` as on the analog cluster.
-
-## 0x38D - TrackApps menu gate (digital)
-
-**Status:** Confirmed
-
-**Presence-gated:** broadcasting `0x38D` at all - any payload, even all-zero, at ~50 ms - makes the **TrackApps** menu
-entry appear; dropping it removes the entry.
-
-## 0x081 - Steering-wheel / menu buttons (digital, byte 0 is a bitmask)
-
-Byte 0 is an 8-bit mask, **one physical button per bit** (the analog table above lists the same 5-way). On the
-digital cluster:
-
-| Byte | Bit | Effect |
-|---|---|---|
-| 0 | `0x01` | Down / info-page next |
-| 0 | `0x08` | Up / info-page prev |
-| 0 | `0x10` | OK/Select (enters submenu, toggles checkboxes; hold on info page = reset trip) |
-| 0 | `0x02` `0x04` `0x40` `0x80` | **ignored by the digital menu** - these are the media/voice buttons (volume, skip/rewind, back, voice), handled by the audio/APIM modules, not the IPC. **Not** left/right arrows |
-| 0 | `0x20` | "Steering Feel Selection Not Available" popup |
-| 1 | `0x01` | MENU (open/close Settings) |
-| 1 | `0x02` | Music/audio page |
-| 1 | `0x40` | Back / Exit |
-| 1 | `0x80` | "Damper Mode Selection Not Available" popup |
-| 2 | `0x80` | Cobra menu |
-
-The digital menu is 1-D: Up / Down / OK / Menu / Back only (no left/right), which is why byte 0 `0x02`/`0x04` do nothing
-to it. On the S550 wheel the physical packs are media on the left spoke, menu+voice on the right (18+; believed flipped
-on 15-17) - so the "ignored" bits are real buttons the IPC simply does not act on.
-
-## Fault / lamp suppression
-
-The digital cluster latches more than the analog. Confirmed on the bench:
-
-| Lamp / warning | Clear by |
-|---|---|
-| MIL + oil pressure | `0x421` zeros (b0[3:2] MIL, b2.2 oil) |
-| Park-brake fault (moving in gear) | `0x213` = `FF FF 00 00 00 11 FF 41` |
-| Blind-spot lamp | `0x3A6` and `0x3A7` = `00 40 02 00 00 00 00 00` |
-| TPMS lamp | `0x3B4` zeros |
-| ABS / TCS / red BRAKE | `0x416` lamp fields 0 (a healthy ABS also clears them) |
-| Lost-comm U-codes | module-presence frames held at zeros: `0x076`->U0121 (ABS), `0x168`->U0103 (GSM), `0x223`->U0193 (DACM), `0x2E3`->U0253 (APIM); pair `0x2A1`+`0x3E6`->U0212 (SCCM) |
-
-
-## 0x430 - Ignition status (digital, cluster TX)
-
-On the digital cluster `0x430` is a **cluster output**, byte 0 = `05` Run / `04` Off-Acc (echoes `0x3B2` ignition) -
-not the odometer. The digital odometer is `0x179` byte 5 `OdoCount` (as the analog `0x179` distance-counter note describes).
-Other digital cluster-TX detectors: `0x225` b3 = displayed speed (whole mph), `0x318` b5 bit7 = a popup is on screen.

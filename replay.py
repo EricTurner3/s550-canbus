@@ -8,8 +8,8 @@
     per frame printing is gone (it throttled the bus to a trickle), and bytes can be overridden during the replay
 
     Usage
-        python replay.py longerdrive                     -> can/longerdrive.csv
-        python replay.py can/start.csv --loop
+        python replay.py longerdrive                     -> canbus_samples/EricTurner3/2016_gt350_car/longerdrive.csv
+        python replay.py canbus_samples/EricTurner3/2016_gt350_car/start.csv --loop
         python replay.py longerdrive --speed 0.5         -> half speed
         python replay.py longerdrive --skip 0x81         -> drop IDs from the log
         python replay.py longerdrive --only 0x3B3,0x204  -> only send these IDs
@@ -17,9 +17,9 @@
         python replay.py longerdrive --add 0x46A=0000000800000000,0x14C=0000000100000000,0x223
                                                          -> also send these every 100 ms (zeros unless =payload).
                                                             These three keep U0146, U0184 and the wrench away
-        python replay.py other_refs/2015GTPremium_cantact_log --fill 0.5  -> lossy log: repeat an ID's latest frame after 0.5 s of quiet
+        python replay.py canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_cantact_log --fill 0.5  -> lossy log: repeat an ID's latest frame after 0.5 s of quiet
         python replay.py "other_refs/v-ivanyshyn_parse_can_logs/log Mustang S550.txt"  -> v-ivanyshyn's 2015 GT log
-        python replay.py other_refs/2015GTPremium_cantact_log  -> candump format, this cluster's car (key on, engine off)
+        python replay.py canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_cantact_log  -> candump format, this cluster's car (key on, engine off)
 
     Keys
         arrows / enter - menu navigation
@@ -74,8 +74,10 @@ def parse_set(items):
         overrides.setdefault(int(id, 16), {})[int(byte)] = int(value, 0)
     return overrides
 
+GT350_LOGS = os.path.join('canbus_samples', 'EricTurner3', '2016_gt350_car')
+
 def find_log(name):
-    for path in (name, name + '.csv', os.path.join('can', name), os.path.join('can', name + '.csv')):
+    for path in (name, name + '.csv', os.path.join(GT350_LOGS, name), os.path.join(GT350_LOGS, name + '.csv')):
         if os.path.isfile(path):
             return path
     raise SystemExit('Could not find log {}'.format(name))
@@ -106,7 +108,7 @@ def read_txt(path):
 
 def read_candump(path):
     '''
-        candump / CANtact log format (other_refs/2015GTPremium_cantact_log), timestamp in seconds
+        candump / CANtact log format (canbus_samples/EricTurner3/2015_gt_premium_car/2015GTPremium_cantact_log), timestamp in seconds
             (6.530000) can0 078#00E2000000000000
     '''
     with open(path) as f:
@@ -231,7 +233,7 @@ def _status(duration):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Replay a CAN log from /can onto the bus')
-    parser.add_argument('log', help='log file, e.g. longerdrive or can/longerdrive.csv')
+    parser.add_argument('log', help='log file, e.g. longerdrive or canbus_samples/EricTurner3/2016_gt350_car/longerdrive.csv')
     parser.add_argument('--speed', type=float, default=1.0, help='playback speed, < 1 slows down')
     parser.add_argument('--loop', action='store_true', help='restart the log when it ends')
     parser.add_argument('--only', type=parse_ids, default=set(), help='comma separated IDs to send, everything else is dropped')
