@@ -1,5 +1,93 @@
 # Changelog
 
+## [2.12.0]
+
+**The database is a folder, one file per cluster, and contributions are checked.** `database.md` moved to
+`database/`, the 2018+ digital notes to their own `database/2018_digital_database.md`, and the logs to
+`canbus_samples/EricTurner3/`. Every file follows the same layout (title with a `**Label:**`, one `# 0xNNN - Name` section
+per ID, then `# Topics`), `python build_web.py --check` enforces it and `python test_web.py` renders every page in
+a headless browser. Pull requests run both. How to contribute: `CONTRIBUTING.md` and `database/README.md`.
+
+### database/
+
+- `database.md` → `database/database.md`, the 2015-17 analog cluster (`**Label:** 2015-17 analog`)
+- `2018_digital_database.md`: the "2018+ Digital Cluster" section, `##` headings now `#`, Status lines added to
+  `0x081`, `0x430` and the gauge readouts
+- One ID per section. Split, with the shared notes kept as a topic named after the IDs:
+  - `0x3E0` / `0x3E3` / `0x3E6` (Startup Requests, Replies, Reply to `04 07`), topic "Startup Requests and Replies"
+  - `0x470` / `0x17E` / `0x432` / `0x43E` (digital gauge readouts), topic "Gauge-mode readouts"
+- `0x048` and `0x466` out of the APIM topic into their own sections
+- Topics (Cluster Transmits, Wrench, Fuel, IPC 720 sections, APIM) moved under `# Topics` at the end
+- Status values fixed to five: Confirmed, From logs, From firmware (new), Cluster sends, APIM sends. Reworded to
+  fit: `0x466`, and the Wrench, IPC Data IDs and IPC Supported DTCs topics
+- Sources point to `canbus_samples/EricTurner3/`, with the part numbers of the modules on each bus
+- `README.md`: which file to edit, the template, the rules (confirmed findings take precedence over notes), the
+  Status values table and log samples
+- `## Modules` table in each file: the modules and part numbers its findings were tested on (`database.md`: IPC
+  FR33-10890-AA, APIM FR3T-14F239-CE; 2018: IPC MR3V-14C026-DC)
+
+### canbus_samples/
+
+- Logs, `<contributor>/<capture setup>/`: one folder per person, then one per car or bench rig (not per module, a
+  log holds the whole bus). `EricTurner3/`: `2016_gt350_car/` (was `can/`), `bench_apim/` (was `can/apim/`),
+  `2015_gt_premium_car/` (freeze frame and CANtact log, were in `other_refs/`), `bench_cluster/` (`cluster_tx.csv` /
+  `cluster_tx_changes.csv`, were in the root)
+- `README.md`: the layout and what's in `EricTurner3/`
+
+### build_web.py
+
+- Reads `database/database.md` and every `database/*_database.md`, one variant per file, labelled by its `**Label:**`
+  line. Entries and topics keep their file for the source links, topic keys of the other files are
+  `<file>/<topic>`, a topic naming IDs is linked from those IDs
+- `--check`: format problems with file:line. Headings (title, one ID per `#`, topics as `##` under `# Topics`, no
+  `##` in an ID, no `###`), labels, Sample / Status line, Status values, sample bytes, byte table rows, duplicate
+  IDs, open code blocks, and Sources logs under `canbus_samples/` that are missing or have no frames
+
+### docs/index.html
+
+- Sidebar topics nested under their file, each file its own color, ID tags show every file covering it
+- Each section labelled with its file, source links to the right file and line, home page lists the files
+- "See also" on an ID page for topics that name it
+- Links between files and to topics stay on the site. Fixed `#0x5xx` links, they went to a page that doesn't exist
+- `#selftest`: renders every ID and topic page and checks sections, labels, sample rows, source links, sidebar
+  and every in-site link
+
+### test_web.py (new)
+
+- Parser and `--check` tests on small test databases, a test that the Status values agree between
+  `build_web.py`, `database/README.md` and `database.md`, the real `database/` passing `--check`, and the page self
+  test in headless Edge / Chrome / Chromium
+
+### README.md
+
+- Shorter: what the project is, what you need, a wiring table, a quick start and one line per script. Each script's
+  command examples are in a collapsed section under the table
+
+### CONTRIBUTING.md (new)
+
+- Fork, branch, add logs and notes, run the checks, open a pull request. Script changes welcome with why and what it
+  solves. No firmware, security keys or proprietary data, and how to report one that was committed
+- Using AI tools: welcome, but a person checks everything, only a person's bench / car test makes it `Confirmed`,
+  same format and checks, and the pull request says what the AI helped with
+
+### CLAUDE.md (new)
+
+- The same rules for AI assistants working in the repo: never set `Confirmed` on its own, confirmed lines take
+  precedence, the right cluster's file, one ID per section, no firmware / keys, run the checks
+
+### .github/workflows/pages.yml
+
+- Pull requests run `--check` and `test_web.py` (headless Chrome), with a notice naming the cluster of each changed
+  database file. Pushes to master run them before building and deploying
+
+### Paths
+
+- `replay.py` finds logs by name in `canbus_samples/EricTurner3/2016_gt350_car/`
+- `apim_capture.py` saves to `canbus_samples/EricTurner3/bench_apim/`
+- `interactive_brute_force.py` writes `cluster_tx.csv` / `cluster_tx_changes.csv` to
+  `canbus_samples/EricTurner3/bench_cluster/`, reads the freeze frame from `canbus_samples/EricTurner3/2015_gt_premium_car/`
+- `vbf/make_can_notes.py` reads the freeze frame from `canbus_samples/EricTurner3/2015_gt_premium_car/`
+
 ## [2.11.0]
 
 **Engine off is a key off, every key on sweeps the needles, and the fuel needle follows the game.** The FR33 keeps a

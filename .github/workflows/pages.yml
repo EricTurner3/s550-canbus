@@ -1,11 +1,14 @@
-# Builds docs/ from database.md + the logs and publishes it to GitHub Pages.
+# Builds docs/ from database/ + the logs and publishes it to GitHub Pages.
+# Pull requests only run the format check and tests (database/README.md), nothing is published.
 # One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
 name: Pages
 
 on:
   push:
     branches: [master]
-    paths: ['database.md', 'build_web.py', 'docs/**', 'can/**', 'other_refs/**', 'cluster_tx.csv', '.github/workflows/pages.yml']
+    paths: ['database/**', 'build_web.py', 'test_web.py', 'docs/**', 'canbus_samples/**', 'other_refs/**', '.github/workflows/pages.yml']
+  pull_request:
+    paths: ['database/**', 'canbus_samples/**', 'build_web.py', 'test_web.py', 'docs/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -14,11 +17,38 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Format check
+        run: python build_web.py --check
+      - name: Tests (parser + every page rendered in headless Chrome)
+        env:
+          BROWSER: google-chrome
+          REQUIRE_BROWSER: '1'
+        run: python test_web.py
+      - name: Remind which cluster each changed database file is for
+        if: github.event_name == 'pull_request'
+        run: |
+          for f in $(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'database/*database.md'); do
+            [ -f "$f" ] || continue
+            label=$(grep -m1 -o '\*\*Label:\*\* [^·]*' "$f" | sed 's/\*\*Label:\*\* //; s/ *$//')
+            echo "::notice file=$f::$f is the ${label:-?} cluster. Only that cluster's findings go here, confirmed ones edit the section, unconfirmed ones go in a note (database/README.md)"
+          done
+
   build:
+    if: github.event_name != 'pull_request'
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +66,7 @@ jobs:
           path: docs
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
